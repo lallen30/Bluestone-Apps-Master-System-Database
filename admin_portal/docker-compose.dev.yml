@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  admin_portal:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: admin_portal_dev
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      API_URL: http://api:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_NAME: Multi-App Admin Portal
+      NEXT_PUBLIC_APP_VERSION: 1.0.0
+      NEXT_PUBLIC_MASTER_DOMAIN: localhost:3001
+    volumes:
+      - ./app:/app/app
+      - ./components:/app/components
+      - ./lib:/app/lib
+      - ./middleware.ts:/app/middleware.ts
+      - ./next.config.js:/app/next.config.js
+      - ./tailwind.config.js:/app/tailwind.config.js
+      - ./tsconfig.json:/app/tsconfig.json
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - phpmyadmin_phpmyadmin_network
+
+networks:
+  phpmyadmin_phpmyadmin_network:
+    external: true

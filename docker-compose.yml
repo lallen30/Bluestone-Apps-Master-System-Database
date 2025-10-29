@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql_db:
+    image: mysql:8.0
+    container_name: multi_app_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: multi_site_manager
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./phpmyadmin/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./phpmyadmin/seed_data.sql:/docker-entrypoint-initdb.d/02-seed_data.sql
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: multi_app_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql_db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+      UPLOAD_LIMIT: 100M
+    ports:
+      - "8080:80"
+    networks:
+      - app_network
+    depends_on:
+      mysql_db:
+        condition: service_healthy
+
+  # Multi-App Manager API
+  api:
+    build:
+      context: ./multi_site_manager
+      dockerfile: Dockerfile.dev
+    container_name: multi_app_api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      API_VERSION: v1
+      DB_HOST: mysql_db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: rootpassword
+      DB_NAME: multi_site_manager
+      DB_CONNECTION_LIMIT: 10
+      JWT_SECRET: dev-secret-key-change-in-production
+      JWT_EXPIRES_IN: 24h
+      JWT_REFRESH_EXPIRES_IN: 7d
+      CORS_ORIGIN: http://localhost:3000,http://localhost:3001,http://localhost:8080
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 100
+      LOG_LEVEL: debug
+    volumes:
+      - ./multi_site_manager/src:/app/src
+      - ./multi_site_manager/package.json:/app/package.json
+      - /app/node_modules
+    networks:
+      - app_network
+    depends_on:
+      mysql_db:
+        condition: service_healthy
+
+  # Admin Portal
+  admin_portal:
+    build:
+      context: ./admin_portal
+      dockerfile: Dockerfile.dev
+    container_name: multi_app_admin_portal
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      API_URL: http://api:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_NAME: Multi-App Admin Portal
+      NEXT_PUBLIC_APP_VERSION: 1.0.0
+      NEXT_PUBLIC_MASTER_DOMAIN: localhost:3001
+    volumes:
+      - ./admin_portal/app:/app/app
+      - ./admin_portal/components:/app/components
+      - ./admin_portal/lib:/app/lib
+      - ./admin_portal/middleware.ts:/app/middleware.ts
+      - ./admin_portal/next.config.js:/app/next.config.js
+      - ./admin_portal/tailwind.config.js:/app/tailwind.config.js
+      - ./admin_portal/tsconfig.json:/app/tsconfig.json
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - app_network
+    depends_on:
+      - api
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  mysql_data:

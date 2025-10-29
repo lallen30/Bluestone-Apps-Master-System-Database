@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: multi_site_manager_api_dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      API_VERSION: v1
+      DB_HOST: mysql_db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: rootpassword
+      DB_NAME: multi_site_manager
+      DB_CONNECTION_LIMIT: 10
+      JWT_SECRET: dev-secret-key-change-in-production
+      JWT_EXPIRES_IN: 24h
+      JWT_REFRESH_EXPIRES_IN: 7d
+      CORS_ORIGIN: http://localhost:3000,http://localhost:3001,http://localhost:8080
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 100
+      LOG_LEVEL: debug
+    volumes:
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      - /app/node_modules
+    networks:
+      - phpmyadmin_phpmyadmin_network
+    command: npm run dev
+
+networks:
+  phpmyadmin_phpmyadmin_network:
+    external: true
