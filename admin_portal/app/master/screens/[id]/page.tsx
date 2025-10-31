@@ -597,17 +597,36 @@ export default function EditScreen() {
                   {selectedElements.map((element, index) => (
                     <div
                       key={element.temp_id}
-                      className="border border-gray-200 rounded-lg p-4 hover:border-primary transition-colors"
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', element.temp_id);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const draggedId = e.dataTransfer.getData('text/plain');
+                        const draggedIndex = selectedElements.findIndex(el => el.temp_id === draggedId);
+                        const targetIndex = index;
+                        
+                        if (draggedIndex !== targetIndex) {
+                          const newElements = [...selectedElements];
+                          const [draggedElement] = newElements.splice(draggedIndex, 1);
+                          newElements.splice(targetIndex, 0, draggedElement);
+                          newElements.forEach((el, i) => el.display_order = i);
+                          setSelectedElements(newElements);
+                        }
+                      }}
+                      className="border border-gray-200 rounded-lg p-4 hover:border-primary transition-colors cursor-move"
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex flex-col gap-1 pt-1">
-                          <button
-                            onClick={() => moveElement(element.temp_id, 'up')}
-                            disabled={index === 0}
-                            className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-                          >
+                          <div className="p-1 cursor-grab active:cursor-grabbing">
                             <GripVertical className="w-4 h-4 text-gray-400" />
-                          </button>
+                          </div>
                         </div>
                         
                         <div className="flex-1">
