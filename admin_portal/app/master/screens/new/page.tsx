@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appScreensAPI, screenElementsAPI } from '@/lib/api';
-import { ArrowLeft, Save, Eye, Plus, X, GripVertical, Settings } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Plus, X, GripVertical, Settings, ChevronDown, User, Home, Settings as SettingsIcon, ShoppingCart, MessageSquare, Bell, Calendar, FileText, Image, MapPin, Search, LayoutDashboard, Heart, Star, Trash2, Edit, Mail, Phone, Lock, LogOut, Menu, Filter, Download, Upload, Share2, Bookmark, Flag, Tag, Zap, TrendingUp, BarChart, PieChart, Activity, Briefcase, CreditCard, DollarSign, Gift, Package, Truck, Clock, CheckCircle, XCircle, AlertCircle, Info, HelpCircle, Shield, Key, Users, UserPlus, UserCheck, Globe, Wifi, Smartphone, Tablet, Monitor, Laptop, Printer, Camera, Video, Music, Headphones, Mic, Volume2, Play, Pause, SkipForward, SkipBack, Repeat, Shuffle, Building, Building2, Store, Warehouse } from 'lucide-react';
 
 interface ScreenElement {
   id: number;
@@ -43,6 +43,7 @@ export default function NewScreen() {
   const [screenKey, setScreenKey] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('Monitor');
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [category, setCategory] = useState('');
   
   // Elements
@@ -320,13 +321,166 @@ export default function NewScreen() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Icon
                   </label>
-                  <input
-                    type="text"
-                    value={icon}
-                    onChange={(e) => setIcon(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="Lucide icon name"
-                  />
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowIconPicker(!showIconPicker)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent flex items-center justify-between bg-white hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        {icon === 'User' && <User className="w-4 h-4" />}
+                        {icon === 'Home' && <Home className="w-4 h-4" />}
+                        {icon === 'Settings' && <SettingsIcon className="w-4 h-4" />}
+                        {icon === 'ShoppingCart' && <ShoppingCart className="w-4 h-4" />}
+                        {icon === 'MessageSquare' && <MessageSquare className="w-4 h-4" />}
+                        {icon === 'Bell' && <Bell className="w-4 h-4" />}
+                        {icon === 'Calendar' && <Calendar className="w-4 h-4" />}
+                        {icon === 'FileText' && <FileText className="w-4 h-4" />}
+                        {icon === 'Image' && <Image className="w-4 h-4" />}
+                        {icon === 'MapPin' && <MapPin className="w-4 h-4" />}
+                        {icon === 'Search' && <Search className="w-4 h-4" />}
+                        {icon === 'LayoutDashboard' && <LayoutDashboard className="w-4 h-4" />}
+                        {icon === 'Heart' && <Heart className="w-4 h-4" />}
+                        {icon === 'Star' && <Star className="w-4 h-4" />}
+                        {icon === 'Mail' && <Mail className="w-4 h-4" />}
+                        {icon === 'Phone' && <Phone className="w-4 h-4" />}
+                        {icon === 'Lock' && <Lock className="w-4 h-4" />}
+                        {icon === 'LogOut' && <LogOut className="w-4 h-4" />}
+                        {icon === 'Menu' && <Menu className="w-4 h-4" />}
+                        {icon === 'Filter' && <Filter className="w-4 h-4" />}
+                        {icon === 'Download' && <Download className="w-4 h-4" />}
+                        {icon === 'Upload' && <Upload className="w-4 h-4" />}
+                        {icon === 'Share2' && <Share2 className="w-4 h-4" />}
+                        {icon === 'Bookmark' && <Bookmark className="w-4 h-4" />}
+                        {icon === 'Flag' && <Flag className="w-4 h-4" />}
+                        {icon === 'Tag' && <Tag className="w-4 h-4" />}
+                        {icon === 'Zap' && <Zap className="w-4 h-4" />}
+                        {icon === 'TrendingUp' && <TrendingUp className="w-4 h-4" />}
+                        {icon === 'BarChart' && <BarChart className="w-4 h-4" />}
+                        {icon === 'PieChart' && <PieChart className="w-4 h-4" />}
+                        {icon === 'Activity' && <Activity className="w-4 h-4" />}
+                        {icon === 'Briefcase' && <Briefcase className="w-4 h-4" />}
+                        {icon === 'CreditCard' && <CreditCard className="w-4 h-4" />}
+                        {icon === 'DollarSign' && <DollarSign className="w-4 h-4" />}
+                        {icon === 'Gift' && <Gift className="w-4 h-4" />}
+                        {icon === 'Package' && <Package className="w-4 h-4" />}
+                        {icon === 'Truck' && <Truck className="w-4 h-4" />}
+                        {icon === 'Clock' && <Clock className="w-4 h-4" />}
+                        {icon === 'CheckCircle' && <CheckCircle className="w-4 h-4" />}
+                        {icon === 'XCircle' && <XCircle className="w-4 h-4" />}
+                        {icon === 'AlertCircle' && <AlertCircle className="w-4 h-4" />}
+                        {icon === 'Info' && <Info className="w-4 h-4" />}
+                        {icon === 'HelpCircle' && <HelpCircle className="w-4 h-4" />}
+                        {icon === 'Shield' && <Shield className="w-4 h-4" />}
+                        {icon === 'Key' && <Key className="w-4 h-4" />}
+                        {icon === 'Users' && <Users className="w-4 h-4" />}
+                        {icon === 'UserPlus' && <UserPlus className="w-4 h-4" />}
+                        {icon === 'UserCheck' && <UserCheck className="w-4 h-4" />}
+                        {icon === 'Globe' && <Globe className="w-4 h-4" />}
+                        {icon === 'Wifi' && <Wifi className="w-4 h-4" />}
+                        {icon === 'Smartphone' && <Smartphone className="w-4 h-4" />}
+                        {icon === 'Tablet' && <Tablet className="w-4 h-4" />}
+                        {icon === 'Monitor' && <Monitor className="w-4 h-4" />}
+                        {icon === 'Laptop' && <Laptop className="w-4 h-4" />}
+                        {icon === 'Camera' && <Camera className="w-4 h-4" />}
+                        {icon === 'Video' && <Video className="w-4 h-4" />}
+                        {icon === 'Music' && <Music className="w-4 h-4" />}
+                        {icon === 'Headphones' && <Headphones className="w-4 h-4" />}
+                        {icon === 'Mic' && <Mic className="w-4 h-4" />}
+                        {icon === 'Volume2' && <Volume2 className="w-4 h-4" />}
+                        {icon === 'Building' && <Building className="w-4 h-4" />}
+                        {icon === 'Building2' && <Building2 className="w-4 h-4" />}
+                        {icon === 'Store' && <Store className="w-4 h-4" />}
+                        {icon === 'Warehouse' && <Warehouse className="w-4 h-4" />}
+                        <span>{icon}</span>
+                      </div>
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
+                    </button>
+                    
+                    {showIconPicker && (
+                      <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {[
+                          { name: 'User', icon: User },
+                          { name: 'Home', icon: Home },
+                          { name: 'Settings', icon: SettingsIcon },
+                          { name: 'ShoppingCart', icon: ShoppingCart },
+                          { name: 'MessageSquare', icon: MessageSquare },
+                          { name: 'Bell', icon: Bell },
+                          { name: 'Calendar', icon: Calendar },
+                          { name: 'FileText', icon: FileText },
+                          { name: 'Image', icon: Image },
+                          { name: 'MapPin', icon: MapPin },
+                          { name: 'Search', icon: Search },
+                          { name: 'LayoutDashboard', icon: LayoutDashboard },
+                          { name: 'Heart', icon: Heart },
+                          { name: 'Star', icon: Star },
+                          { name: 'Mail', icon: Mail },
+                          { name: 'Phone', icon: Phone },
+                          { name: 'Lock', icon: Lock },
+                          { name: 'LogOut', icon: LogOut },
+                          { name: 'Menu', icon: Menu },
+                          { name: 'Filter', icon: Filter },
+                          { name: 'Download', icon: Download },
+                          { name: 'Upload', icon: Upload },
+                          { name: 'Share2', icon: Share2 },
+                          { name: 'Bookmark', icon: Bookmark },
+                          { name: 'Flag', icon: Flag },
+                          { name: 'Tag', icon: Tag },
+                          { name: 'Zap', icon: Zap },
+                          { name: 'TrendingUp', icon: TrendingUp },
+                          { name: 'BarChart', icon: BarChart },
+                          { name: 'PieChart', icon: PieChart },
+                          { name: 'Activity', icon: Activity },
+                          { name: 'Briefcase', icon: Briefcase },
+                          { name: 'CreditCard', icon: CreditCard },
+                          { name: 'DollarSign', icon: DollarSign },
+                          { name: 'Gift', icon: Gift },
+                          { name: 'Package', icon: Package },
+                          { name: 'Truck', icon: Truck },
+                          { name: 'Clock', icon: Clock },
+                          { name: 'CheckCircle', icon: CheckCircle },
+                          { name: 'XCircle', icon: XCircle },
+                          { name: 'AlertCircle', icon: AlertCircle },
+                          { name: 'Info', icon: Info },
+                          { name: 'HelpCircle', icon: HelpCircle },
+                          { name: 'Shield', icon: Shield },
+                          { name: 'Key', icon: Key },
+                          { name: 'Users', icon: Users },
+                          { name: 'UserPlus', icon: UserPlus },
+                          { name: 'UserCheck', icon: UserCheck },
+                          { name: 'Globe', icon: Globe },
+                          { name: 'Wifi', icon: Wifi },
+                          { name: 'Smartphone', icon: Smartphone },
+                          { name: 'Tablet', icon: Tablet },
+                          { name: 'Monitor', icon: Monitor },
+                          { name: 'Laptop', icon: Laptop },
+                          { name: 'Camera', icon: Camera },
+                          { name: 'Video', icon: Video },
+                          { name: 'Music', icon: Music },
+                          { name: 'Headphones', icon: Headphones },
+                          { name: 'Mic', icon: Mic },
+                          { name: 'Volume2', icon: Volume2 },
+                          { name: 'Building', icon: Building },
+                          { name: 'Building2', icon: Building2 },
+                          { name: 'Store', icon: Store },
+                          { name: 'Warehouse', icon: Warehouse },
+                        ].map(({ name, icon: IconComponent }) => (
+                          <button
+                            key={name}
+                            type="button"
+                            onClick={() => {
+                              setIcon(name);
+                              setShowIconPicker(false);
+                            }}
+                            className="w-full px-3 py-2 flex items-center gap-2 hover:bg-gray-100 text-left"
+                          >
+                            <IconComponent className="w-4 h-4" />
+                            <span className="text-sm">{name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
