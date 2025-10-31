@@ -149,7 +149,7 @@ export default function EditScreenContent() {
                 <div key={element.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="mb-3">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {element.label}
+                      {element.label || element.element_name || element.field_key}
                       {element.is_required && <span className="text-red-500 ml-1">*</span>}
                     </label>
                     {element.element_type === 'text_field' && (
@@ -192,7 +192,21 @@ export default function EditScreenContent() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
                     )}
-                    {!['text_field', 'text_area', 'heading', 'paragraph'].includes(element.element_type) && (
+                    {(element.element_type === 'rich_text_display' || element.element_type === 'rich_text_editor') && (
+                      <div>
+                        <textarea
+                          placeholder={element.placeholder || 'Enter formatted content (HTML supported)'}
+                          value={contentValues[element.id] || ''}
+                          onChange={(e) => handleContentChange(element.id, e.target.value)}
+                          rows={8}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          💡 Supports HTML formatting. Use tags like &lt;b&gt;, &lt;i&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;, etc.
+                        </p>
+                      </div>
+                    )}
+                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor'].includes(element.element_type) && (
                       <div className="text-sm text-gray-500 italic">
                         {element.element_type} - Content editing coming soon
                       </div>
