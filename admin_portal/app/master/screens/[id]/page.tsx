@@ -743,13 +743,13 @@ export default function EditScreen() {
                   />
                 </div>
 
-                {editingElement.element.is_input_field && (
+                {Boolean(editingElement.element.is_input_field) && (
                   <>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Placeholder</label>
                       <input
                         type="text"
-                        value={editingElement.placeholder}
+                        value={editingElement.placeholder || ''}
                         onChange={(e) => updateElement(editingElement.temp_id, { placeholder: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                       />
@@ -759,7 +759,7 @@ export default function EditScreen() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Default Value</label>
                       <input
                         type="text"
-                        value={editingElement.default_value}
+                        value={editingElement.default_value || ''}
                         onChange={(e) => updateElement(editingElement.temp_id, { default_value: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                       />
