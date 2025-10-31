@@ -764,30 +764,30 @@ export default function EditScreen() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                       />
                     </div>
-
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingElement.is_required}
-                          onChange={(e) => updateElement(editingElement.temp_id, { is_required: e.target.checked })}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-sm font-medium text-gray-700">Required</span>
-                      </label>
-
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingElement.is_readonly}
-                          onChange={(e) => updateElement(editingElement.temp_id, { is_readonly: e.target.checked })}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-sm font-medium text-gray-700">Read Only</span>
-                      </label>
-                    </div>
                   </>
                 )}
+
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingElement.is_required}
+                      onChange={(e) => updateElement(editingElement.temp_id, { is_required: e.target.checked })}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Required</span>
+                  </label>
+
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingElement.is_readonly}
+                      onChange={(e) => updateElement(editingElement.temp_id, { is_readonly: e.target.checked })}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Read Only</span>
+                  </label>
+                </div>
               </div>
             </div>
 
