@@ -346,11 +346,11 @@ exports.getAppScreenContent = async (req, res) => {
     const elements = await db.query(
       `SELECT sei.*, se.name as element_name, se.element_type, se.category,
               se.icon, se.has_options, se.is_content_field, se.is_editable_by_app_admin,
-              asc.content_value, asc.options as content_options
+              content.content_value, content.options as content_options
        FROM screen_element_instances sei
        JOIN screen_elements se ON sei.element_id = se.id
-       LEFT JOIN app_screen_content asc ON asc.element_instance_id = sei.id 
-              AND asc.app_id = ? AND asc.screen_id = ?
+       LEFT JOIN app_screen_content content ON content.element_instance_id = sei.id 
+              AND content.app_id = ? AND content.screen_id = ?
        WHERE sei.screen_id = ?
        ORDER BY sei.display_order`,
       [app_id, screen_id, screen_id]

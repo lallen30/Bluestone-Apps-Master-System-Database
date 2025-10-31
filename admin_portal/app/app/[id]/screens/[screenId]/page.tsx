@@ -41,7 +41,7 @@ export default function EditScreenContent() {
 
       // Fetch screen with content
       const screenResponse = await appScreensAPI.getAppScreenContent(parseInt(appId), parseInt(screenId));
-      setScreen(screenResponse.data.screen);
+      setScreen(screenResponse.data);
       setElements(screenResponse.data.elements || []);
       
       setLoading(false);
