@@ -3,14 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appsAPI, usersAPI } from '@/lib/api';
-import { Shield, Users, Globe, Activity, LogOut } from 'lucide-react';
+import { appsAPI, usersAPI, appScreensAPI, screenElementsAPI } from '@/lib/api';
+import { Shield, Users, Globe, Activity, LogOut, Monitor, Layers } from 'lucide-react';
 
 export default function MasterDashboard() {
   const router = useRouter();
   const { user, isAuthenticated, isHydrated, logout } = useAuthStore();
   const [apps, setApps] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [screens, setScreens] = useState<any[]>([]);
+  const [screenElements, setScreenElements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,10 +38,14 @@ export default function MasterDashboard() {
     Promise.all([
       appsAPI.getAll(),
       usersAPI.getAll(),
+      appScreensAPI.getAll(),
+      screenElementsAPI.getAll(),
     ])
-      .then(([appsResponse, usersResponse]) => {
+      .then(([appsResponse, usersResponse, screensResponse, elementsResponse]) => {
         setApps(appsResponse.data || []);
         setUsers(usersResponse.data || []);
+        setScreens(screensResponse.data || []);
+        setScreenElements(elementsResponse.data || []);
         setLoading(false);
       })
       .catch((error) => {
@@ -89,6 +95,18 @@ export default function MasterDashboard() {
       icon: Shield,
       color: 'bg-orange-500',
     },
+    {
+      title: 'Total Screens',
+      value: screens.length,
+      icon: Monitor,
+      color: 'bg-indigo-500',
+    },
+    {
+      title: 'Screen Elements',
+      value: screenElements.length,
+      icon: Layers,
+      color: 'bg-pink-500',
+    },
   ];
 
   return (
@@ -120,7 +138,7 @@ export default function MasterDashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {stats.map((stat) => (
             <div key={stat.title} className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
@@ -211,7 +229,7 @@ export default function MasterDashboard() {
         </div>
 
         {/* Users List */}
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-white rounded-lg shadow mb-8">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Users</h2>
             <button
@@ -289,6 +307,116 @@ export default function MasterDashboard() {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Screens List */}
+        <div className="bg-white rounded-lg shadow mb-8">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Screens</h2>
+            <button
+              onClick={() => router.push('/master/screens')}
+              className="text-sm text-primary hover:text-primary/80 font-medium"
+            >
+              Manage Screens →
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Category
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Apps
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Created
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {screens.slice(0, 10).map((screen) => (
+                  <tr key={screen.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/master/screens/${screen.id}`)}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Monitor className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-900">{screen.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {screen.category || 'General'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{screen.app_count || 0} apps</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(screen.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+                {screens.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                      No screens created yet
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {screens.length > 10 && (
+            <div className="px-6 py-4 border-t border-gray-200 text-center">
+              <button
+                onClick={() => router.push('/master/screens')}
+                className="text-sm text-primary hover:text-primary/80 font-medium"
+              >
+                View All ({screens.length} total)
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Screen Elements Summary */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Screen Elements</h2>
+            <button
+              onClick={() => router.push('/master/screen-elements')}
+              className="text-sm text-primary hover:text-primary/80 font-medium"
+            >
+              View Library →
+            </button>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Array.isArray(screenElements) && Object.entries(
+                screenElements.reduce((acc: any, element: any) => {
+                  acc[element.category] = (acc[element.category] || 0) + 1;
+                  return acc;
+                }, {})
+              ).map(([category, count]) => (
+                <div key={category} className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Layers className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-900">{category}</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{count as number}</p>
+                  <p className="text-xs text-gray-500 mt-1">elements</p>
+                </div>
+              ))}
+            </div>
+            {(!Array.isArray(screenElements) || screenElements.length === 0) && (
+              <p className="text-center text-sm text-gray-500 py-8">
+                No screen elements available
+              </p>
+            )}
+          </div>
         </div>
       </main>
     </div>

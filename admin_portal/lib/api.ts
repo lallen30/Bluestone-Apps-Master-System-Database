@@ -130,6 +130,129 @@ export const usersAPI = {
   },
 };
 
+// Screens API
+export const screensAPI = {
+  getAll: async () => {
+    const response = await api.get('/screens');
+    return response.data;
+  },
+  
+  getById: async (id: number) => {
+    const response = await api.get(`/screens/${id}`);
+    return response.data;
+  },
+  
+  create: async (data: any) => {
+    const response = await api.post('/screens', data);
+    return response.data;
+  },
+  
+  update: async (id: number, data: any) => {
+    const response = await api.put(`/screens/${id}`, data);
+    return response.data;
+  },
+  
+  delete: async (id: number) => {
+    const response = await api.delete(`/screens/${id}`);
+    return response.data;
+  },
+};
+
+// Screen Elements API
+export const screenElementsAPI = {
+  getAll: async () => {
+    const response = await api.get('/screen-elements');
+    return response.data;
+  },
+  
+  getById: async (id: number) => {
+    const response = await api.get(`/screen-elements/${id}`);
+    return response.data;
+  },
+  
+  getByCategory: async (category: string) => {
+    const response = await api.get(`/screen-elements/category/${category}`);
+    return response.data;
+  },
+  
+  getCategories: async () => {
+    const response = await api.get('/screen-elements/categories');
+    return response.data;
+  },
+};
+
+// App Screens API
+export const appScreensAPI = {
+  // Screen management
+  getAll: async () => {
+    const response = await api.get('/app-screens');
+    return response.data;
+  },
+  
+  getById: async (id: number) => {
+    const response = await api.get(`/app-screens/${id}`);
+    return response.data;
+  },
+  
+  create: async (data: any) => {
+    const response = await api.post('/app-screens', data);
+    return response.data;
+  },
+  
+  update: async (id: number, data: any) => {
+    const response = await api.put(`/app-screens/${id}`, data);
+    return response.data;
+  },
+  
+  delete: async (id: number) => {
+    const response = await api.delete(`/app-screens/${id}`);
+    return response.data;
+  },
+  
+  // Element instances
+  addElement: async (data: any) => {
+    const response = await api.post('/app-screens/elements', data);
+    return response.data;
+  },
+  
+  updateElement: async (id: number, data: any) => {
+    const response = await api.put(`/app-screens/elements/${id}`, data);
+    return response.data;
+  },
+  
+  deleteElement: async (id: number) => {
+    const response = await api.delete(`/app-screens/elements/${id}`);
+    return response.data;
+  },
+  
+  // App assignments
+  getAppScreens: async (appId: number) => {
+    const response = await api.get(`/app-screens/app/${appId}`);
+    return response.data;
+  },
+  
+  assignToApp: async (data: { app_id: number; screen_id: number; display_order?: number }) => {
+    const response = await api.post('/app-screens/app/assign', data);
+    return response.data;
+  },
+  
+  unassignFromApp: async (appId: number, screenId: number) => {
+    const response = await api.delete(`/app-screens/app/${appId}/${screenId}`);
+    return response.data;
+  },
+  
+  // App screen content
+  getAppScreenContent: async (appId: number, screenId: number) => {
+    const response = await api.get(`/app-screens/app/${appId}/screen/${screenId}`);
+    return response.data;
+  },
+  
+  updateContent: async (data: any) => {
+    const response = await api.post('/app-screens/app/content', data);
+    return response.data;
+  },
+};
+
 // Permissions API
 export const permissionsAPI = {
   assign: async (data: any) => {
@@ -164,35 +287,6 @@ export const permissionsAPI = {
   
   getAppUsers: async (appId: number) => {
     const response = await api.get(`/permissions/app/${appId}`);
-    return response.data;
-  },
-};
-
-// Screens API
-export const screensAPI = {
-  getAppScreens: async (appId: number, isPublished?: boolean) => {
-    const params = isPublished !== undefined ? { is_published: isPublished } : {};
-    const response = await api.get(`/screens/app/${appId}`, { params });
-    return response.data;
-  },
-  
-  getById: async (id: number) => {
-    const response = await api.get(`/screens/${id}`);
-    return response.data;
-  },
-  
-  create: async (data: any) => {
-    const response = await api.post('/screens', data);
-    return response.data;
-  },
-  
-  update: async (id: number, data: any) => {
-    const response = await api.put(`/screens/${id}`, data);
-    return response.data;
-  },
-  
-  delete: async (id: number) => {
-    const response = await api.delete(`/screens/${id}`);
     return response.data;
   },
 };
