@@ -635,7 +635,7 @@ export default function EditScreen() {
                             </div>
                             <div>
                               <span className="text-gray-500">Required:</span>
-                              <span className="ml-2">{element.is_required ? 'Yes' : 'No'}</span>
+                              <span className="ml-2">{Boolean(element.is_required) ? 'Yes' : 'No'}</span>
                             </div>
                           </div>
                         </div>

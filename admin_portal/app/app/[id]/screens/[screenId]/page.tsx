@@ -54,6 +54,9 @@ export default function EditScreenContent() {
       });
       setContentValues(initialValues);
       
+      // Debug: Log elements to see what we're getting
+      console.log('Elements data:', elementsData);
+      
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -149,8 +152,8 @@ export default function EditScreenContent() {
                 <div key={element.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="mb-3">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {element.label || element.element_name || element.field_key}
-                      {element.is_required && <span className="text-red-500 ml-1">*</span>}
+                      {(element.label && element.label !== '0') ? element.label : (element.element_name || element.field_key)}
+                      {element.is_required === 1 && <span className="text-red-500 ml-1">*</span>}
                     </label>
                     {element.element_type === 'text_field' && (
                       <input
