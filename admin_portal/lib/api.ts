@@ -251,6 +251,17 @@ export const appScreensAPI = {
     const response = await api.post('/app-screens/app/content', data);
     return response.data;
   },
+  
+  // Aliases for convenience
+  assignScreen: async (data: { app_id: number; screen_id: number; display_order?: number }) => {
+    const response = await api.post('/app-screens/app/assign', data);
+    return response.data;
+  },
+  
+  unassignScreen: async (appId: number, screenId: number) => {
+    const response = await api.delete(`/app-screens/app/${appId}/${screenId}`);
+    return response.data;
+  },
 };
 
 // Permissions API

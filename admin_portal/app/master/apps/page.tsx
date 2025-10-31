@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI } from '@/lib/api';
-import { Plus, Edit, Trash2, Globe, ArrowLeft, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, ArrowLeft, Search, Monitor } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 
@@ -348,6 +348,16 @@ export default function AppsManagement() {
                       {app.user_count || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/master/apps/${app.id}/screens`);
+                        }}
+                        className="text-purple-600 hover:text-purple-900 mr-4"
+                        title="Manage Screens"
+                      >
+                        <Monitor className="w-5 h-5" />
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
