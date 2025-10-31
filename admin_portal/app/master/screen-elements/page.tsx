@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { screenElementsAPI } from '@/lib/api';
-import { ArrowLeft, Layers, Search } from 'lucide-react';
+import { ArrowLeft, Layers, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function ScreenElementsLibrary() {
   const router = useRouter();
@@ -14,6 +14,8 @@ export default function ScreenElementsLibrary() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [sortField, setSortField] = useState<string>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -73,8 +75,44 @@ export default function ScreenElementsLibrary() {
       );
     }
 
+    // Sort
+    filtered = [...filtered].sort((a, b) => {
+      let aVal = a[sortField];
+      let bVal = b[sortField];
+
+      // Handle null/undefined values
+      if (aVal === null || aVal === undefined) return 1;
+      if (bVal === null || bVal === undefined) return -1;
+
+      // Convert to lowercase for string comparison
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
     setFilteredElements(filtered);
-  }, [searchQuery, selectedCategory, elements]);
+  }, [searchQuery, selectedCategory, elements, sortField, sortDirection]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-4 h-4 text-gray-400" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="w-4 h-4 text-primary" />
+      : <ArrowDown className="w-4 h-4 text-primary" />;
+  };
 
   if (loading) {
     return (
@@ -145,67 +183,124 @@ export default function ScreenElementsLibrary() {
           </div>
         </div>
 
-        {/* Elements Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.isArray(filteredElements) && filteredElements.map((element) => (
-            <div
-              key={element.id}
-              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Layers className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{element.name}</h3>
-                    <p className="text-xs text-gray-500">{element.element_type}</p>
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-sm text-gray-600 mb-4">{element.description}</p>
-
-              <div className="flex flex-wrap gap-2 mb-4">
-                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                  {element.category}
-                </span>
-                {element.is_content_field && (
-                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
-                    Content
-                  </span>
-                )}
-                {element.has_options && (
-                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                    Has Options
-                  </span>
-                )}
-                {element.is_editable_by_app_admin && (
-                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800">
-                    Editable
-                  </span>
-                )}
-              </div>
-
-              <div className="pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>Order: {element.display_order}</span>
-                  <span className={`px-2 py-1 rounded-full ${element.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                    {element.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-              </div>
+        {/* Elements Table */}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {(!Array.isArray(filteredElements) || filteredElements.length === 0) ? (
+            <div className="p-12 text-center">
+              <Layers className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No elements found</h3>
+              <p className="text-gray-500">Try adjusting your search or filter criteria</p>
             </div>
-          ))}
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('name')}
+                      className="flex items-center gap-2 hover:text-gray-700"
+                    >
+                      Element
+                      <SortIcon field="name" />
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('element_type')}
+                      className="flex items-center gap-2 hover:text-gray-700"
+                    >
+                      Type
+                      <SortIcon field="element_type" />
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('category')}
+                      className="flex items-center gap-2 hover:text-gray-700"
+                    >
+                      Category
+                      <SortIcon field="category" />
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Properties
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('is_active')}
+                      className="flex items-center gap-2 hover:text-gray-700"
+                    >
+                      Status
+                      <SortIcon field="is_active" />
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredElements.map((element) => (
+                  <tr key={element.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Layers className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{element.name}</div>
+                          <div className="text-xs text-gray-500">Order: {element.display_order}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-900">{element.element_type}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                        {element.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 max-w-xs truncate">{element.description}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-wrap gap-1">
+                        {element.is_content_field === 1 && (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+                            Content
+                          </span>
+                        )}
+                        {element.has_options === 1 && (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                            Options
+                          </span>
+                        )}
+                        {element.is_editable_by_app_admin === 1 && (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800">
+                            Editable
+                          </span>
+                        )}
+                        {!element.is_content_field && !element.has_options && !element.is_editable_by_app_admin && (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        element.is_active 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {element.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
-
-        {(!Array.isArray(filteredElements) || filteredElements.length === 0) && (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <Layers className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No elements found</h3>
-            <p className="text-gray-500">Try adjusting your search or filter criteria</p>
-          </div>
-        )}
       </main>
     </div>
   );
