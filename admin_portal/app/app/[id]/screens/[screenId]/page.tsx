@@ -6,6 +6,11 @@ import { useAuthStore } from '@/lib/store';
 import { appsAPI, appScreensAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
 import { ArrowLeft, Save, Monitor } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import 'react-quill/dist/quill.snow.css';
+
+// Dynamically import ReactQuill to avoid SSR issues
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
 export default function EditScreenContent() {
   const router = useRouter();
@@ -197,15 +202,25 @@ export default function EditScreenContent() {
                     )}
                     {(element.element_type === 'rich_text_display' || element.element_type === 'rich_text_editor') && (
                       <div>
-                        <textarea
-                          placeholder={element.placeholder || 'Enter formatted content (HTML supported)'}
+                        <ReactQuill
+                          theme="snow"
                           value={contentValues[element.id] || ''}
-                          onChange={(e) => handleContentChange(element.id, e.target.value)}
-                          rows={8}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm"
+                          onChange={(value) => handleContentChange(element.id, value)}
+                          placeholder={element.placeholder || 'Enter formatted content...'}
+                          modules={{
+                            toolbar: [
+                              [{ 'header': [1, 2, 3, false] }],
+                              ['bold', 'italic', 'underline', 'strike'],
+                              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                              [{ 'align': [] }],
+                              ['link'],
+                              ['clean']
+                            ]
+                          }}
+                          className="bg-white"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                          💡 Supports HTML formatting. Use tags like &lt;b&gt;, &lt;i&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;, etc.
+                        <p className="text-xs text-gray-500 mt-2">
+                          💡 Use the toolbar above to format your content. The content will be saved as HTML.
                         </p>
                       </div>
                     )}
