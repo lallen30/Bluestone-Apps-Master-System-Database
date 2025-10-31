@@ -41,6 +41,7 @@ export default function NewScreen() {
   // Screen details
   const [screenName, setScreenName] = useState('');
   const [screenKey, setScreenKey] = useState('');
+  const [isScreenKeyManuallyEdited, setIsScreenKeyManuallyEdited] = useState(false);
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('Monitor');
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -94,9 +95,15 @@ export default function NewScreen() {
 
   const handleNameChange = (name: string) => {
     setScreenName(name);
-    if (!screenKey) {
+    // Auto-generate screen key unless user has manually edited it
+    if (!isScreenKeyManuallyEdited) {
       setScreenKey(generateScreenKey(name));
     }
+  };
+
+  const handleScreenKeyChange = (key: string) => {
+    setScreenKey(key);
+    setIsScreenKeyManuallyEdited(true);
   };
 
   const addElement = (element: ScreenElement) => {
@@ -285,10 +292,11 @@ export default function NewScreen() {
                   <input
                     type="text"
                     value={screenKey}
-                    onChange={(e) => setScreenKey(e.target.value)}
+                    onChange={(e) => handleScreenKeyChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="e.g., user_profile"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Auto-generated from screen name (editable)</p>
                 </div>
 
                 <div>

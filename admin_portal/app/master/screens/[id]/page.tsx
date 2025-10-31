@@ -83,7 +83,7 @@ export default function EditScreen() {
     try {
       // Fetch screen details
       const screenResponse = await appScreensAPI.getById(parseInt(screenId));
-      const screen = screenResponse.data.screen;
+      const screen = screenResponse.data;
       const elements = screenResponse.data.elements || [];
       
       setScreenName(screen.name);

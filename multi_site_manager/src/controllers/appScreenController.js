@@ -79,7 +79,7 @@ exports.createScreen = async (req, res) => {
     const { name, screen_key, description, icon, category } = req.body;
     const created_by = req.user.id;
     
-    const [result] = await db.query(
+    const result = await db.query(
       `INSERT INTO app_screens (name, screen_key, description, icon, category, created_by)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [name, screen_key, description, icon, category, created_by]
@@ -115,7 +115,7 @@ exports.updateScreen = async (req, res) => {
       `UPDATE app_screens 
        SET name = ?, description = ?, icon = ?, category = ?, is_active = ?
        WHERE id = ?`,
-      [name, description, icon, category, is_active, id]
+      [name, description || null, icon || null, category || null, is_active !== undefined ? is_active : 1, id]
     );
     
     res.json({
@@ -157,7 +157,7 @@ exports.addElementToScreen = async (req, res) => {
     const { screen_id, element_id, field_key, label, placeholder, default_value, 
             is_required, is_readonly, display_order, config, validation_rules } = req.body;
     
-    const [result] = await db.query(
+    const result = await db.query(
       `INSERT INTO screen_element_instances 
        (screen_id, element_id, field_key, label, placeholder, default_value, 
         is_required, is_readonly, display_order, config, validation_rules)
@@ -273,7 +273,7 @@ exports.assignScreenToApp = async (req, res) => {
     const { app_id, screen_id, display_order } = req.body;
     const assigned_by = req.user.id;
     
-    const [result] = await db.query(
+    const result = await db.query(
       `INSERT INTO app_screen_assignments (app_id, screen_id, display_order, assigned_by)
        VALUES (?, ?, ?, ?)`,
       [app_id, screen_id, display_order || 0, assigned_by]
