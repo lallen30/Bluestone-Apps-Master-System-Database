@@ -3,15 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appsAPI, permissionsAPI } from '@/lib/api';
+import { appsAPI, permissionsAPI, appScreensAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { Monitor, Sparkles } from 'lucide-react';
+import { Monitor, Sparkles, Edit, Eye } from 'lucide-react';
 
 export default function AppScreens() {
   const router = useRouter();
   const params = useParams();
   const { user, isAuthenticated } = useAuthStore();
   const [app, setApp] = useState<any>(null);
+  const [screens, setScreens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,6 +37,10 @@ export default function AppScreens() {
       // Fetch app details
       const appResponse = await appsAPI.getById(appId);
       setApp(appResponse.data);
+
+      // Fetch assigned screens
+      const screensResponse = await appScreensAPI.getAppScreens(appId);
+      setScreens(Array.isArray(screensResponse.data) ? screensResponse.data : []);
 
       // Check user permissions
       if (user?.id) {
@@ -86,38 +91,71 @@ export default function AppScreens() {
           </p>
         </div>
 
-        {/* Coming Soon Card */}
-        <div className="max-w-2xl mx-auto mt-16">
-          <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl shadow-lg p-12 text-center">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Monitor className="w-10 h-10 text-white" />
-            </div>
-            
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Sparkles className="w-6 h-6 text-purple-500" />
-              <h2 className="text-3xl font-bold text-gray-900">Coming Soon</h2>
-              <Sparkles className="w-6 h-6 text-purple-500" />
-            </div>
-            
-            <p className="text-lg text-gray-600 mb-6">
-              Screen management functionality is currently under development.
-            </p>
-            
-            <div className="bg-white rounded-lg p-6 text-left">
-              <h3 className="font-semibold text-gray-900 mb-3">What's coming:</h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li className="flex items-start gap-2">
-                  <span className="text-green-500 mt-1">✓</span>
-                  <span>Edit content for screens</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-500 mt-1">✓</span>
-                  <span>Version control and publishing workflow</span>
-                </li>
-              </ul>
+        {/* Screens List */}
+        {screens.length === 0 ? (
+          <div className="max-w-2xl mx-auto mt-16">
+            <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl shadow-lg p-12 text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Monitor className="w-10 h-10 text-white" />
+              </div>
+              
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">No Screens Assigned</h2>
+              <p className="text-gray-600 mb-6">
+                This app doesn't have any screens assigned yet. Contact your master admin to assign screens.
+              </p>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {screens.map((screen) => (
+              <div
+                key={screen.id}
+                className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 border border-gray-200"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <Monitor className="w-6 h-6 text-primary" />
+                  </div>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    screen.assigned_active 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {screen.assigned_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{screen.name}</h3>
+                <p className="text-sm text-gray-600 mb-4">{screen.description || 'No description'}</p>
+                
+                <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                  <span>{screen.element_count || 0} elements</span>
+                  {screen.category && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                      {screen.category}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => router.push(`/app/${params.id}/screens/${screen.id}`)}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit Content
+                  </button>
+                  <button
+                    onClick={() => alert('Preview coming soon!')}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </AppLayout>
   );
