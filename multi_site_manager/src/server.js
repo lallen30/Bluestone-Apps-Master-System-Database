@@ -16,6 +16,7 @@ const permissionRoutes = require('./routes/permissionRoutes');
 const screenRoutes = require('./routes/screenRoutes');
 const screenElementRoutes = require('./routes/screenElementRoutes');
 const appScreenRoutes = require('./routes/appScreenRoutes');
+const mobileRoutes = require('./routes/mobileRoutes');
 
 // Initialize Express app
 const app = express();
@@ -82,6 +83,7 @@ app.use(`/api/${API_VERSION}/permissions`, permissionRoutes);
 app.use(`/api/${API_VERSION}/screens`, screenRoutes);
 app.use(`/api/${API_VERSION}/screen-elements`, screenElementRoutes);
 app.use(`/api/${API_VERSION}/app-screens`, appScreenRoutes);
+app.use(`/api/${API_VERSION}/mobile`, mobileRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -97,6 +99,7 @@ app.get('/', (req, res) => {
       permissions: `/api/${API_VERSION}/permissions`,
       screens: `/api/${API_VERSION}/screens`,
       screenElements: `/api/${API_VERSION}/screen-elements`,
+      mobile: `/api/${API_VERSION}/mobile`,
       appScreens: `/api/${API_VERSION}/app-screens`
     }
   });
