@@ -771,7 +771,7 @@ export default function EditScreen() {
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={editingElement.is_required}
+                      checked={Boolean(editingElement.is_required)}
                       onChange={(e) => updateElement(editingElement.temp_id, { is_required: e.target.checked })}
                       className="rounded border-gray-300"
                     />
@@ -781,7 +781,7 @@ export default function EditScreen() {
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={editingElement.is_readonly}
+                      checked={Boolean(editingElement.is_readonly)}
                       onChange={(e) => updateElement(editingElement.temp_id, { is_readonly: e.target.checked })}
                       className="rounded border-gray-300"
                     />
