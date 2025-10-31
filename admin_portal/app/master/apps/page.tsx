@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI } from '@/lib/api';
-import { Plus, Edit, Trash2, Globe, ArrowLeft } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, ArrowLeft, Search } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 
@@ -21,7 +21,10 @@ export default function AppsManagement() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
   const [apps, setApps] = useState<App[]>([]);
+  const [filteredApps, setFilteredApps] = useState<App[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -34,6 +37,10 @@ export default function AppsManagement() {
   });
   const [formErrors, setFormErrors] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
+  const [sortField, setSortField] = useState<'name' | 'domain' | 'status'>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const ITEMS_PER_PAGE = 50;
 
   useEffect(() => {
     if (!isAuthenticated || user?.role_level !== 1) {
@@ -44,6 +51,46 @@ export default function AppsManagement() {
     fetchApps();
   }, [isAuthenticated, user, router]);
 
+  useEffect(() => {
+    // Filter apps based on search query
+    let filtered = apps.filter((app) => {
+      const searchLower = searchQuery.toLowerCase();
+      return (
+        app.name.toLowerCase().includes(searchLower) ||
+        app.domain.toLowerCase().includes(searchLower) ||
+        app.description?.toLowerCase().includes(searchLower)
+      );
+    });
+
+    // Sort filtered apps
+    filtered = filtered.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'domain':
+          aValue = a.domain.toLowerCase();
+          bValue = b.domain.toLowerCase();
+          break;
+        case 'status':
+          aValue = a.is_active ? 1 : 0;
+          bValue = b.is_active ? 1 : 0;
+          break;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    setFilteredApps(filtered);
+    setCurrentPage(1); // Reset to first page when search changes
+  }, [searchQuery, apps, sortField, sortDirection]);
+
   const fetchApps = async () => {
     try {
       const response = await appsAPI.getAll();
@@ -52,6 +99,21 @@ export default function AppsManagement() {
     } catch (error) {
       console.error('Error fetching apps:', error);
       setLoading(false);
+    }
+  };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredApps.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentApps = filteredApps.slice(startIndex, endIndex);
+
+  const handleSort = (field: 'name' | 'domain' | 'status') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
     }
   };
 
@@ -192,19 +254,62 @@ export default function AppsManagement() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+              placeholder="Search apps by name, domain, or description..."
+            />
+          </div>
+          <p className="mt-2 text-sm text-gray-500">
+            Showing {startIndex + 1}-{Math.min(endIndex, filteredApps.length)} of {filteredApps.length} apps
+          </p>
+        </div>
+
         <div className="bg-white rounded-lg shadow">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Name
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Name
+                      {sortField === 'name' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Domain
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('domain')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Domain
+                      {sortField === 'domain' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      {sortField === 'status' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Users
@@ -215,8 +320,12 @@ export default function AppsManagement() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {apps.map((app) => (
-                  <tr key={app.id} className="hover:bg-gray-50">
+                {currentApps.map((app) => (
+                  <tr 
+                    key={app.id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => router.push(`/app/${app.id}`)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{app.name}</div>
                       <div className="text-sm text-gray-500">{app.description}</div>
@@ -240,13 +349,19 @@ export default function AppsManagement() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => openEditModal(app)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(app);
+                        }}
                         className="text-blue-600 hover:text-blue-900 mr-4"
                       >
                         <Edit className="w-5 h-5" />
                       </button>
                       <button
-                        onClick={() => openDeleteModal(app)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDeleteModal(app);
+                        }}
                         className="text-red-600 hover:text-red-900"
                       >
                         <Trash2 className="w-5 h-5" />
@@ -257,6 +372,31 @@ export default function AppsManagement() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700">
+                  Page {currentPage} of {totalPages}
+                </span>
+              </div>
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </main>
 

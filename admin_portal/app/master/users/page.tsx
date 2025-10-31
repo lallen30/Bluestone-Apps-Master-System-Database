@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { usersAPI, appsAPI, permissionsAPI } from '@/lib/api';
-import { Plus, Edit, Trash2, Users as UsersIcon, ArrowLeft, Shield } from 'lucide-react';
+import { Plus, Edit, Trash2, Users as UsersIcon, ArrowLeft, Shield, Eye, EyeOff, Search } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 
@@ -38,8 +38,11 @@ export default function UsersManagement() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [apps, setApps] = useState<App[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -57,6 +60,11 @@ export default function UsersManagement() {
   });
   const [formErrors, setFormErrors] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [sortField, setSortField] = useState<'name' | 'email' | 'role' | 'status'>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const ITEMS_PER_PAGE = 50;
 
   const roles = [
     { id: 1, name: 'Master Admin', level: 1 },
@@ -73,6 +81,51 @@ export default function UsersManagement() {
     fetchData();
   }, [isAuthenticated, user, router]);
 
+  useEffect(() => {
+    // Filter users based on search query
+    let filtered = users.filter((u) => {
+      const searchLower = searchQuery.toLowerCase();
+      return (
+        u.email.toLowerCase().includes(searchLower) ||
+        u.first_name.toLowerCase().includes(searchLower) ||
+        u.last_name.toLowerCase().includes(searchLower) ||
+        u.role_name.toLowerCase().includes(searchLower)
+      );
+    });
+
+    // Sort filtered users
+    filtered = filtered.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case 'name':
+          aValue = `${a.first_name} ${a.last_name}`.toLowerCase();
+          bValue = `${b.first_name} ${b.last_name}`.toLowerCase();
+          break;
+        case 'email':
+          aValue = a.email.toLowerCase();
+          bValue = b.email.toLowerCase();
+          break;
+        case 'role':
+          aValue = a.role_level;
+          bValue = b.role_level;
+          break;
+        case 'status':
+          aValue = a.is_active ? 1 : 0;
+          bValue = b.is_active ? 1 : 0;
+          break;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    setFilteredUsers(filtered);
+    setCurrentPage(1); // Reset to first page when search changes
+  }, [searchQuery, users, sortField, sortDirection]);
+
   const fetchData = async () => {
     try {
       const [usersResponse, appsResponse] = await Promise.all([
@@ -85,6 +138,21 @@ export default function UsersManagement() {
     } catch (error) {
       console.error('Error fetching data:', error);
       setLoading(false);
+    }
+  };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentUsers = filteredUsers.slice(startIndex, endIndex);
+
+  const handleSort = (field: 'name' | 'email' | 'role' | 'status') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
     }
   };
 
@@ -170,9 +238,11 @@ export default function UsersManagement() {
     try {
       const response = await permissionsAPI.getUserPermissions(user.id);
       const userPerms = response.data || [];
+      console.log('User permissions from API:', userPerms);
       
-      // Set selected apps
-      const appIds = userPerms.map((p: any) => p.app_id);
+      // Set selected apps - filter out any undefined app_ids
+      const appIds = userPerms.map((p: any) => p.app_id).filter((id: any) => id !== undefined && id !== null);
+      console.log('Filtered appIds:', appIds);
       setSelectedApps(appIds);
       
       // Set permissions for each app
@@ -203,6 +273,7 @@ export default function UsersManagement() {
     try {
       // Save permissions for each selected app
       for (const appId of selectedApps) {
+        console.log('Processing appId:', appId, 'Type:', typeof appId);
         const perm = permissions[appId] || {
           can_view: true,
           can_edit: false,
@@ -212,11 +283,14 @@ export default function UsersManagement() {
           can_manage_settings: false,
         };
         
-        await permissionsAPI.assign({
+        const payload = {
+          ...perm,
           user_id: selectedUser.id,
           app_id: appId,
-          ...perm,
-        });
+        };
+        console.log('Sending payload:', payload);
+        
+        await permissionsAPI.assign(payload);
       }
       
       // Remove permissions for unselected apps
@@ -238,10 +312,13 @@ export default function UsersManagement() {
   };
 
   const toggleApp = (appId: number) => {
+    console.log('toggleApp called with:', appId, 'Type:', typeof appId);
     if (selectedApps.includes(appId)) {
       setSelectedApps(selectedApps.filter(id => id !== appId));
     } else {
-      setSelectedApps([...selectedApps, appId]);
+      const newSelectedApps = [...selectedApps, appId];
+      console.log('New selectedApps:', newSelectedApps);
+      setSelectedApps(newSelectedApps);
       // Initialize default permissions for new app
       if (!permissions[appId]) {
         // If user is Admin (role_level 2), check all permissions by default
@@ -359,22 +436,73 @@ export default function UsersManagement() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+              placeholder="Search users by name, email, or role..."
+            />
+          </div>
+          <p className="mt-2 text-sm text-gray-500">
+            Showing {startIndex + 1}-{Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length} users
+          </p>
+        </div>
+
         <div className="bg-white rounded-lg shadow">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Name
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Name
+                      {sortField === 'name' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('email')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Email
+                      {sortField === 'email' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('role')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Role
+                      {sortField === 'role' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      {sortField === 'status' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -382,7 +510,7 @@ export default function UsersManagement() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {users.map((u) => (
+                {currentUsers.map((u) => (
                   <tr key={u.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -445,6 +573,31 @@ export default function UsersManagement() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700">
+                  Page {currentPage} of {totalPages}
+                </span>
+              </div>
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
@@ -506,12 +659,21 @@ export default function UsersManagement() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Password *
             </label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
             {formErrors.password && (
               <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
             )}
@@ -624,12 +786,21 @@ export default function UsersManagement() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               New Password (leave blank to keep current)
             </label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
             {formErrors.password && (
               <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
             )}

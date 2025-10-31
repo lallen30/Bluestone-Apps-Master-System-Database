@@ -168,4 +168,33 @@ export const permissionsAPI = {
   },
 };
 
+// Screens API
+export const screensAPI = {
+  getAppScreens: async (appId: number, isPublished?: boolean) => {
+    const params = isPublished !== undefined ? { is_published: isPublished } : {};
+    const response = await api.get(`/screens/app/${appId}`, { params });
+    return response.data;
+  },
+  
+  getById: async (id: number) => {
+    const response = await api.get(`/screens/${id}`);
+    return response.data;
+  },
+  
+  create: async (data: any) => {
+    const response = await api.post('/screens', data);
+    return response.data;
+  },
+  
+  update: async (id: number, data: any) => {
+    const response = await api.put(`/screens/${id}`, data);
+    return response.data;
+  },
+  
+  delete: async (id: number) => {
+    const response = await api.delete(`/screens/${id}`);
+    return response.data;
+  },
+};
+
 export default api;

@@ -19,7 +19,7 @@ docker-compose up -d
 2. Access phpMyAdmin at: http://localhost:8080
 
 3. Login credentials:
-   - Server: `db`
+   - Server: `mysql_db`
    - Username: `root`
    - Password: `rootpassword`
    

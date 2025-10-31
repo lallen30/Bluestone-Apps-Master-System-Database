@@ -40,23 +40,30 @@ const assignUserToApp = async (req, res) => {
     );
 
     if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: 'User already has permissions for this app. Use update endpoint instead.'
-      });
+      // Update existing permission
+      await query(
+        `UPDATE user_app_permissions 
+         SET can_view = ?, can_edit = ?, can_delete = ?, can_publish = ?,
+             can_manage_users = ?, can_manage_settings = ?, custom_permissions = ?
+         WHERE user_id = ? AND app_id = ?`,
+        [can_view, can_edit, can_delete, can_publish,
+         can_manage_users, can_manage_settings,
+         custom_permissions ? JSON.stringify(custom_permissions) : null,
+         user_id, app_id]
+      );
+    } else {
+      // Create new permission
+      await query(
+        `INSERT INTO user_app_permissions 
+         (user_id, app_id, can_view, can_edit, can_delete, can_publish, 
+          can_manage_users, can_manage_settings, custom_permissions, granted_by) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [user_id, app_id, can_view, can_edit, can_delete, can_publish,
+         can_manage_users, can_manage_settings, 
+         custom_permissions ? JSON.stringify(custom_permissions) : null,
+         req.user.id]
+      );
     }
-
-    // Create permission
-    await query(
-      `INSERT INTO user_app_permissions 
-       (user_id, app_id, can_view, can_edit, can_delete, can_publish, 
-        can_manage_users, can_manage_settings, custom_permissions, granted_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [user_id, app_id, can_view, can_edit, can_delete, can_publish,
-       can_manage_users, can_manage_settings, 
-       custom_permissions ? JSON.stringify(custom_permissions) : null,
-       req.user.id]
-    );
 
     // Log activity
     await query(
@@ -207,7 +214,7 @@ const getUserPermissions = async (req, res) => {
     const { user_id } = req.params;
 
     const permissions = await query(
-      `SELECT s.id, s.name, s.domain, 
+      `SELECT s.id as app_id, s.name, s.domain, 
               usp.can_view, usp.can_edit, usp.can_delete, usp.can_publish,
               usp.can_manage_users, usp.can_manage_settings, usp.custom_permissions
        FROM user_app_permissions usp

@@ -8,14 +8,22 @@ import { Shield, Users, Globe, Activity, LogOut } from 'lucide-react';
 
 export default function MasterDashboard() {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, isHydrated, logout } = useAuthStore();
   const [apps, setApps] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Check if we have a token in localStorage
+    const token = localStorage.getItem('auth_token');
+    
+    if (!token && !isAuthenticated) {
       router.push('/login');
+      return;
+    }
+
+    // If we have a token but store hasn't hydrated yet, wait
+    if (token && !user) {
       return;
     }
 
@@ -158,8 +166,12 @@ export default function MasterDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {apps.map((app) => (
-                  <tr key={app.id} className="hover:bg-gray-50">
+                {apps.slice(0, 10).map((app) => (
+                  <tr 
+                    key={app.id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => router.push(`/app/${app.id}`)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{app.name}</div>
                       <div className="text-sm text-gray-500">{app.description}</div>
@@ -186,6 +198,16 @@ export default function MasterDashboard() {
               </tbody>
             </table>
           </div>
+          {apps.length > 10 && (
+            <div className="px-6 py-4 border-t border-gray-200 text-center">
+              <button
+                onClick={() => router.push('/master/apps')}
+                className="text-sm text-primary hover:text-primary/80 font-medium"
+              >
+                View All ({apps.length} total)
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Users List */}
@@ -218,7 +240,7 @@ export default function MasterDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {users.map((u) => (
+                {users.slice(0, 10).map((u) => (
                   <tr key={u.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -257,6 +279,16 @@ export default function MasterDashboard() {
               </tbody>
             </table>
           </div>
+          {users.length > 10 && (
+            <div className="px-6 py-4 border-t border-gray-200 text-center">
+              <button
+                onClick={() => router.push('/master/users')}
+                className="text-sm text-primary hover:text-primary/80 font-medium"
+              >
+                View All ({users.length} total)
+              </button>
+            </div>
+          )}
         </div>
       </main>
     </div>

@@ -13,6 +13,7 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const appRoutes = require('./routes/appRoutes');
 const permissionRoutes = require('./routes/permissionRoutes');
+const screenRoutes = require('./routes/screenRoutes');
 
 // Initialize Express app
 const app = express();
@@ -33,16 +34,19 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Rate limiting
+// Rate limiting - disabled for development
+// Uncomment and adjust for production use
+/*
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000,
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.'
   }
 });
 app.use('/api', limiter);
+*/
 
 // Body parsing middleware
 app.use(express.json());
@@ -73,6 +77,7 @@ app.use(`/api/${API_VERSION}/auth`, authRoutes);
 app.use(`/api/${API_VERSION}/users`, userRoutes);
 app.use(`/api/${API_VERSION}/apps`, appRoutes);
 app.use(`/api/${API_VERSION}/permissions`, permissionRoutes);
+app.use(`/api/${API_VERSION}/screens`, screenRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

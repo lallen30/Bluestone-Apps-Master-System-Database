@@ -4,6 +4,8 @@ const { body, param, validationResult } = require('express-validator');
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    console.error('Validation errors:', JSON.stringify(errors.array(), null, 2));
+    console.error('Request body:', JSON.stringify(req.body, null, 2));
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
@@ -52,6 +54,10 @@ const validateUserUpdate = [
     .trim()
     .notEmpty()
     .withMessage('Last name cannot be empty'),
+  body('password')
+    .optional()
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters'),
   body('role_id')
     .optional()
     .isInt({ min: 1, max: 3 })
@@ -122,33 +128,41 @@ const validateAppUpdate = [
 // Permission validation rules
 const validatePermissionAssignment = [
   body('user_id')
+    .toInt()
     .isInt({ min: 1 })
     .withMessage('Valid user ID is required'),
   body('app_id')
+    .toInt()
     .isInt({ min: 1 })
     .withMessage('Valid app ID is required'),
   body('can_view')
     .optional()
+    .toBoolean()
     .isBoolean()
     .withMessage('can_view must be a boolean'),
   body('can_edit')
     .optional()
+    .toBoolean()
     .isBoolean()
     .withMessage('can_edit must be a boolean'),
   body('can_delete')
     .optional()
+    .toBoolean()
     .isBoolean()
     .withMessage('can_delete must be a boolean'),
   body('can_publish')
     .optional()
+    .toBoolean()
     .isBoolean()
     .withMessage('can_publish must be a boolean'),
   body('can_manage_users')
     .optional()
+    .toBoolean()
     .isBoolean()
     .withMessage('can_manage_users must be a boolean'),
   body('can_manage_settings')
     .optional()
+    .toBoolean()
     .isBoolean()
     .withMessage('can_manage_settings must be a boolean'),
   handleValidationErrors

@@ -53,13 +53,36 @@ export default function LoginPage() {
       console.log('Login response:', response);
       
       if (response.success) {
+        console.log('Login: Saving token and user to store');
+        console.log('Login: Token:', response.data.token.substring(0, 20) + '...');
+        console.log('Login: User:', response.data.user);
+        
         login(response.data.token, response.data.user);
+        
+        // Verify it was saved
+        setTimeout(() => {
+          const savedToken = localStorage.getItem('auth_token');
+          const savedAuth = localStorage.getItem('auth-storage');
+          console.log('Login: Token saved to localStorage?', !!savedToken);
+          console.log('Login: Auth-storage saved?', !!savedAuth);
+        }, 100);
         
         // Redirect based on role
         if (response.data.user.role_level === 1) {
           router.push('/master');
         } else {
-          router.push('/dashboard');
+          // For non-master users, check how many apps they have access to
+          const { permissionsAPI } = await import('@/lib/api');
+          const permsResponse = await permissionsAPI.getUserPermissions(response.data.user.id);
+          const userApps = permsResponse.data || [];
+          
+          if (userApps.length === 1) {
+            // Redirect directly to the single app dashboard
+            router.push(`/app/${userApps[0].app_id}`);
+          } else {
+            // Show dashboard with all apps
+            router.push('/dashboard');
+          }
         }
       }
     } catch (err: any) {

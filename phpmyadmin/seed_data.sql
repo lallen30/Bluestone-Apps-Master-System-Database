@@ -17,26 +17,26 @@ INSERT INTO roles (name, description, level) VALUES
 -- Hash generated with bcryptjs (Node.js compatible)
 
 INSERT INTO users (email, password_hash, first_name, last_name, role_id, is_active) VALUES
--- Master Admin
-('master@example.com', '$2a$10$8q9FEMfJA/kizISo4eYfJOefu1nREhK5GOkUr141hHlOGPzY5V33q', 'Master', 'Administrator', 1, TRUE),
+-- Master Admin - password: password123
+('admin@knoxweb.com', '$2a$10$9mPSeZHQr04vZKsSBF7JOOuxy7GpXAf.2FTMTpmeFRpZbx7wqZ2au', 'Master', 'Administrator', 1, TRUE),
 
--- Admins
-('admin1@example.com', '$2a$10$8q9FEMfJA/kizISo4eYfJOefu1nREhK5GOkUr141hHlOGPzY5V33q', 'John', 'Smith', 2, TRUE),
-('admin2@example.com', '$2a$10$8q9FEMfJA/kizISo4eYfJOefu1nREhK5GOkUr141hHlOGPzY5V33q', 'Sarah', 'Johnson', 2, TRUE),
+-- Admins - password: password123
+('user1@knoxweb.com', '$2a$10$9mPSeZHQr04vZKsSBF7JOOuxy7GpXAf.2FTMTpmeFRpZbx7wqZ2au', 'John', 'Smith', 2, TRUE),
+('user2@knoxweb.com', '$2a$10$9mPSeZHQr04vZKsSBF7JOOuxy7GpXAf.2FTMTpmeFRpZbx7wqZ2au', 'Sarah', 'Johnson', 2, TRUE),
 
--- Editors
-('editor1@example.com', '$2a$10$8q9FEMfJA/kizISo4eYfJOefu1nREhK5GOkUr141hHlOGPzY5V33q', 'Mike', 'Davis', 3, TRUE),
-('editor2@example.com', '$2a$10$8q9FEMfJA/kizISo4eYfJOefu1nREhK5GOkUr141hHlOGPzY5V33q', 'Emily', 'Wilson', 3, TRUE),
-('editor3@example.com', '$2a$10$8q9FEMfJA/kizISo4eYfJOefu1nREhK5GOkUr141hHlOGPzY5V33q', 'David', 'Brown', 3, TRUE);
+-- Editors - password: password123
+('user3@knoxweb.com', '$2a$10$9mPSeZHQr04vZKsSBF7JOOuxy7GpXAf.2FTMTpmeFRpZbx7wqZ2au', 'Mike', 'Davis', 3, TRUE),
+('user4@knoxweb.com', '$2a$10$9mPSeZHQr04vZKsSBF7JOOuxy7GpXAf.2FTMTpmeFRpZbx7wqZ2au', 'Emily', 'Wilson', 3, TRUE),
+('user5@knoxweb.com', '$2a$10$9mPSeZHQr04vZKsSBF7JOOuxy7GpXAf.2FTMTpmeFRpZbx7wqZ2au', 'David', 'Brown', 3, TRUE);
 
 -- ============================================
 -- INSERT APPS
 -- ============================================
 INSERT INTO apps (name, domain, description, is_active, created_by) VALUES
-('Main Corporate App', 'corporate.example.com', 'Primary corporate application', TRUE, 1),
-('E-commerce Store', 'shop.example.com', 'Online store for products', TRUE, 1),
-('Blog Platform', 'blog.example.com', 'Company blog and news', TRUE, 1),
-('Customer Portal', 'portal.example.com', 'Customer support and resources', TRUE, 1);
+('Ubler', 'ubler.com', 'Ubler Ridesharing app', TRUE, 1),
+('AirPnP', 'airpnp.com', 'AirPnP App to find the perfect home for any trip.', TRUE, 1),
+('SnapCrap', 'snapcrap.com', 'Share images, videos with friends and family.', TRUE, 1),
+('YouNube', 'younube.com', 'Teach and entertain with your own video channel.', TRUE, 1);
 
 -- ============================================
 -- INSERT APP SETTINGS

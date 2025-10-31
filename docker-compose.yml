@@ -4,6 +4,7 @@ services:
   # MySQL Database
   mysql_db:
     image: mysql:8.0
+    platform: linux/arm64
     container_name: multi_app_mysql
     restart: unless-stopped
     environment:
@@ -12,7 +13,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - phpmyadmin_db_data:/var/lib/mysql
       - ./phpmyadmin/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
       - ./phpmyadmin/seed_data.sql:/docker-entrypoint-initdb.d/02-seed_data.sql
     networks:
@@ -25,14 +26,12 @@ services:
 
   # phpMyAdmin
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin
+    image: phpmyadmin/phpmyadmin:latest
     container_name: multi_app_phpmyadmin
     restart: unless-stopped
     environment:
       PMA_HOST: mysql_db
       PMA_PORT: 3306
-      PMA_USER: root
-      PMA_PASSWORD: rootpassword
       UPLOAD_LIMIT: 100M
     ports:
       - "8080:80"
@@ -113,4 +112,4 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data:
+  phpmyadmin_db_data:

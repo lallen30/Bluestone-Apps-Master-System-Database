@@ -2,6 +2,7 @@
 -- This schema supports multiple applications with hierarchical user permissions
 
 -- Drop tables if they exist (for clean reinstall)
+DROP TABLE IF EXISTS screens;
 DROP TABLE IF EXISTS user_app_permissions;
 DROP TABLE IF EXISTS activity_logs;
 DROP TABLE IF EXISTS app_settings;
@@ -97,6 +98,30 @@ CREATE TABLE user_app_permissions (
     UNIQUE KEY unique_user_app (user_id, app_id),
     INDEX idx_user (user_id),
     INDEX idx_app (app_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- SCREENS TABLE
+-- ============================================
+CREATE TABLE screens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    app_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL,
+    description TEXT,
+    screen_type ENUM('page', 'modal', 'component') DEFAULT 'page',
+    content JSON COMMENT 'Store screen configuration and content',
+    is_published BOOLEAN DEFAULT FALSE,
+    display_order INT DEFAULT 0,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT,
+    UNIQUE KEY unique_app_slug (app_id, slug),
+    INDEX idx_app (app_id),
+    INDEX idx_published (is_published),
+    INDEX idx_order (display_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================

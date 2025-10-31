@@ -212,6 +212,13 @@ const updateUser = async (req, res) => {
       values.push(updates.is_active);
     }
 
+    if (updates.password) {
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(updates.password, 10);
+      fields.push('password_hash = ?');
+      values.push(hashedPassword);
+    }
+
     if (fields.length === 0) {
       return res.status(400).json({
         success: false,
