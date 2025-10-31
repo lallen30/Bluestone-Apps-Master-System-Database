@@ -25,6 +25,7 @@ router.delete('/app/:app_id/:screen_id', appScreenController.unassignScreenFromA
 
 // App screen content routes
 router.get('/app/:app_id/screen/:screen_id', appScreenController.getAppScreenContent);
+router.post('/app/:app_id/screen/:screen_id/content', appScreenController.saveScreenContent);
 router.post('/app/content', appScreenController.updateAppScreenContent);
 
 module.exports = router;

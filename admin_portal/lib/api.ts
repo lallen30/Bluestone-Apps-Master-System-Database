@@ -247,6 +247,11 @@ export const appScreensAPI = {
     return response.data;
   },
   
+  saveScreenContent: async (appId: number, screenId: number, contentData: any[]) => {
+    const response = await api.post(`/app-screens/app/${appId}/screen/${screenId}/content`, { content: contentData });
+    return response.data;
+  },
+  
   updateContent: async (data: any) => {
     const response = await api.post('/app-screens/app/content', data);
     return response.data;

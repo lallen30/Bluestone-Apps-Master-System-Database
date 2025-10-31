@@ -372,6 +372,39 @@ exports.getAppScreenContent = async (req, res) => {
   }
 };
 
+// Save screen content (batch update)
+exports.saveScreenContent = async (req, res) => {
+  try {
+    const { app_id, screen_id } = req.params;
+    const { content } = req.body;
+    const updated_by = req.user.id;
+    
+    // Process each content item
+    for (const item of content) {
+      await db.query(
+        `INSERT INTO app_screen_content 
+         (app_id, screen_id, element_instance_id, content_value, updated_by)
+         VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE 
+         content_value = VALUES(content_value),
+         updated_by = VALUES(updated_by)`,
+        [app_id, screen_id, item.element_instance_id, item.content_value, updated_by]
+      );
+    }
+    
+    res.json({
+      success: true,
+      message: 'Content saved successfully'
+    });
+  } catch (error) {
+    console.error('Error saving content:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error saving content'
+    });
+  }
+};
+
 // Update screen content for an app
 exports.updateAppScreenContent = async (req, res) => {
   try {

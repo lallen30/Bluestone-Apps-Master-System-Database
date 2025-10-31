@@ -16,7 +16,9 @@ export default function EditScreenContent() {
   const [app, setApp] = useState<any>(null);
   const [screen, setScreen] = useState<any>(null);
   const [elements, setElements] = useState<any[]>([]);
+  const [contentValues, setContentValues] = useState<{[key: string]: any}>({});
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -42,12 +44,48 @@ export default function EditScreenContent() {
       // Fetch screen with content
       const screenResponse = await appScreensAPI.getAppScreenContent(parseInt(appId), parseInt(screenId));
       setScreen(screenResponse.data);
-      setElements(screenResponse.data.elements || []);
+      const elementsData = screenResponse.data.elements || [];
+      setElements(elementsData);
+      
+      // Initialize content values
+      const initialValues: {[key: string]: any} = {};
+      elementsData.forEach((el: any) => {
+        initialValues[el.id] = el.content_value || el.default_value || '';
+      });
+      setContentValues(initialValues);
       
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
       setLoading(false);
+    }
+  };
+
+  const handleContentChange = (elementId: number, value: any) => {
+    setContentValues(prev => ({
+      ...prev,
+      [elementId]: value
+    }));
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      
+      // Prepare content data
+      const contentData = elements.map(element => ({
+        element_instance_id: element.id,
+        content_value: contentValues[element.id] || null
+      }));
+
+      await appScreensAPI.saveScreenContent(parseInt(appId), parseInt(screenId), contentData);
+      
+      alert('Content saved successfully!');
+      setSaving(false);
+    } catch (error) {
+      console.error('Error saving content:', error);
+      alert('Error saving content. Please try again.');
+      setSaving(false);
     }
   };
 
@@ -86,11 +124,12 @@ export default function EditScreenContent() {
             </div>
           </div>
           <button
-            onClick={() => alert('Save functionality coming soon!')}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-4 h-4" />
-            Save Changes
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
 
@@ -117,32 +156,38 @@ export default function EditScreenContent() {
                       <input
                         type="text"
                         placeholder={element.placeholder || ''}
-                        defaultValue={element.content_value || element.default_value || ''}
+                        value={contentValues[element.id] || ''}
+                        onChange={(e) => handleContentChange(element.id, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         readOnly={element.is_readonly}
+                        disabled={element.is_readonly}
                       />
                     )}
                     {element.element_type === 'text_area' && (
                       <textarea
                         placeholder={element.placeholder || ''}
-                        defaultValue={element.content_value || element.default_value || ''}
+                        value={contentValues[element.id] || ''}
+                        onChange={(e) => handleContentChange(element.id, e.target.value)}
                         rows={4}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         readOnly={element.is_readonly}
+                        disabled={element.is_readonly}
                       />
                     )}
                     {element.element_type === 'heading' && (
                       <input
                         type="text"
                         placeholder="Enter heading text"
-                        defaultValue={element.content_value || element.default_value || ''}
+                        value={contentValues[element.id] || ''}
+                        onChange={(e) => handleContentChange(element.id, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-xl font-bold"
                       />
                     )}
                     {element.element_type === 'paragraph' && (
                       <textarea
                         placeholder="Enter paragraph text"
-                        defaultValue={element.content_value || element.default_value || ''}
+                        value={contentValues[element.id] || ''}
+                        onChange={(e) => handleContentChange(element.id, e.target.value)}
                         rows={3}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
@@ -162,11 +207,11 @@ export default function EditScreenContent() {
           )}
         </div>
 
-        {/* Coming Soon Notice */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
-            <strong>Note:</strong> Full content editing functionality is under development. 
-            Currently showing read-only preview of screen elements.
+        {/* Save Info */}
+        <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
+          <p className="text-sm text-green-800">
+            <strong>Tip:</strong> Make your changes and click "Save Changes" to update the content for this app.
+            Changes are saved per app, so each app can have different content for the same screen.
           </p>
         </div>
       </div>
