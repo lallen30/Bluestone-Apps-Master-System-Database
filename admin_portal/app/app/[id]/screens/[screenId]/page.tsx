@@ -1,5 +1,3 @@
-console.log(' SCREEN EDITOR LOADED - NEW VERSION v2.0');
-
 'use client';
 
 import { useEffect, useState } from 'react';
