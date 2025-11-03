@@ -63,12 +63,12 @@ export default function AppUsersPage() {
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     
-    if (!token || !user) {
+    if (!token && !isAuthenticated) {
       router.push('/login');
       return;
     }
 
-    if (!isAuthenticated) {
+    if (token && !user) {
       return;
     }
 
