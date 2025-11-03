@@ -750,7 +750,7 @@ export default function EditScreen() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
                   <input
                     type="text"
-                    value={editingElement.label}
+                    value={editingElement.label || ''}
                     onChange={(e) => updateElement(editingElement.temp_id, { label: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   />
@@ -760,7 +760,7 @@ export default function EditScreen() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Field Key</label>
                   <input
                     type="text"
-                    value={editingElement.field_key}
+                    value={editingElement.field_key || ''}
                     onChange={(e) => updateElement(editingElement.temp_id, { field_key: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
                   />
