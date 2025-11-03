@@ -171,6 +171,11 @@ The API returns different element types that you can render in your mobile app:
 | `paragraph` | Text content | Text (normal) | No |
 | `text_field` | Single-line input | TextInput | No |
 | `text_area` | Multi-line input | TextInput (multiline) | No |
+| `email_input` | Email address input | TextInput (keyboardType='email-address') | No |
+| `phone_input` | Phone number input | TextInput (keyboardType='phone-pad') | No |
+| `url_input` | URL input | TextInput (keyboardType='url') | No |
+| `number_input` | Number input | TextInput (keyboardType='numeric') | No |
+| `date_picker` | Date selection | DatePicker/DateTimePicker | No |
 | `rich_text_display` | Formatted HTML content | WebView/HTML renderer | No |
 | `rich_text_editor` | Rich text input | Rich text editor | No |
 | `dropdown` | Select dropdown | Picker/Select | Yes |
@@ -258,6 +263,86 @@ const DynamicScreen = ({ appId, screenId, token }) => {
               numberOfLines={4}
               editable={!element.is_readonly}
             />
+          </View>
+        );
+      
+      case 'email_input':
+        return (
+          <View key={element.id} style={styles.inputContainer}>
+            <Text style={styles.label}>{element.label}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={element.placeholder || 'email@example.com'}
+              defaultValue={element.value}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              editable={!element.is_readonly}
+            />
+          </View>
+        );
+      
+      case 'phone_input':
+        return (
+          <View key={element.id} style={styles.inputContainer}>
+            <Text style={styles.label}>{element.label}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={element.placeholder || '(555) 123-4567'}
+              defaultValue={element.value}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              editable={!element.is_readonly}
+            />
+          </View>
+        );
+      
+      case 'url_input':
+        return (
+          <View key={element.id} style={styles.inputContainer}>
+            <Text style={styles.label}>{element.label}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={element.placeholder || 'https://example.com'}
+              defaultValue={element.value}
+              keyboardType="url"
+              autoCapitalize="none"
+              autoComplete="url"
+              editable={!element.is_readonly}
+            />
+          </View>
+        );
+      
+      case 'number_input':
+        return (
+          <View key={element.id} style={styles.inputContainer}>
+            <Text style={styles.label}>{element.label}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={element.placeholder || '0'}
+              defaultValue={element.value}
+              keyboardType="numeric"
+              editable={!element.is_readonly}
+            />
+          </View>
+        );
+      
+      case 'date_picker':
+        return (
+          <View key={element.id} style={styles.inputContainer}>
+            <Text style={styles.label}>{element.label}</Text>
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={() => {
+                // Show date picker modal
+                console.log('Show date picker');
+              }}
+              disabled={element.is_readonly}
+            >
+              <Text style={styles.dateText}>
+                {element.value || 'Select date...'}
+              </Text>
+            </TouchableOpacity>
           </View>
         );
       
@@ -444,6 +529,17 @@ const styles = StyleSheet.create({
   },
   checkboxLabel: {
     fontSize: 16,
+  },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+  },
+  dateText: {
+    fontSize: 16,
+    color: '#333',
   },
 });
 
