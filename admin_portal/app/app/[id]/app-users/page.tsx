@@ -5,7 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, appUsersAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { Users, Search, Filter, Mail, Ban, Trash2, CheckCircle, XCircle, RefreshCw, Plus, X } from 'lucide-react';
+import { Users, Search, Mail, Ban, Trash2, CheckCircle, XCircle, RefreshCw, Plus, X } from 'lucide-react';
+import Button from '@/components/ui/Button';
 
 interface AppUser {
   id: number;
@@ -186,8 +187,11 @@ export default function AppUsersPage() {
   if (loading) {
     return (
       <AppLayout appId={appId} appName={app?.name || 'Loading...'}>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading...</div>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading users...</p>
+          </div>
         </div>
       </AppLayout>
     );
@@ -195,25 +199,24 @@ export default function AppUsersPage() {
 
   return (
     <AppLayout appId={appId} appName={app?.name || 'App'}>
-      <div className="space-y-6">
+      <div className="p-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">App Users</h1>
-            <p className="text-gray-600 mt-1">Manage mobile app users for {app?.name}</p>
+            <h1 className="text-3xl font-bold text-gray-900">App Users</h1>
+            <p className="text-gray-600 mt-2">
+              Manage mobile app users for {app?.name}
+            </p>
           </div>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="w-5 h-5 mr-2" />
             Create User
-          </button>
+          </Button>
         </div>
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -257,7 +260,7 @@ export default function AppUsersPage() {
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
@@ -312,7 +315,8 @@ export default function AppUsersPage() {
         </div>
 
         {/* Users Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow">
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -425,13 +429,14 @@ export default function AppUsersPage() {
                   </tr>
                 ))
               )}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow">
+          <div className="flex items-center justify-between bg-white px-6 py-4 rounded-lg shadow mt-6">
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
