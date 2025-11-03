@@ -71,7 +71,7 @@ async function createAppUser(req, res) {
     }
     
     // Create user
-    const [result] = await db.query(
+    const result = await db.query(
       `INSERT INTO app_users 
        (app_id, email, password_hash, first_name, last_name, phone, 
         email_verified, email_verification_token, email_verification_expires, status)
@@ -80,7 +80,7 @@ async function createAppUser(req, res) {
        email_verified ? 1 : 0, email_verification_token, email_verification_expires]
     );
     
-    const user_id = result.insertId;
+    const user_id = result[0].insertId;
     
     // Create default user settings
     await db.query(
