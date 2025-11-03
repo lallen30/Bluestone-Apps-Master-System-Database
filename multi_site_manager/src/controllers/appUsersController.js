@@ -181,7 +181,7 @@ async function getAppUsers(req, res) {
     res.json({
       success: true,
       data: {
-        users,
+        users: users || [],
         pagination: {
           page: parseInt(page),
           per_page: limit,

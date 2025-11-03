@@ -96,6 +96,9 @@ export default function AppUsersPage() {
       if (verifiedFilter) params.email_verified = verifiedFilter;
 
       const usersResponse = await appUsersAPI.getUsers(parseInt(appId), params);
+      console.log('Users API Response:', usersResponse);
+      console.log('Users data:', usersResponse.data);
+      console.log('Users array:', usersResponse.data.users);
       setUsers(Array.isArray(usersResponse.data.users) ? usersResponse.data.users : []);
       setTotalPages(usersResponse.data.pagination?.total_pages || 1);
       
