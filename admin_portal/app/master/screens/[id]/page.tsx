@@ -195,13 +195,16 @@ export default function EditScreen() {
   };
 
   const updateElement = (tempId: string, updates: Partial<ElementInstance>) => {
-    setSelectedElements(selectedElements.map(el => 
+    setSelectedElements(prev => prev.map(el => 
       el.temp_id === tempId ? { ...el, ...updates } : el
     ));
     // Also update editingElement if it's the one being edited
-    if (editingElement && editingElement.temp_id === tempId) {
-      setEditingElement({ ...editingElement, ...updates });
-    }
+    setEditingElement(prev => {
+      if (prev && prev.temp_id === tempId) {
+        return { ...prev, ...updates };
+      }
+      return prev;
+    });
   };
 
   const handleSave = async () => {
