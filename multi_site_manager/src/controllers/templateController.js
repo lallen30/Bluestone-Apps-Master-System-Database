@@ -118,7 +118,7 @@ exports.createScreenFromTemplate = async (req, res) => {
           element.is_required,
           element.is_readonly,
           element.display_order,
-          element.config
+          element.config ? JSON.stringify(element.config) : null
         ]
       );
     }
@@ -195,7 +195,7 @@ exports.cloneScreen = async (req, res) => {
           element.is_required,
           element.is_readonly,
           element.display_order,
-          element.config
+          element.config ? JSON.stringify(element.config) : null
         ]
       );
     }
