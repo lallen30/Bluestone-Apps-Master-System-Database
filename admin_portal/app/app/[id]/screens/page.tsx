@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, permissionsAPI, appScreensAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { Monitor, Sparkles, Edit, Eye } from 'lucide-react';
+import { Monitor, Sparkles, Edit, Eye, EyeOff } from 'lucide-react';
 
 export default function AppScreens() {
   const router = useRouter();
@@ -63,6 +63,24 @@ export default function AppScreens() {
     }
   };
 
+  const handlePublishToggle = async (screenId: number, isPublished: boolean) => {
+    try {
+      const appId = parseInt(params.id as string);
+      
+      if (isPublished) {
+        await appScreensAPI.unpublishForApp(appId, screenId);
+      } else {
+        await appScreensAPI.publishForApp(appId, screenId);
+      }
+      
+      // Refresh the screens list
+      fetchData();
+    } catch (error) {
+      console.error('Error toggling publish status:', error);
+      alert('Failed to update publish status. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <AppLayout appId={params.id as string} appName={app?.name || 'Loading...'}>
@@ -117,11 +135,11 @@ export default function AppScreens() {
                     <Monitor className="w-6 h-6 text-primary" />
                   </div>
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    screen.assigned_active 
+                    screen.is_published 
                       ? 'bg-green-100 text-green-800' 
-                      : 'bg-gray-100 text-gray-800'
+                      : 'bg-yellow-100 text-yellow-800'
                   }`}>
-                    {screen.assigned_active ? 'Active' : 'Inactive'}
+                    {screen.is_published ? 'Published' : 'Draft'}
                   </span>
                 </div>
                 
@@ -139,17 +157,23 @@ export default function AppScreens() {
                 
                 <div className="flex gap-2">
                   <button
+                    onClick={() => handlePublishToggle(screen.id, screen.is_published)}
+                    className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                      screen.is_published
+                        ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        : 'bg-green-600 text-white hover:bg-green-700'
+                    }`}
+                    title={screen.is_published ? 'Unpublish' : 'Publish'}
+                  >
+                    {screen.is_published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {screen.is_published ? 'Unpublish' : 'Publish'}
+                  </button>
+                  <button
                     onClick={() => router.push(`/app/${params.id}/screens/${screen.id}`)}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
                   >
                     <Edit className="w-4 h-4" />
                     Edit Content
-                  </button>
-                  <button
-                    onClick={() => alert('Preview coming soon!')}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                  >
-                    <Eye className="w-4 h-4" />
                   </button>
                 </div>
               </div>

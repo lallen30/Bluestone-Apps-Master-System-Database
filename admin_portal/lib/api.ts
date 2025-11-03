@@ -257,14 +257,14 @@ export const appScreensAPI = {
     return response.data;
   },
   
-  // Publishing
-  publish: async (id: number) => {
-    const response = await api.post(`/app-screens/${id}/publish`);
+  // Publishing (app-specific)
+  publishForApp: async (appId: number, screenId: number) => {
+    const response = await api.post(`/app-screens/app/${appId}/screen/${screenId}/publish`);
     return response.data;
   },
   
-  unpublish: async (id: number) => {
-    const response = await api.post(`/app-screens/${id}/unpublish`);
+  unpublishForApp: async (appId: number, screenId: number) => {
+    const response = await api.post(`/app-screens/app/${appId}/screen/${screenId}/unpublish`);
     return response.data;
   },
   

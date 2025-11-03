@@ -9,7 +9,7 @@ exports.getAllScreens = async (req, res) => {
        FROM app_screens s
        LEFT JOIN users u ON s.created_by = u.id
        WHERE s.is_active = 1
-       ORDER BY s.is_published DESC, s.created_at DESC`
+       ORDER BY s.created_at DESC`
     );
     
     res.json({
@@ -246,11 +246,12 @@ exports.getAppScreens = async (req, res) => {
     
     const screens = await db.query(
       `SELECT s.*, asa.is_active as assigned_active, asa.display_order as assigned_order,
+              asa.is_published, asa.published_at,
               (SELECT COUNT(*) FROM screen_element_instances WHERE screen_id = s.id) as element_count
        FROM app_screen_assignments asa
        JOIN app_screens s ON asa.screen_id = s.id
        WHERE asa.app_id = ? AND asa.is_active = 1
-       ORDER BY asa.display_order`,
+       ORDER BY asa.is_published DESC, asa.display_order`,
       [app_id]
     );
     
@@ -436,19 +437,19 @@ exports.updateAppScreenContent = async (req, res) => {
   }
 };
 
-// Publish screen
-exports.publishScreen = async (req, res) => {
+// Publish screen for specific app
+exports.publishScreenForApp = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { app_id, screen_id } = req.params;
     
     await db.query(
-      'UPDATE app_screens SET is_published = 1, published_at = NOW() WHERE id = ?',
-      [id]
+      'UPDATE app_screen_assignments SET is_published = 1, published_at = NOW() WHERE app_id = ? AND screen_id = ?',
+      [app_id, screen_id]
     );
     
     res.json({
       success: true,
-      message: 'Screen published successfully'
+      message: 'Screen published successfully for this app'
     });
   } catch (error) {
     console.error('Error publishing screen:', error);
@@ -459,19 +460,19 @@ exports.publishScreen = async (req, res) => {
   }
 };
 
-// Unpublish screen
-exports.unpublishScreen = async (req, res) => {
+// Unpublish screen for specific app
+exports.unpublishScreenForApp = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { app_id, screen_id } = req.params;
     
     await db.query(
-      'UPDATE app_screens SET is_published = 0, published_at = NULL WHERE id = ?',
-      [id]
+      'UPDATE app_screen_assignments SET is_published = 0, published_at = NULL WHERE app_id = ? AND screen_id = ?',
+      [app_id, screen_id]
     );
     
     res.json({
       success: true,
-      message: 'Screen unpublished successfully'
+      message: 'Screen unpublished successfully for this app'
     });
   } catch (error) {
     console.error('Error unpublishing screen:', error);
