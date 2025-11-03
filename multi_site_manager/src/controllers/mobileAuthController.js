@@ -36,8 +36,8 @@ async function register(req, res) {
     }
     
     // Check if app exists
-    const [apps] = await db.query('SELECT id FROM apps WHERE id = ?', [app_id]);
-    if (apps.length === 0) {
+    const apps = await db.query('SELECT id FROM apps WHERE id = ?', [app_id]);
+    if (!apps || apps.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'App not found'
@@ -45,7 +45,7 @@ async function register(req, res) {
     }
     
     // Check if email already exists for this app
-    const [existingUsers] = await db.query(
+    const existingUsers = await db.query(
       'SELECT id FROM app_users WHERE app_id = ? AND email = ?',
       [app_id, email]
     );
@@ -74,7 +74,7 @@ async function register(req, res) {
        email_verification_token, email_verification_expires]
     );
     
-    const user_id = result[0].insertId;
+    const user_id = result.insertId;
     
     // Create default user settings
     await db.query(
@@ -160,7 +160,7 @@ async function login(req, res) {
     }
     
     // Find user
-    const [users] = await db.query(
+    const users = await db.query(
       `SELECT id, app_id, email, password_hash, first_name, last_name, phone, 
               bio, avatar_url, date_of_birth, gender, email_verified, status
        FROM app_users 
@@ -314,7 +314,7 @@ async function verifyEmail(req, res) {
     }
     
     // Find user with this verification token
-    const [users] = await db.query(
+    const users = await db.query(
       `SELECT id, email FROM app_users 
        WHERE email_verification_token = ? 
        AND email_verification_expires > NOW()
