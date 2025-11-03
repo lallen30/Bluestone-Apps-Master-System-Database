@@ -202,7 +202,7 @@ export default function EditScreenContent() {
                     )}
                     {(element.element_type === 'rich_text_display' || element.element_type === 'rich_text_editor') && (
                       <div>
-                        <div className="rich-text-editor">
+                        <div className="rich-text-editor mb-16">
                           <ReactQuill
                             theme="snow"
                             value={contentValues[element.id] || ''}
@@ -219,7 +219,6 @@ export default function EditScreenContent() {
                               ]
                             }}
                             className="bg-white"
-                            style={{ height: '300px' }}
                           />
                         </div>
                         <p className="text-xs text-gray-500 mt-2">
