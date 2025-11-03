@@ -55,8 +55,8 @@ async function getAppUsers(req, res) {
        FROM app_users 
        WHERE ${whereClause}
        ORDER BY ${sortColumn} ${sortDirection}
-       LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
+       LIMIT ${limit} OFFSET ${offset}`,
+      queryParams
     );
     
     res.json({
