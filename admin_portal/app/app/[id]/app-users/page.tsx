@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, appUsersAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { Users, Search, Mail, Ban, Trash2, CheckCircle, XCircle, RefreshCw, Plus, X } from 'lucide-react';
+import { Users, Search, Mail, Ban, Trash2, CheckCircle, XCircle, RefreshCw, Plus, X, Edit, Key } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
 interface AppUser {
@@ -50,6 +50,8 @@ export default function AppUsersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -57,6 +59,16 @@ export default function AppUsersPage() {
     last_name: '',
     phone: '',
     email_verified: false
+  });
+  const [editFormData, setEditFormData] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    email: ''
+  });
+  const [passwordFormData, setPasswordFormData] = useState({
+    new_password: '',
+    confirm_password: ''
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -163,6 +175,76 @@ export default function AppUsersPage() {
     } catch (error: any) {
       console.error('Error creating user:', error);
       alert(error.response?.data?.message || 'Failed to create user');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditClick = (user: AppUser) => {
+    setSelectedUser(user);
+    setEditFormData({
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      phone: user.phone || '',
+      email: user.email
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    
+    setSubmitting(true);
+    try {
+      await appUsersAPI.updateUser(parseInt(appId), selectedUser.id, editFormData);
+      setIsEditModalOpen(false);
+      setSelectedUser(null);
+      fetchData();
+      alert('User updated successfully');
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      alert(error.response?.data?.message || 'Failed to update user');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePasswordClick = (user: AppUser) => {
+    setSelectedUser(user);
+    setPasswordFormData({
+      new_password: '',
+      confirm_password: ''
+    });
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    
+    if (passwordFormData.new_password !== passwordFormData.confirm_password) {
+      alert('Passwords do not match');
+      return;
+    }
+    
+    if (passwordFormData.new_password.length < 8) {
+      alert('Password must be at least 8 characters');
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      await appUsersAPI.changePassword(parseInt(appId), selectedUser.id, {
+        password: passwordFormData.new_password
+      });
+      setIsPasswordModalOpen(false);
+      setSelectedUser(null);
+      setPasswordFormData({ new_password: '', confirm_password: '' });
+      alert('Password changed successfully');
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      alert(error.response?.data?.message || 'Failed to change password');
     } finally {
       setSubmitting(false);
     }
@@ -391,20 +473,36 @@ export default function AppUsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleEditClick(user)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Edit user"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        
+                        <button
+                          onClick={() => handlePasswordClick(user)}
+                          className="text-purple-600 hover:text-purple-900"
+                          title="Change password"
+                        >
+                          <Key className="w-4 h-4" />
+                        </button>
+                        
                         {!user.email_verified && (
                           <button
                             onClick={() => handleResendVerification(user.id)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-indigo-600 hover:text-indigo-900"
                             title="Resend verification email"
                           >
-                            <RefreshCw className="w-4 h-4" />
+                            <Mail className="w-4 h-4" />
                           </button>
                         )}
                         
                         {user.status === 'active' && (
                           <button
                             onClick={() => handleStatusChange(user.id, 'suspended')}
-                            className="text-orange-600 hover:text-orange-900"
+                            className="text-yellow-600 hover:text-yellow-900"
                             title="Suspend user"
                           >
                             <Ban className="w-4 h-4" />
@@ -571,6 +669,153 @@ export default function AppUsersPage() {
                     className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {submitting ? 'Creating...' : 'Create User'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit User Modal */}
+        {isEditModalOpen && selectedUser && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-xl font-bold text-gray-900">Edit User</h2>
+                <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleEditUser} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editFormData.email}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                    <input
+                      type="text"
+                      value={editFormData.first_name}
+                      onChange={(e) => setEditFormData({ ...editFormData, first_name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                    <input
+                      type="text"
+                      value={editFormData.last_name}
+                      onChange={(e) => setEditFormData({ ...editFormData, last_name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={editFormData.phone}
+                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Change Password Modal */}
+        {isPasswordModalOpen && selectedUser && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-xl font-bold text-gray-900">Change Password</h2>
+                <button onClick={() => setIsPasswordModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-blue-800">
+                    Changing password for: <strong>{selectedUser.email}</strong>
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    User will be logged out and need to sign in with the new password.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    New Password <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={passwordFormData.new_password}
+                    onChange={(e) => setPasswordFormData({ ...passwordFormData, new_password: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Min. 8 characters"
+                    minLength={8}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Confirm Password <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={passwordFormData.confirm_password}
+                    onChange={(e) => setPasswordFormData({ ...passwordFormData, confirm_password: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Confirm new password"
+                    minLength={8}
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsPasswordModalOpen(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? 'Changing...' : 'Change Password'}
                   </button>
                 </div>
               </form>

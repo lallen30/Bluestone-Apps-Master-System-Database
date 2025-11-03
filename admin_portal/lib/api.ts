@@ -401,6 +401,11 @@ export const appUsersAPI = {
     return response.data;
   },
   
+  changePassword: async (appId: number, userId: number, data: { password: string }) => {
+    const response = await api.put(`/apps/${appId}/users/${userId}/password`, data);
+    return response.data;
+  },
+  
   deleteUser: async (appId: number, userId: number) => {
     const response = await api.delete(`/apps/${appId}/users/${userId}`);
     return response.data;

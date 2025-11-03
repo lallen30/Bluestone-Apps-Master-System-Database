@@ -46,6 +46,13 @@ router.put('/:appId/users/:userId', authenticate, appUsersController.updateAppUs
 router.put('/:appId/users/:userId/status', authenticate, appUsersController.updateAppUserStatus);
 
 /**
+ * @route   PUT /api/v1/apps/:appId/users/:userId/password
+ * @desc    Change app user password (admin function)
+ * @access  Private (Admin)
+ */
+router.put('/:appId/users/:userId/password', authenticate, appUsersController.changeAppUserPassword);
+
+/**
  * @route   DELETE /api/v1/apps/:appId/users/:userId
  * @desc    Delete app user
  * @access  Private (Admin)

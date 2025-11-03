@@ -428,6 +428,72 @@ async function updateAppUserStatus(req, res) {
 }
 
 /**
+ * Change app user password (admin function)
+ * PUT /api/v1/apps/:appId/users/:userId/password
+ */
+async function changeAppUserPassword(req, res) {
+  try {
+    const { appId, userId } = req.params;
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required'
+      });
+    }
+    
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters long'
+      });
+    }
+    
+    // Check if user exists
+    const users = await db.query(
+      'SELECT id FROM app_users WHERE id = ? AND app_id = ?',
+      [userId, appId]
+    );
+    
+    if (!users || users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Hash new password
+    const bcrypt = require('bcryptjs');
+    const password_hash = await bcrypt.hash(password, 10);
+    
+    // Update password
+    await db.query(
+      'UPDATE app_users SET password_hash = ?, updated_at = NOW() WHERE id = ? AND app_id = ?',
+      [password_hash, userId, appId]
+    );
+    
+    // Invalidate all sessions to force re-login
+    await db.query(
+      'DELETE FROM user_sessions WHERE user_id = ?',
+      [userId]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Password changed successfully. User will need to log in again.'
+    });
+    
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to change password'
+    });
+  }
+}
+
+/**
  * Delete app user
  * DELETE /api/v1/apps/:appId/users/:userId
  */
@@ -537,6 +603,7 @@ module.exports = {
   getAppUser,
   updateAppUser,
   updateAppUserStatus,
+  changeAppUserPassword,
   deleteAppUser,
   resendVerificationEmail
 };
