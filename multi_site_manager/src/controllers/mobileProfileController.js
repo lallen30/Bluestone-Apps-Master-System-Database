@@ -10,7 +10,7 @@ async function getProfile(req, res) {
     const appId = req.user.app_id;
     
     // Get user profile
-    const [users] = await db.query(
+    const users = await db.query(
       `SELECT 
         id, app_id, email, first_name, last_name, phone, bio, 
         avatar_url, date_of_birth, gender, email_verified, status,
@@ -30,10 +30,10 @@ async function getProfile(req, res) {
     const user = users[0];
     
     // Get user settings
-    const [settings] = await db.query(
+    const settings = await db.query(
       `SELECT 
         notifications_enabled, email_notifications, push_notifications,
-        sms_notifications, language, timezone, theme, privacy_level
+        sms_notifications, language, timezone, theme, privacy_settings
        FROM user_settings 
        WHERE user_id = ?`,
       [userId]
@@ -79,7 +79,7 @@ async function updateProfile(req, res) {
     );
     
     // Get updated profile
-    const [users] = await db.query(
+    const users = await db.query(
       `SELECT 
         id, app_id, email, first_name, last_name, phone, bio, 
         avatar_url, date_of_birth, gender, email_verified, status,
@@ -121,7 +121,7 @@ async function getUserProfile(req, res) {
     const appId = req.user.app_id;
     
     // Get user profile (only public fields)
-    const [users] = await db.query(
+    const users = await db.query(
       `SELECT 
         id, first_name, last_name, bio, avatar_url, created_at
        FROM app_users 
