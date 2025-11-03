@@ -53,13 +53,22 @@ export default function EditScreenContent() {
       
       // Parse config if it's a string
       const parsedElements = elementsData.map((el: any) => {
-        if (el.config && typeof el.config === 'string') {
-          try {
-            el.config = JSON.parse(el.config);
-          } catch (e) {
-            console.error('Error parsing config for element', el.id, e);
-            el.config = null;
+        if (el.config) {
+          if (typeof el.config === 'string') {
+            // Skip if it's the bad "[object Object]" string
+            if (el.config === '[object Object]' || el.config.includes('[object Object]')) {
+              console.warn('Skipping bad config for element', el.id, el.config);
+              el.config = null;
+            } else {
+              try {
+                el.config = JSON.parse(el.config);
+              } catch (e) {
+                console.error('Error parsing config for element', el.id, ':', el.config, e);
+                el.config = null;
+              }
+            }
           }
+          // If it's already an object, leave it as is
         }
         return el;
       });
