@@ -50,11 +50,25 @@ export default function EditScreenContent() {
       const screenResponse = await appScreensAPI.getAppScreenContent(parseInt(appId), parseInt(screenId));
       setScreen(screenResponse.data);
       const elementsData = screenResponse.data.elements || [];
-      setElements(elementsData);
+      
+      // Parse config if it's a string
+      const parsedElements = elementsData.map((el: any) => {
+        if (el.config && typeof el.config === 'string') {
+          try {
+            el.config = JSON.parse(el.config);
+          } catch (e) {
+            console.error('Error parsing config for element', el.id, e);
+            el.config = null;
+          }
+        }
+        return el;
+      });
+      
+      setElements(parsedElements);
       
       // Initialize content values
       const initialValues: {[key: string]: any} = {};
-      elementsData.forEach((el: any) => {
+      parsedElements.forEach((el: any) => {
         initialValues[el.id] = el.content_value || el.default_value || '';
       });
       setContentValues(initialValues);
