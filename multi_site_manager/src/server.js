@@ -88,9 +88,10 @@ app.use(`/api/${API_VERSION}/permissions`, permissionRoutes);
 app.use(`/api/${API_VERSION}/screens`, screenRoutes);
 app.use(`/api/${API_VERSION}/screen-elements`, screenElementRoutes);
 app.use(`/api/${API_VERSION}/app-screens`, appScreenRoutes);
-app.use(`/api/${API_VERSION}/mobile`, mobileRoutes);
+// Mobile routes - specific routes MUST come before general /mobile route
 app.use(`/api/${API_VERSION}/mobile/auth`, mobileAuthRoutes);
 app.use(`/api/${API_VERSION}/mobile/profile`, mobileProfileRoutes);
+app.use(`/api/${API_VERSION}/mobile`, mobileRoutes);
 app.use(`/api/${API_VERSION}/templates`, templateRoutes);
 
 // Root endpoint
