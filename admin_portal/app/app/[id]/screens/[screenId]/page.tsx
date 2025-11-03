@@ -202,26 +202,38 @@ export default function EditScreenContent() {
                     )}
                     {(element.element_type === 'rich_text_display' || element.element_type === 'rich_text_editor') && (
                       <div>
-                        <ReactQuill
-                          theme="snow"
-                          value={contentValues[element.id] || ''}
-                          onChange={(value) => handleContentChange(element.id, value)}
-                          placeholder={element.placeholder || 'Enter formatted content...'}
-                          modules={{
-                            toolbar: [
-                              [{ 'header': [1, 2, 3, false] }],
-                              ['bold', 'italic', 'underline', 'strike'],
-                              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                              [{ 'align': [] }],
-                              ['link'],
-                              ['clean']
-                            ]
-                          }}
-                          className="bg-white"
-                        />
+                        <div className="rich-text-editor">
+                          <ReactQuill
+                            theme="snow"
+                            value={contentValues[element.id] || ''}
+                            onChange={(value) => handleContentChange(element.id, value)}
+                            placeholder={element.placeholder || 'Enter formatted content...'}
+                            modules={{
+                              toolbar: [
+                                [{ 'header': [1, 2, 3, false] }],
+                                ['bold', 'italic', 'underline', 'strike'],
+                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                [{ 'align': [] }],
+                                ['link'],
+                                ['clean']
+                              ]
+                            }}
+                            className="bg-white"
+                            style={{ height: '300px' }}
+                          />
+                        </div>
                         <p className="text-xs text-gray-500 mt-2">
                           💡 Use the toolbar above to format your content. The content will be saved as HTML.
                         </p>
+                        <style jsx global>{`
+                          .rich-text-editor .ql-container {
+                            min-height: 300px;
+                            height: auto;
+                          }
+                          .rich-text-editor .ql-editor {
+                            min-height: 300px;
+                          }
+                        `}</style>
                       </div>
                     )}
                     {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor'].includes(element.element_type) && (
