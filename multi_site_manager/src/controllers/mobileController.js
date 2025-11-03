@@ -15,10 +15,11 @@ exports.getAppScreens = async (req, res) => {
         s.category,
         asa.display_order,
         asa.is_active as assigned_active,
+        asa.is_published,
         (SELECT COUNT(*) FROM screen_element_instances sei WHERE sei.screen_id = s.id) as element_count
        FROM app_screens s
        JOIN app_screen_assignments asa ON s.id = asa.screen_id
-       WHERE asa.app_id = ? AND asa.is_active = 1 AND s.is_active = 1
+       WHERE asa.app_id = ? AND asa.is_active = 1 AND asa.is_published = 1 AND s.is_active = 1
        ORDER BY asa.display_order, s.name`,
       [app_id]
     );
@@ -47,17 +48,17 @@ exports.getScreenContent = async (req, res) => {
     
     // Get screen details
     const screens = await db.query(
-      `SELECT s.*, asa.display_order
+      `SELECT s.*, asa.display_order, asa.is_published
        FROM app_screens s
        JOIN app_screen_assignments asa ON s.id = asa.screen_id
-       WHERE asa.app_id = ? AND s.id = ? AND asa.is_active = 1 AND s.is_active = 1`,
+       WHERE asa.app_id = ? AND s.id = ? AND asa.is_active = 1 AND asa.is_published = 1 AND s.is_active = 1`,
       [app_id, screen_id]
     );
     
     if (screens.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Screen not found or not assigned to this app'
+        message: 'Screen not found, not assigned to this app, or not published'
       });
     }
     
