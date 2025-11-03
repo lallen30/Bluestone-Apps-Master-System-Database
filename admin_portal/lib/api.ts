@@ -268,6 +268,12 @@ export const appScreensAPI = {
     return response.data;
   },
   
+  // Screen ordering
+  updateScreenOrder: async (appId: number, screenOrders: { screen_id: number; display_order: number }[]) => {
+    const response = await api.post(`/app-screens/app/${appId}/reorder`, { screen_orders: screenOrders });
+    return response.data;
+  },
+  
   // Aliases for convenience
   assignScreen: async (data: { app_id: number; screen_id: number; display_order?: number }) => {
     const response = await api.post('/app-screens/app/assign', data);

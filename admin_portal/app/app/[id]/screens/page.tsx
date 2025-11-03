@@ -5,7 +5,113 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, permissionsAPI, appScreensAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { Monitor, Sparkles, Edit, Eye, EyeOff } from 'lucide-react';
+import { Monitor, Sparkles, Edit, Eye, EyeOff, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+interface SortableRowProps {
+  screen: any;
+  onPublishToggle: (screenId: number, isPublished: boolean) => void;
+  onEdit: (screenId: number) => void;
+}
+
+function SortableRow({ screen, onPublishToggle, onEdit }: SortableRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: screen.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style} className="hover:bg-gray-50">
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <button
+            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="w-5 h-5" />
+          </button>
+          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+            <Monitor className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <div className="text-sm font-medium text-gray-900">{screen.name}</div>
+            <div className="text-sm text-gray-500">{screen.description || 'No description'}</div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {screen.category ? (
+          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+            {screen.category}
+          </span>
+        ) : (
+          <span className="text-sm text-gray-400">-</span>
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm text-gray-900">{screen.element_count || 0} elements</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+          screen.is_published 
+            ? 'bg-green-100 text-green-800' 
+            : 'bg-yellow-100 text-yellow-800'
+        }`}>
+          {screen.is_published ? 'Published' : 'Draft'}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => onPublishToggle(screen.id, screen.is_published)}
+            className={`p-2 rounded-lg ${
+              screen.is_published
+                ? 'text-gray-600 hover:bg-gray-100'
+                : 'text-green-600 hover:bg-green-50'
+            }`}
+            title={screen.is_published ? 'Unpublish' : 'Publish'}
+          >
+            {screen.is_published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={() => onEdit(screen.id)}
+            className="p-2 text-primary hover:bg-primary/10 rounded-lg"
+            title="Edit Content"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 export default function AppScreens() {
   const router = useRouter();
@@ -14,6 +120,13 @@ export default function AppScreens() {
   const [app, setApp] = useState<any>(null);
   const [screens, setScreens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -81,6 +194,33 @@ export default function AppScreens() {
     }
   };
 
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = screens.findIndex((s) => s.id === active.id);
+      const newIndex = screens.findIndex((s) => s.id === over.id);
+
+      const newScreens = arrayMove(screens, oldIndex, newIndex);
+      setScreens(newScreens);
+
+      // Update display_order in backend
+      try {
+        const appId = parseInt(params.id as string);
+        const screenOrders = newScreens.map((screen, index) => ({
+          screen_id: screen.id,
+          display_order: index,
+        }));
+
+        await appScreensAPI.updateScreenOrder(appId, screenOrders);
+      } catch (error) {
+        console.error('Error updating screen order:', error);
+        // Revert on error
+        fetchData();
+      }
+    }
+  };
+
   if (loading) {
     return (
       <AppLayout appId={params.id as string} appName={app?.name || 'Loading...'}>
@@ -124,89 +264,50 @@ export default function AppScreens() {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Screen
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Elements
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {screens.map((screen) => (
-                  <tr key={screen.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                          <Monitor className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{screen.name}</div>
-                          <div className="text-sm text-gray-500">{screen.description || 'No description'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {screen.category ? (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                          {screen.category}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{screen.element_count || 0} elements</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        screen.is_published 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {screen.is_published ? 'Published' : 'Draft'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handlePublishToggle(screen.id, screen.is_published)}
-                          className={`p-2 rounded-lg ${
-                            screen.is_published
-                              ? 'text-gray-600 hover:bg-gray-100'
-                              : 'text-green-600 hover:bg-green-50'
-                          }`}
-                          title={screen.is_published ? 'Unpublish' : 'Publish'}
-                        >
-                          {screen.is_published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                        <button
-                          onClick={() => router.push(`/app/${params.id}/screens/${screen.id}`)}
-                          className="p-2 text-primary hover:bg-primary/10 rounded-lg"
-                          title="Edit Content"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Screen
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Elements
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  <SortableContext
+                    items={screens.map((s) => s.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {screens.map((screen) => (
+                      <SortableRow
+                        key={screen.id}
+                        screen={screen}
+                        onPublishToggle={handlePublishToggle}
+                        onEdit={(screenId) => router.push(`/app/${params.id}/screens/${screenId}`)}
+                      />
+                    ))}
+                  </SortableContext>
+                </tbody>
+              </table>
+            </div>
+          </DndContext>
         )}
       </div>
     </AppLayout>

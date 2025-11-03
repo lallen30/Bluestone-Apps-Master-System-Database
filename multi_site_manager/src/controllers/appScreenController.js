@@ -482,3 +482,30 @@ exports.unpublishScreenForApp = async (req, res) => {
     });
   }
 };
+
+// Update screen display order for an app
+exports.updateScreenOrder = async (req, res) => {
+  try {
+    const { app_id } = req.params;
+    const { screen_orders } = req.body; // Array of { screen_id, display_order }
+    
+    // Update each screen's display order
+    for (const item of screen_orders) {
+      await db.query(
+        'UPDATE app_screen_assignments SET display_order = ? WHERE app_id = ? AND screen_id = ?',
+        [item.display_order, app_id, item.screen_id]
+      );
+    }
+    
+    res.json({
+      success: true,
+      message: 'Screen order updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating screen order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating screen order'
+    });
+  }
+};

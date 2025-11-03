@@ -32,7 +32,7 @@
 2. **Content Persistence**
    - Save content to `app_screen_content` table
    - Load existing content when editing
-   - Version tracking (optional)
+   - Version tracking
 
 ---
 

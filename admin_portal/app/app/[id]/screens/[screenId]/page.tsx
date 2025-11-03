@@ -355,7 +355,6 @@ export default function EditScreenContent() {
         <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
           <p className="text-sm text-green-800">
             <strong>Tip:</strong> Make your changes and click "Save Changes" to update the content for this app.
-            Changes are saved per app, so each app can have different content for the same screen.
           </p>
         </div>
       </div>

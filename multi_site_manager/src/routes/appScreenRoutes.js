@@ -32,4 +32,7 @@ router.post('/app/content', appScreenController.updateAppScreenContent);
 router.post('/app/:app_id/screen/:screen_id/publish', appScreenController.publishScreenForApp);
 router.post('/app/:app_id/screen/:screen_id/unpublish', appScreenController.unpublishScreenForApp);
 
+// Screen ordering
+router.post('/app/:app_id/reorder', appScreenController.updateScreenOrder);
+
 module.exports = router;
