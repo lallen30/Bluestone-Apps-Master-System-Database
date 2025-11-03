@@ -655,7 +655,14 @@ export default function NewScreen() {
                   <input
                     type="text"
                     defaultValue={editingElement.label || ''}
-                    onBlur={(e) => updateElement(editingElement.temp_id, { label: e.target.value })}
+                    onChange={(e) => {
+                      const newLabel = e.target.value;
+                      const newFieldKey = generateScreenKey(newLabel);
+                      updateElement(editingElement.temp_id, { 
+                        label: newLabel,
+                        field_key: newFieldKey 
+                      });
+                    }}
                     autoFocus
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   />
@@ -665,6 +672,7 @@ export default function NewScreen() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Field Key</label>
                   <input
                     type="text"
+                    key={editingElement.field_key}
                     defaultValue={editingElement.field_key || ''}
                     onBlur={(e) => updateElement(editingElement.temp_id, { field_key: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
