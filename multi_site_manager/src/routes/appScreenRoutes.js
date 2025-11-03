@@ -28,4 +28,8 @@ router.get('/app/:app_id/screen/:screen_id', appScreenController.getAppScreenCon
 router.post('/app/:app_id/screen/:screen_id/content', appScreenController.saveScreenContent);
 router.post('/app/content', appScreenController.updateAppScreenContent);
 
+// Publishing routes
+router.post('/:id/publish', appScreenController.publishScreen);
+router.post('/:id/unpublish', appScreenController.unpublishScreen);
+
 module.exports = router;

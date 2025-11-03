@@ -9,7 +9,7 @@ exports.getAllScreens = async (req, res) => {
        FROM app_screens s
        LEFT JOIN users u ON s.created_by = u.id
        WHERE s.is_active = 1
-       ORDER BY s.created_at DESC`
+       ORDER BY s.is_published DESC, s.created_at DESC`
     );
     
     res.json({
@@ -432,6 +432,52 @@ exports.updateAppScreenContent = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating content'
+    });
+  }
+};
+
+// Publish screen
+exports.publishScreen = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await db.query(
+      'UPDATE app_screens SET is_published = 1, published_at = NOW() WHERE id = ?',
+      [id]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Screen published successfully'
+    });
+  } catch (error) {
+    console.error('Error publishing screen:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error publishing screen'
+    });
+  }
+};
+
+// Unpublish screen
+exports.unpublishScreen = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await db.query(
+      'UPDATE app_screens SET is_published = 0, published_at = NULL WHERE id = ?',
+      [id]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Screen unpublished successfully'
+    });
+  } catch (error) {
+    console.error('Error unpublishing screen:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error unpublishing screen'
     });
   }
 };

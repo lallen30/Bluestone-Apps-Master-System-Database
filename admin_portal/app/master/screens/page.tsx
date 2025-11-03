@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appScreensAPI } from '@/lib/api';
-import { ArrowLeft, Monitor, Plus, Search, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Monitor, Plus, Search, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 
 export default function MasterScreens() {
   const router = useRouter();
@@ -59,6 +59,21 @@ export default function MasterScreens() {
     } catch (error) {
       console.error('Error deleting screen:', error);
       alert('Failed to delete screen. Please try again.');
+    }
+  };
+
+  const handlePublish = async (screenId: number, screenName: string, isPublished: boolean) => {
+    try {
+      if (isPublished) {
+        await appScreensAPI.unpublish(screenId);
+      } else {
+        await appScreensAPI.publish(screenId);
+      }
+      // Refresh the list
+      fetchScreens();
+    } catch (error) {
+      console.error('Error updating publish status:', error);
+      alert('Failed to update publish status. Please try again.');
     }
   };
 
@@ -189,15 +204,26 @@ export default function MasterScreens() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      screen.is_active 
+                      screen.is_published 
                         ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
+                        : 'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {screen.is_active ? 'Active' : 'Inactive'}
+                      {screen.is_published ? 'Published' : 'Draft'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handlePublish(screen.id, screen.name, screen.is_published)}
+                        className={`p-2 rounded-lg ${
+                          screen.is_published 
+                            ? 'text-gray-600 hover:bg-gray-100' 
+                            : 'text-green-600 hover:bg-green-50'
+                        }`}
+                        title={screen.is_published ? 'Unpublish Screen' : 'Publish Screen'}
+                      >
+                        {screen.is_published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                       <button
                         onClick={() => router.push(`/master/screens/${screen.id}`)}
                         className="p-2 text-primary hover:bg-primary/10 rounded-lg"
