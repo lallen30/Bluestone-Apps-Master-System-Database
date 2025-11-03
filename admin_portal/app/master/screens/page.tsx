@@ -47,6 +47,21 @@ export default function MasterScreens() {
     }
   };
 
+  const handleDelete = async (screenId: number, screenName: string) => {
+    if (!confirm(`Are you sure you want to delete "${screenName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await appScreensAPI.delete(screenId);
+      // Refresh the list
+      fetchScreens();
+    } catch (error) {
+      console.error('Error deleting screen:', error);
+      alert('Failed to delete screen. Please try again.');
+    }
+  };
+
   useEffect(() => {
     if (searchQuery) {
       const filtered = screens.filter(screen =>
@@ -191,11 +206,7 @@ export default function MasterScreens() {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this screen?')) {
-                            // TODO: Implement delete
-                          }
-                        }}
+                        onClick={() => handleDelete(screen.id, screen.name)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                         title="Delete Screen"
                       >
