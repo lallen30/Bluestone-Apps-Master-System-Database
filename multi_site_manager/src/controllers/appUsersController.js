@@ -51,7 +51,7 @@ async function createAppUser(req, res) {
       [appId, email]
     );
     
-    if (existingUsers.length > 0) {
+    if (existingUsers && existingUsers.length > 0) {
       return res.status(409).json({
         success: false,
         message: 'Email already registered for this app'
