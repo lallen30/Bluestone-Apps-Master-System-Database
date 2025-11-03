@@ -18,6 +18,7 @@ const screenElementRoutes = require('./routes/screenElementRoutes');
 const appScreenRoutes = require('./routes/appScreenRoutes');
 const mobileRoutes = require('./routes/mobileRoutes');
 const mobileAuthRoutes = require('./routes/mobileAuth');
+const appUsersRoutes = require('./routes/appUsers');
 const templateRoutes = require('./routes/templateRoutes');
 
 // Initialize Express app
@@ -80,6 +81,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use(`/api/${API_VERSION}/auth`, authRoutes);
 app.use(`/api/${API_VERSION}/users`, userRoutes);
+app.use(`/api/${API_VERSION}/apps`, appUsersRoutes); // App users management
 app.use(`/api/${API_VERSION}/apps`, appRoutes);
 app.use(`/api/${API_VERSION}/permissions`, permissionRoutes);
 app.use(`/api/${API_VERSION}/screens`, screenRoutes);

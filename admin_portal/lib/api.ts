@@ -347,4 +347,57 @@ export const templatesAPI = {
   },
 };
 
+// App Users API
+export const appUsersAPI = {
+  getUsers: async (appId: number, params?: {
+    search?: string;
+    status?: string;
+    email_verified?: boolean;
+    page?: number;
+    per_page?: number;
+    sort_by?: string;
+    sort_order?: string;
+  }) => {
+    const response = await api.get(`/apps/${appId}/users`, { params });
+    return response.data;
+  },
+  
+  getStats: async (appId: number) => {
+    const response = await api.get(`/apps/${appId}/users/stats`);
+    return response.data;
+  },
+  
+  getUser: async (appId: number, userId: number) => {
+    const response = await api.get(`/apps/${appId}/users/${userId}`);
+    return response.data;
+  },
+  
+  updateUser: async (appId: number, userId: number, data: {
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+    bio?: string;
+    date_of_birth?: string;
+    gender?: string;
+  }) => {
+    const response = await api.put(`/apps/${appId}/users/${userId}`, data);
+    return response.data;
+  },
+  
+  updateStatus: async (appId: number, userId: number, status: string) => {
+    const response = await api.put(`/apps/${appId}/users/${userId}/status`, { status });
+    return response.data;
+  },
+  
+  deleteUser: async (appId: number, userId: number) => {
+    const response = await api.delete(`/apps/${appId}/users/${userId}`);
+    return response.data;
+  },
+  
+  resendVerification: async (appId: number, userId: number) => {
+    const response = await api.post(`/apps/${appId}/users/${userId}/resend-verification`);
+    return response.data;
+  },
+};
+
 export default api;
