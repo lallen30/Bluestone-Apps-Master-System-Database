@@ -290,10 +290,10 @@ export default function AppUsersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.length === 0 ? (
+              {!users || users.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    No users found
+                    {loading ? 'Loading...' : 'No users found'}
                   </td>
                 </tr>
               ) : (
