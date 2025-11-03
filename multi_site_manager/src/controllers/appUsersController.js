@@ -36,7 +36,7 @@ async function getAppUsers(req, res) {
       `SELECT COUNT(*) as total FROM app_users WHERE ${whereClause}`,
       queryParams
     );
-    const total = countResult[0].total;
+    const total = countResult && countResult[0] ? countResult[0].total : 0;
     
     // Calculate pagination
     const limit = parseInt(per_page);
