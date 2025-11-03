@@ -356,33 +356,59 @@ export default function MasterScreens() {
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Choose Template *
                   </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {templates.map((template) => (
-                      <button
-                        key={template.id}
-                        onClick={() => setSelectedTemplate(template)}
-                        className={`p-4 border-2 rounded-lg text-left transition-all ${
-                          selectedTemplate?.id === template.id
-                            ? 'border-purple-600 bg-purple-50'
-                            : 'border-gray-200 hover:border-purple-300'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <Sparkles className="w-5 h-5 text-purple-600" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900">{template.name}</h3>
-                            <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-                            {template.category && (
-                              <span className="inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                                {template.category}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Template
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Category
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {templates.map((template) => (
+                          <tr
+                            key={template.id}
+                            onClick={() => setSelectedTemplate(template)}
+                            className={`cursor-pointer transition-colors ${
+                              selectedTemplate?.id === template.id
+                                ? 'bg-purple-50'
+                                : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                  selectedTemplate?.id === template.id
+                                    ? 'bg-purple-600'
+                                    : 'bg-purple-100'
+                                }`}>
+                                  <Sparkles className={`w-4 h-4 ${
+                                    selectedTemplate?.id === template.id
+                                      ? 'text-white'
+                                      : 'text-purple-600'
+                                  }`} />
+                                </div>
+                                <div>
+                                  <div className="font-medium text-gray-900">{template.name}</div>
+                                  <div className="text-sm text-gray-600">{template.description}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {template.category && (
+                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                  {template.category}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
