@@ -766,6 +766,15 @@ export default function EditScreen() {
                       console.log('Label onBlur:', e.target.value);
                       updateElement(editingElement.temp_id, { label: e.target.value });
                     }}
+                    onClick={(e) => {
+                      console.log('Input clicked');
+                      e.currentTarget.focus();
+                    }}
+                    onFocus={() => console.log('Input focused')}
+                    onKeyDown={(e) => console.log('KeyDown:', e.key)}
+                    onKeyPress={(e) => console.log('KeyPress:', e.key)}
+                    onInput={(e) => console.log('Input event:', e.currentTarget.value)}
+                    autoFocus
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   />
                 </div>
