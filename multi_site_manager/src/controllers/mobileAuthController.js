@@ -50,7 +50,7 @@ async function register(req, res) {
       [app_id, email]
     );
     
-    if (existingUsers.length > 0) {
+    if (existingUsers && existingUsers.length > 0) {
       return res.status(409).json({
         success: false,
         message: 'Email already registered for this app'
@@ -65,16 +65,16 @@ async function register(req, res) {
     const email_verification_expires = calculateExpiration('24h');
     
     // Create user
-    const [result] = await db.query(
+    const result = await db.query(
       `INSERT INTO app_users 
        (app_id, email, password_hash, first_name, last_name, phone, 
         email_verification_token, email_verification_expires, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
-      [app_id, email, password_hash, first_name, last_name, phone,
+      [app_id, email, password_hash, first_name || null, last_name || null, phone || null,
        email_verification_token, email_verification_expires]
     );
     
-    const user_id = result.insertId;
+    const user_id = result[0].insertId;
     
     // Create default user settings
     await db.query(
@@ -168,7 +168,7 @@ async function login(req, res) {
       [app_id, email]
     );
     
-    if (users.length === 0) {
+    if (!users || users.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
