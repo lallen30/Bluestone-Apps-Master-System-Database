@@ -18,6 +18,7 @@ const screenElementRoutes = require('./routes/screenElementRoutes');
 const appScreenRoutes = require('./routes/appScreenRoutes');
 const mobileRoutes = require('./routes/mobileRoutes');
 const mobileAuthRoutes = require('./routes/mobileAuth');
+const mobileProfileRoutes = require('./routes/mobileProfile');
 const appUsersRoutes = require('./routes/appUsers');
 const templateRoutes = require('./routes/templateRoutes');
 
@@ -89,6 +90,7 @@ app.use(`/api/${API_VERSION}/screen-elements`, screenElementRoutes);
 app.use(`/api/${API_VERSION}/app-screens`, appScreenRoutes);
 app.use(`/api/${API_VERSION}/mobile`, mobileRoutes);
 app.use(`/api/${API_VERSION}/mobile/auth`, mobileAuthRoutes);
+app.use(`/api/${API_VERSION}/mobile/profile`, mobileProfileRoutes);
 app.use(`/api/${API_VERSION}/templates`, templateRoutes);
 
 // Root endpoint
