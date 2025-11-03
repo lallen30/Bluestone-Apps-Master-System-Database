@@ -1,3 +1,5 @@
+console.log(' SCREEN EDITOR LOADED - NEW VERSION v2.0');
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -42,6 +44,8 @@ export default function EditScreenContent() {
 
   const fetchData = async () => {
     try {
+      console.log('🔵 NEW CODE: fetchData started');
+      
       // Fetch app details
       const appResponse = await appsAPI.getById(parseInt(appId));
       setApp(appResponse.data);
@@ -51,27 +55,40 @@ export default function EditScreenContent() {
       setScreen(screenResponse.data);
       const elementsData = screenResponse.data.elements || [];
       
-      // Parse config if it's a string
-      const parsedElements = elementsData.map((el: any) => {
-        if (el.config) {
-          if (typeof el.config === 'string') {
-            // Skip if it's the bad "[object Object]" string
-            if (el.config === '[object Object]' || el.config.includes('[object Object]')) {
-              console.warn('Skipping bad config for element', el.id, el.config);
-              el.config = null;
-            } else {
-              try {
-                el.config = JSON.parse(el.config);
-              } catch (e) {
-                console.error('Error parsing config for element', el.id, ':', el.config, e);
+      console.log('🔵 NEW CODE: Got elements, count:', elementsData.length);
+      
+      // Parse config if it's a string - WRAPPED IN TRY-CATCH
+      const parsedElements = elementsData.map((el: any, index: number) => {
+        try {
+          if (el.config) {
+            console.log(`🔵 Element ${index} config type:`, typeof el.config, 'value:', el.config);
+            
+            if (typeof el.config === 'string') {
+              // Skip if it's the bad "[object Object]" string
+              if (el.config === '[object Object]' || el.config.includes('[object Object]')) {
+                console.warn('⚠️ Skipping bad config for element', el.id, el.config);
                 el.config = null;
+              } else {
+                try {
+                  el.config = JSON.parse(el.config);
+                  console.log('✅ Parsed config successfully for element', el.id);
+                } catch (e) {
+                  console.error('❌ Error parsing config for element', el.id, ':', el.config, e);
+                  el.config = null;
+                }
               }
+            } else {
+              console.log('✅ Config already object for element', el.id);
             }
           }
-          // If it's already an object, leave it as is
+        } catch (mapError) {
+          console.error('❌ Error in map for element', index, mapError);
+          el.config = null;
         }
         return el;
       });
+      
+      console.log('🔵 NEW CODE: Parsed elements successfully');
       
       setElements(parsedElements);
       
@@ -82,12 +99,11 @@ export default function EditScreenContent() {
       });
       setContentValues(initialValues);
       
-      // Debug: Log elements to see what we're getting
-      console.log('Elements data:', elementsData);
+      console.log('🔵 NEW CODE: fetchData completed successfully');
       
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('❌ Error fetching data:', error);
       setLoading(false);
     }
   };

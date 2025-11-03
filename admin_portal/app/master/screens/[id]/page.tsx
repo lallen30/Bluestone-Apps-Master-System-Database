@@ -114,8 +114,8 @@ export default function EditScreen() {
         is_required: el.is_required,
         is_readonly: el.is_readonly,
         display_order: el.display_order,
-        config: el.config ? JSON.parse(el.config) : {},
-        validation_rules: el.validation_rules ? JSON.parse(el.validation_rules) : {}
+        config: el.config ? (typeof el.config === 'string' ? (el.config === '[object Object]' ? {} : JSON.parse(el.config)) : el.config) : {},
+        validation_rules: el.validation_rules ? (typeof el.validation_rules === 'string' ? JSON.parse(el.validation_rules) : el.validation_rules) : {}
       }));
       
       setSelectedElements(instances);
