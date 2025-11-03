@@ -148,9 +148,16 @@ export default function NewScreen() {
   };
 
   const updateElement = (tempId: string, updates: Partial<ElementInstance>) => {
-    setSelectedElements(selectedElements.map(el => 
+    setSelectedElements(prev => prev.map(el => 
       el.temp_id === tempId ? { ...el, ...updates } : el
     ));
+    // Also update editingElement if it's the one being edited
+    setEditingElement(prev => {
+      if (prev && prev.temp_id === tempId) {
+        return { ...prev, ...updates };
+      }
+      return prev;
+    });
   };
 
   const handleSave = async () => {
@@ -672,9 +679,8 @@ export default function NewScreen() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Field Key</label>
                   <input
                     type="text"
-                    key={editingElement.field_key}
-                    defaultValue={editingElement.field_key || ''}
-                    onBlur={(e) => updateElement(editingElement.temp_id, { field_key: e.target.value })}
+                    value={editingElement.field_key || ''}
+                    onChange={(e) => updateElement(editingElement.temp_id, { field_key: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
                   />
                 </div>
