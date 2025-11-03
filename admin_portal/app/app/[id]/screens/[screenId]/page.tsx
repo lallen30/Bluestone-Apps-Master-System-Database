@@ -336,7 +336,32 @@ export default function EditScreenContent() {
                         ))}
                       </div>
                     )}
-                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button', 'email_input', 'phone_input', 'url_input', 'number_input', 'date_picker'].includes(element.element_type) && (
+                    {element.element_type === 'image_display' && (
+                      <div className="space-y-2">
+                        <input
+                          type="url"
+                          placeholder="Image URL"
+                          value={contentValues[element.id] || element.config?.imageUrl || ''}
+                          onChange={(e) => handleContentChange(element.id, e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          disabled={element.is_readonly}
+                        />
+                        {(contentValues[element.id] || element.config?.imageUrl) && (
+                          <div className="mt-2 border border-gray-200 rounded-lg p-2 bg-gray-50">
+                            <img
+                              src={contentValues[element.id] || element.config?.imageUrl}
+                              alt={element.config?.altText || 'Preview'}
+                              className="max-w-full h-auto mx-auto"
+                              style={{
+                                maxHeight: '200px',
+                                width: element.config?.width || 'auto'
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button', 'email_input', 'phone_input', 'url_input', 'number_input', 'date_picker', 'image_display'].includes(element.element_type) && (
                       <div className="text-sm text-gray-500 italic">
                         {element.element_type} - Content editing coming soon
                       </div>
