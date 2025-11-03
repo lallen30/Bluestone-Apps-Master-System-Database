@@ -349,6 +349,18 @@ export const templatesAPI = {
 
 // App Users API
 export const appUsersAPI = {
+  createUser: async (appId: number, data: {
+    email: string;
+    password: string;
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+    email_verified?: boolean;
+  }) => {
+    const response = await api.post(`/apps/${appId}/users`, data);
+    return response.data;
+  },
+  
   getUsers: async (appId: number, params?: {
     search?: string;
     status?: string;

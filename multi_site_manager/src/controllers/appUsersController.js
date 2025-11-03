@@ -1,4 +1,114 @@
 const db = require('../config/database');
+const bcrypt = require('bcryptjs');
+const { generateRandomToken, calculateExpiration } = require('../utils/jwt');
+
+/**
+ * Create a new app user (admin function)
+ * POST /api/v1/apps/:appId/users
+ */
+async function createAppUser(req, res) {
+  try {
+    const { appId } = req.params;
+    const { email, password, first_name, last_name, phone, email_verified = false } = req.body;
+    
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email format'
+      });
+    }
+    
+    // Validate password strength
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters long'
+      });
+    }
+    
+    // Check if app exists
+    const [apps] = await db.query('SELECT id FROM apps WHERE id = ?', [appId]);
+    if (apps.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'App not found'
+      });
+    }
+    
+    // Check if email already exists for this app
+    const [existingUsers] = await db.query(
+      'SELECT id FROM app_users WHERE app_id = ? AND email = ?',
+      [appId, email]
+    );
+    
+    if (existingUsers.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'Email already registered for this app'
+      });
+    }
+    
+    // Hash password
+    const password_hash = await bcrypt.hash(password, 10);
+    
+    // Generate email verification token if not verified
+    let email_verification_token = null;
+    let email_verification_expires = null;
+    
+    if (!email_verified) {
+      email_verification_token = generateRandomToken();
+      email_verification_expires = calculateExpiration('24h');
+    }
+    
+    // Create user
+    const [result] = await db.query(
+      `INSERT INTO app_users 
+       (app_id, email, password_hash, first_name, last_name, phone, 
+        email_verified, email_verification_token, email_verification_expires, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+      [appId, email, password_hash, first_name, last_name, phone,
+       email_verified ? 1 : 0, email_verification_token, email_verification_expires]
+    );
+    
+    const user_id = result.insertId;
+    
+    // Create default user settings
+    await db.query(
+      'INSERT INTO user_settings (user_id) VALUES (?)',
+      [user_id]
+    );
+    
+    // Get created user
+    const [users] = await db.query(
+      `SELECT id, email, first_name, last_name, phone, email_verified, status, created_at
+       FROM app_users WHERE id = ?`,
+      [user_id]
+    );
+    
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      data: users[0]
+    });
+    
+  } catch (error) {
+    console.error('Create app user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create user'
+    });
+  }
+}
 
 /**
  * Get all users for a specific app
@@ -412,6 +522,7 @@ async function resendVerificationEmail(req, res) {
 }
 
 module.exports = {
+  createAppUser,
   getAppUsers,
   getAppUserStats,
   getAppUser,

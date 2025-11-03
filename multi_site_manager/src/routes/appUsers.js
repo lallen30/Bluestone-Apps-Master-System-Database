@@ -4,6 +4,13 @@ const appUsersController = require('../controllers/appUsersController');
 const { authenticate } = require('../middleware/auth');
 
 /**
+ * @route   POST /api/v1/apps/:appId/users
+ * @desc    Create a new app user (admin function)
+ * @access  Private (Admin)
+ */
+router.post('/:appId/users', authenticate, appUsersController.createAppUser);
+
+/**
  * @route   GET /api/v1/apps/:appId/users/stats
  * @desc    Get app user statistics
  * @access  Private (Admin)
