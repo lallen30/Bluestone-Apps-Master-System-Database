@@ -685,7 +685,7 @@ export default function NewScreen() {
                   />
                 </div>
 
-                {editingElement.element.is_input_field && (
+                {Boolean(editingElement.element.is_input_field) && (
                   <>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Placeholder</label>
