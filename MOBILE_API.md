@@ -165,17 +165,19 @@ const data = await response.json();
 
 The API returns different element types that you can render in your mobile app:
 
-| Type | Description | Render As |
-|------|-------------|-----------|
-| `heading` | Page/section heading | Text (large, bold) |
-| `paragraph` | Text content | Text (normal) |
-| `text_field` | Single-line input | TextInput |
-| `text_area` | Multi-line input | TextInput (multiline) |
-| `button` | Action button | Button/TouchableOpacity |
-| `image` | Image display | Image component |
-| `dropdown` | Select dropdown | Picker/Select |
-| `checkbox` | Checkbox input | Checkbox |
-| `radio` | Radio button | Radio button |
+| Type | Description | Render As | Has Options |
+|------|-------------|-----------|-------------|
+| `heading` | Page/section heading | Text (large, bold) | No |
+| `paragraph` | Text content | Text (normal) | No |
+| `text_field` | Single-line input | TextInput | No |
+| `text_area` | Multi-line input | TextInput (multiline) | No |
+| `rich_text_display` | Formatted HTML content | WebView/HTML renderer | No |
+| `rich_text_editor` | Rich text input | Rich text editor | No |
+| `dropdown` | Select dropdown | Picker/Select | Yes |
+| `radio_button` | Radio button group | Radio buttons | Yes |
+| `checkbox` | Single checkbox | Checkbox | No |
+| `button` | Action button | Button/TouchableOpacity | No |
+| `image` | Image display | Image component | No |
 
 ---
 
@@ -185,7 +187,8 @@ Here's a complete example of rendering a screen in React Native:
 
 ```javascript
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 
 const DynamicScreen = ({ appId, screenId, token }) => {
   const [screenData, setScreenData] = useState(null);
@@ -258,6 +261,66 @@ const DynamicScreen = ({ appId, screenId, token }) => {
           </View>
         );
       
+      case 'dropdown':
+        return (
+          <View key={element.id} style={styles.inputContainer}>
+            <Text style={styles.label}>{element.label}</Text>
+            <Picker
+              selectedValue={element.value}
+              onValueChange={(value) => console.log('Selected:', value)}
+              enabled={!element.is_readonly}
+              style={styles.picker}
+            >
+              <Picker.Item label={element.placeholder || 'Select...'} value="" />
+              {element.config?.options?.map((option, idx) => (
+                <Picker.Item 
+                  key={idx} 
+                  label={option.label} 
+                  value={option.value} 
+                />
+              ))}
+            </Picker>
+          </View>
+        );
+      
+      case 'radio_button':
+        return (
+          <View key={element.id} style={styles.inputContainer}>
+            <Text style={styles.label}>{element.label}</Text>
+            {element.config?.options?.map((option, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.radioOption}
+                onPress={() => console.log('Selected:', option.value)}
+                disabled={element.is_readonly}
+              >
+                <View style={styles.radioCircle}>
+                  {element.value === option.value && (
+                    <View style={styles.radioSelected} />
+                  )}
+                </View>
+                <Text style={styles.radioLabel}>{option.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        );
+      
+      case 'checkbox':
+        return (
+          <View key={element.id} style={styles.checkboxContainer}>
+            <TouchableOpacity
+              style={styles.checkbox}
+              onPress={() => console.log('Toggled')}
+              disabled={element.is_readonly}
+            >
+              <View style={[styles.checkboxBox, element.value && styles.checkboxChecked]}>
+                {element.value && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.checkboxLabel}>{element.label}</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      
       default:
         return null;
     }
@@ -324,6 +387,63 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: 'top',
+  },
+  picker: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+  },
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioSelected: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#007AFF',
+  },
+  radioLabel: {
+    fontSize: 16,
+  },
+  checkboxContainer: {
+    marginBottom: 16,
+  },
+  checkbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkboxBox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    borderRadius: 4,
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#007AFF',
+  },
+  checkmark: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  checkboxLabel: {
+    fontSize: 16,
   },
 });
 
