@@ -17,6 +17,7 @@ const screenRoutes = require('./routes/screenRoutes');
 const screenElementRoutes = require('./routes/screenElementRoutes');
 const appScreenRoutes = require('./routes/appScreenRoutes');
 const mobileRoutes = require('./routes/mobileRoutes');
+const templateRoutes = require('./routes/templateRoutes');
 
 // Initialize Express app
 const app = express();
@@ -84,6 +85,7 @@ app.use(`/api/${API_VERSION}/screens`, screenRoutes);
 app.use(`/api/${API_VERSION}/screen-elements`, screenElementRoutes);
 app.use(`/api/${API_VERSION}/app-screens`, appScreenRoutes);
 app.use(`/api/${API_VERSION}/mobile`, mobileRoutes);
+app.use(`/api/${API_VERSION}/templates`, templateRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

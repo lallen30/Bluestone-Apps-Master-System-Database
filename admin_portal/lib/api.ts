@@ -324,4 +324,27 @@ export const permissionsAPI = {
   },
 };
 
+// Templates API
+export const templatesAPI = {
+  getAll: async () => {
+    const response = await api.get('/templates');
+    return response.data;
+  },
+  
+  getById: async (id: number) => {
+    const response = await api.get(`/templates/${id}`);
+    return response.data;
+  },
+  
+  createFromTemplate: async (data: { template_id: number; screen_name: string; screen_description?: string; created_by: number }) => {
+    const response = await api.post('/templates/create-from-template', data);
+    return response.data;
+  },
+  
+  cloneScreen: async (screenId: number, data: { new_name: string; created_by: number }) => {
+    const response = await api.post(`/templates/clone/${screenId}`, data);
+    return response.data;
+  },
+};
+
 export default api;

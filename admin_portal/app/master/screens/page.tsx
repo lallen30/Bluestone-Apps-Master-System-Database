@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appScreensAPI } from '@/lib/api';
-import { ArrowLeft, Monitor, Plus, Search, Edit, Trash2 } from 'lucide-react';
+import { appScreensAPI, templatesAPI } from '@/lib/api';
+import { ArrowLeft, Monitor, Plus, Search, Edit, Trash2, Copy, Sparkles } from 'lucide-react';
 
 export default function MasterScreens() {
   const router = useRouter();
@@ -13,6 +13,11 @@ export default function MasterScreens() {
   const [filteredScreens, setFilteredScreens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [newScreenName, setNewScreenName] = useState('');
+  const [cloneScreenId, setCloneScreenId] = useState<number | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -62,6 +67,74 @@ export default function MasterScreens() {
     }
   };
 
+  const fetchTemplates = async () => {
+    try {
+      const response = await templatesAPI.getAll();
+      setTemplates(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
+  const handleCreateFromTemplate = async () => {
+    if (!selectedTemplate || !newScreenName || !user) return;
+
+    try {
+      const response = await templatesAPI.createFromTemplate({
+        template_id: selectedTemplate.id,
+        screen_name: newScreenName,
+        created_by: user.id
+      });
+
+      if (response.success) {
+        setShowTemplateModal(false);
+        setSelectedTemplate(null);
+        setNewScreenName('');
+        fetchScreens();
+        // Navigate to the new screen
+        router.push(`/master/screens/${response.data.screen_id}`);
+      }
+    } catch (error) {
+      console.error('Error creating screen from template:', error);
+      alert('Failed to create screen from template. Please try again.');
+    }
+  };
+
+  const handleCloneScreen = async () => {
+    if (!cloneScreenId || !newScreenName || !user) return;
+
+    try {
+      const response = await templatesAPI.cloneScreen(cloneScreenId, {
+        new_name: newScreenName,
+        created_by: user.id
+      });
+
+      if (response.success) {
+        setShowTemplateModal(false);
+        setCloneScreenId(null);
+        setNewScreenName('');
+        fetchScreens();
+        // Navigate to the cloned screen
+        router.push(`/master/screens/${response.data.screen_id}`);
+      }
+    } catch (error) {
+      console.error('Error cloning screen:', error);
+      alert('Failed to clone screen. Please try again.');
+    }
+  };
+
+  const openTemplateModal = () => {
+    fetchTemplates();
+    setShowTemplateModal(true);
+    setCloneScreenId(null);
+  };
+
+  const openCloneModal = (screenId: number) => {
+    setCloneScreenId(screenId);
+    setShowTemplateModal(true);
+    setSelectedTemplate(null);
+  };
+
   useEffect(() => {
     if (searchQuery) {
       const filtered = screens.filter(screen =>
@@ -104,13 +177,22 @@ export default function MasterScreens() {
                 <p className="text-sm text-gray-500">{screens.length} total screens</p>
               </div>
             </div>
-            <button
-              onClick={() => router.push('/master/screens/new')}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-            >
-              <Plus className="w-4 h-4" />
-              Create Screen
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={openTemplateModal}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                <Sparkles className="w-4 h-4" />
+                From Template
+              </button>
+              <button
+                onClick={() => router.push('/master/screens/new')}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+              >
+                <Plus className="w-4 h-4" />
+                Create Screen
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -187,6 +269,13 @@ export default function MasterScreens() {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
                       <button
+                        onClick={() => openCloneModal(screen.id)}
+                        className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+                        title="Clone Screen"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => router.push(`/master/screens/${screen.id}`)}
                         className="p-2 text-primary hover:bg-primary/10 rounded-lg"
                         title="Edit Screen"
@@ -231,6 +320,97 @@ export default function MasterScreens() {
           )}
         </div>
       </main>
+
+      {/* Template/Clone Modal */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">
+                {cloneScreenId ? 'Clone Screen' : 'Create from Template'}
+              </h2>
+              <p className="text-gray-600 mt-1">
+                {cloneScreenId ? 'Create a copy of an existing screen' : 'Choose a template to get started quickly'}
+              </p>
+            </div>
+
+            <div className="p-6">
+              {/* Screen Name Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Screen Name *
+                </label>
+                <input
+                  type="text"
+                  value={newScreenName}
+                  onChange={(e) => setNewScreenName(e.target.value)}
+                  placeholder="Enter screen name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  autoFocus
+                />
+              </div>
+
+              {/* Template Selection (only if not cloning) */}
+              {!cloneScreenId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Choose Template *
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {templates.map((template) => (
+                      <button
+                        key={template.id}
+                        onClick={() => setSelectedTemplate(template)}
+                        className={`p-4 border-2 rounded-lg text-left transition-all ${
+                          selectedTemplate?.id === template.id
+                            ? 'border-purple-600 bg-purple-50'
+                            : 'border-gray-200 hover:border-purple-300'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Sparkles className="w-5 h-5 text-purple-600" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900">{template.name}</h3>
+                            <p className="text-sm text-gray-600 mt-1">{template.description}</p>
+                            {template.category && (
+                              <span className="inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                {template.category}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowTemplateModal(false);
+                  setSelectedTemplate(null);
+                  setNewScreenName('');
+                  setCloneScreenId(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={cloneScreenId ? handleCloneScreen : handleCreateFromTemplate}
+                disabled={!newScreenName || (!cloneScreenId && !selectedTemplate)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {cloneScreenId ? 'Clone Screen' : 'Create Screen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
