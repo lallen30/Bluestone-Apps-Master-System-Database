@@ -42,10 +42,22 @@ export default function MasterDashboard() {
       screenElementsAPI.getAll(),
     ])
       .then(([appsResponse, usersResponse, screensResponse, elementsResponse]) => {
-        setApps(appsResponse.data || []);
-        setUsers(usersResponse.data || []);
-        setScreens(screensResponse.data || []);
-        setScreenElements(elementsResponse.data || []);
+        const appsData = Array.isArray(appsResponse.data) ? appsResponse.data : [];
+        const usersData = Array.isArray(usersResponse.data) ? usersResponse.data : [];
+        const screensData = Array.isArray(screensResponse.data) ? screensResponse.data : [];
+        const elementsData = Array.isArray(elementsResponse.data) ? elementsResponse.data : [];
+        
+        console.log('Dashboard data loaded:', {
+          apps: appsData.length,
+          users: usersData.length,
+          screens: screensData.length,
+          elements: elementsData.length
+        });
+        
+        setApps(appsData);
+        setUsers(usersData);
+        setScreens(screensData);
+        setScreenElements(elementsData);
         setLoading(false);
       })
       .catch((error) => {
