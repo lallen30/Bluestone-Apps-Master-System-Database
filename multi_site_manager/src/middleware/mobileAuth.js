@@ -31,14 +31,14 @@ async function authenticateMobileUser(req, res, next) {
     }
     
     // Check if user exists and is active
-    const [users] = await db.query(
+    const users = await db.query(
       `SELECT id, app_id, email, first_name, last_name, status, email_verified
        FROM app_users 
        WHERE id = ? AND app_id = ? AND status = 'active'`,
       [decoded.user_id, decoded.app_id]
     );
     
-    if (users.length === 0) {
+    if (!users || users.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'User not found or inactive'
