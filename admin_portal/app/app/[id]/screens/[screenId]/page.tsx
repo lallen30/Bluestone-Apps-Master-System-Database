@@ -398,7 +398,47 @@ export default function EditScreenContent() {
                         )}
                       </div>
                     )}
-                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button', 'email_input', 'phone_input', 'url_input', 'number_input', 'date_picker', 'image_display'].includes(element.element_type) && (
+                    {element.element_type === 'button' && (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          placeholder="Button text"
+                          value={contentValues[element.id] || element.label || ''}
+                          onChange={(e) => handleContentChange(element.id, e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          disabled={element.is_readonly}
+                        />
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                            disabled
+                          >
+                            {contentValues[element.id] || element.label || 'Button'}
+                          </button>
+                          <p className="text-xs text-gray-500 mt-1">Preview (button is disabled in editor)</p>
+                        </div>
+                      </div>
+                    )}
+                    {element.element_type === 'link' && (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          placeholder="Link text"
+                          value={contentValues[element.id] || element.label || ''}
+                          onChange={(e) => handleContentChange(element.id, e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          disabled={element.is_readonly}
+                        />
+                        <div className="mt-2">
+                          <a href="#" className="text-primary hover:underline" onClick={(e) => e.preventDefault()}>
+                            {contentValues[element.id] || element.label || 'Link'}
+                          </a>
+                          <p className="text-xs text-gray-500 mt-1">Preview (link is disabled in editor)</p>
+                        </div>
+                      </div>
+                    )}
+                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button', 'email_input', 'phone_input', 'url_input', 'number_input', 'date_picker', 'image_display', 'button', 'link'].includes(element.element_type) && (
                       <div className="text-sm text-gray-500 italic">
                         {element.element_type} - Content editing coming soon
                       </div>
