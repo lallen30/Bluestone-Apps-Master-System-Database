@@ -171,6 +171,60 @@ export default function EditScreenContent() {
                         disabled={element.is_readonly}
                       />
                     )}
+                    {element.element_type === 'email_input' && (
+                      <input
+                        type="email"
+                        placeholder={element.placeholder || 'email@example.com'}
+                        value={contentValues[element.id] || ''}
+                        onChange={(e) => handleContentChange(element.id, e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                        readOnly={element.is_readonly}
+                        disabled={element.is_readonly}
+                      />
+                    )}
+                    {element.element_type === 'phone_input' && (
+                      <input
+                        type="tel"
+                        placeholder={element.placeholder || '(555) 123-4567'}
+                        value={contentValues[element.id] || ''}
+                        onChange={(e) => handleContentChange(element.id, e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                        readOnly={element.is_readonly}
+                        disabled={element.is_readonly}
+                      />
+                    )}
+                    {element.element_type === 'url_input' && (
+                      <input
+                        type="url"
+                        placeholder={element.placeholder || 'https://example.com'}
+                        value={contentValues[element.id] || ''}
+                        onChange={(e) => handleContentChange(element.id, e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                        readOnly={element.is_readonly}
+                        disabled={element.is_readonly}
+                      />
+                    )}
+                    {element.element_type === 'number_input' && (
+                      <input
+                        type="number"
+                        placeholder={element.placeholder || '0'}
+                        value={contentValues[element.id] || ''}
+                        onChange={(e) => handleContentChange(element.id, e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                        readOnly={element.is_readonly}
+                        disabled={element.is_readonly}
+                      />
+                    )}
+                    {element.element_type === 'date_picker' && (
+                      <input
+                        type="date"
+                        value={contentValues[element.id] || ''}
+                        onChange={(e) => handleContentChange(element.id, e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                        readOnly={element.is_readonly}
+                        disabled={element.is_readonly}
+                      />
+                    )}
                     {element.element_type === 'text_area' && (
                       <textarea
                         placeholder={element.placeholder || ''}
@@ -282,7 +336,7 @@ export default function EditScreenContent() {
                         ))}
                       </div>
                     )}
-                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button'].includes(element.element_type) && (
+                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button', 'email_input', 'phone_input', 'url_input', 'number_input', 'date_picker'].includes(element.element_type) && (
                       <div className="text-sm text-gray-500 italic">
                         {element.element_type} - Content editing coming soon
                       </div>
