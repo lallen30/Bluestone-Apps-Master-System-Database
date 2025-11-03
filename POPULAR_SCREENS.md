@@ -15,12 +15,30 @@
 - **Booking (1/7):** Booking Form
 
 ### 🎯 **Next Priority Templates to Create:**
-- Edit Profile
-- Order History
-- Product Listing
-- Feed/Timeline
-- Article/Blog Post
-- Phone Verification
+
+**High Priority (Most Requested):**
+1. **Edit Profile** - Update user information (name, email, phone, bio, avatar)
+2. **Order History** - List of past orders with status and details
+3. **Product Listing** - Browse products in a grid/list with filters
+4. **Feed/Timeline** - Social media style feed with posts
+5. **Article/Blog Post** - Read full article with title, author, date, content
+
+**Medium Priority (Common Screens):**
+6. **Phone Verification** - SMS/OTP code entry
+7. **Change Password** - Current password + new password form
+8. **Order Details** - Detailed view of a specific order
+9. **Order Tracking** - Track delivery status with map/timeline
+10. **Wishlist/Favorites** - Saved items list
+
+**Specialized (Industry-Specific):**
+11. **Food Menu** - Restaurant menu with categories and items
+12. **Course Details** - Educational course information
+13. **Workout Tracker** - Exercise logging and tracking
+14. **Property Listing** - Real estate properties browse
+15. **Event Details** - Event information with date, location, tickets
+
+### 💡 **Recommendation:**
+Start with **Edit Profile** - it's universally needed and pairs well with the existing User Profile template we already have!
 
 ---
 
