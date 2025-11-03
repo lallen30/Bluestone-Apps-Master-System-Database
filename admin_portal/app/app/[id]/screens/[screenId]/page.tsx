@@ -202,7 +202,7 @@ export default function EditScreenContent() {
                     )}
                     {(element.element_type === 'rich_text_display' || element.element_type === 'rich_text_editor') && (
                       <div>
-                        <div className="rich-text-editor mb-16">
+                        <div className="rich-text-editor">
                           <ReactQuill
                             theme="snow"
                             value={contentValues[element.id] || ''}
@@ -235,7 +235,54 @@ export default function EditScreenContent() {
                         `}</style>
                       </div>
                     )}
-                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor'].includes(element.element_type) && (
+                    {element.element_type === 'dropdown' && (
+                      <div>
+                        <select
+                          value={contentValues[element.id] || ''}
+                          onChange={(e) => handleContentChange(element.id, e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          disabled={element.is_readonly}
+                        >
+                          <option value="">{element.placeholder || 'Select an option...'}</option>
+                          {element.config?.options?.map((option: any, idx: number) => (
+                            <option key={idx} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {element.element_type === 'checkbox' && (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={contentValues[element.id] === 'true' || contentValues[element.id] === true}
+                          onChange={(e) => handleContentChange(element.id, e.target.checked.toString())}
+                          className="rounded border-gray-300"
+                          disabled={element.is_readonly}
+                        />
+                        <span className="text-sm text-gray-700">{element.label}</span>
+                      </div>
+                    )}
+                    {element.element_type === 'radio_button' && (
+                      <div className="space-y-2">
+                        {element.config?.options?.map((option: any, idx: number) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name={`radio_${element.id}`}
+                              value={option.value}
+                              checked={contentValues[element.id] === option.value}
+                              onChange={(e) => handleContentChange(element.id, e.target.value)}
+                              className="border-gray-300"
+                              disabled={element.is_readonly}
+                            />
+                            <span className="text-sm text-gray-700">{option.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button'].includes(element.element_type) && (
                       <div className="text-sm text-gray-500 italic">
                         {element.element_type} - Content editing coming soon
                       </div>

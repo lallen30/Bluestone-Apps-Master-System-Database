@@ -790,6 +790,66 @@ export default function EditScreen() {
                   </>
                 )}
 
+                {editingElement.element.has_options && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Options</label>
+                    <div className="space-y-2 mb-2">
+                      {(editingElement.config?.options || []).map((option: any, idx: number) => (
+                        <div key={idx} className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Label"
+                            value={option.label || ''}
+                            onChange={(e) => {
+                              const newOptions = [...(editingElement.config?.options || [])];
+                              newOptions[idx] = { ...newOptions[idx], label: e.target.value };
+                              updateElement(editingElement.temp_id, { 
+                                config: { ...editingElement.config, options: newOptions }
+                              });
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Value"
+                            value={option.value || ''}
+                            onChange={(e) => {
+                              const newOptions = [...(editingElement.config?.options || [])];
+                              newOptions[idx] = { ...newOptions[idx], value: e.target.value };
+                              updateElement(editingElement.temp_id, { 
+                                config: { ...editingElement.config, options: newOptions }
+                              });
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
+                          />
+                          <button
+                            onClick={() => {
+                              const newOptions = (editingElement.config?.options || []).filter((_: any, i: number) => i !== idx);
+                              updateElement(editingElement.temp_id, { 
+                                config: { ...editingElement.config, options: newOptions }
+                              });
+                            }}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => {
+                        const newOptions = [...(editingElement.config?.options || []), { label: '', value: '' }];
+                        updateElement(editingElement.temp_id, { 
+                          config: { ...editingElement.config, options: newOptions }
+                        });
+                      }}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      + Add Option
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2">
                     <input
