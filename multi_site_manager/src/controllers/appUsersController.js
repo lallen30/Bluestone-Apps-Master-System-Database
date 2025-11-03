@@ -103,6 +103,15 @@ async function createAppUser(req, res) {
     
   } catch (error) {
     console.error('Create app user error:', error);
+    
+    // Handle duplicate email error
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        success: false,
+        message: 'Email already registered for this app'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Failed to create user'

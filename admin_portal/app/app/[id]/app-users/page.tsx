@@ -96,12 +96,13 @@ export default function AppUsersPage() {
       if (verifiedFilter) params.email_verified = verifiedFilter;
 
       const usersResponse = await appUsersAPI.getUsers(parseInt(appId), params);
-      setUsers(usersResponse.data.users);
-      setTotalPages(usersResponse.data.pagination.total_pages);
+      setUsers(Array.isArray(usersResponse.data.users) ? usersResponse.data.users : []);
+      setTotalPages(usersResponse.data.pagination?.total_pages || 1);
       
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setUsers([]);
       setLoading(false);
     }
   };
