@@ -83,43 +83,43 @@ export default function MasterDashboard() {
   }
 
   const stats = [
-    {
-      title: 'Total Apps',
-      value: apps.length,
-      icon: Globe,
-      color: 'bg-blue-500',
-    },
-    {
-      title: 'App Administrators',
-      value: users.length,
-      icon: Users,
-      color: 'bg-green-500',
-    },
-    {
-      title: 'Total Admins',
-      value: users.filter((u) => u.role_level <= 2).length,
-      icon: Users,
-      color: 'bg-purple-500',
-    },
-    {
-      title: 'Active Apps',
-      value: apps.filter((app) => app.is_active).length,
-      icon: Activity,
-      color: 'bg-orange-500',
-    },
-    {
-      title: 'App Screens',
-      value: screens.length,
-      icon: Monitor,
-      color: 'bg-indigo-500',
-    },
-    {
-      title: 'Modules',
-      value: screenElements.length,
-      icon: Layers,
-      color: 'bg-pink-500',
-    },
-  ];
+  //   {
+  //     title: 'Total Apps',
+  //     value: apps.length,
+  //     icon: Globe,
+  //     color: 'bg-blue-500',
+  //   },
+  //   {
+  //     title: 'Administrators',
+  //     value: users.length,
+  //     icon: Users,
+  //     color: 'bg-green-500',
+  //   },
+  //   {
+  //     title: 'Total Admins',
+  //     value: users.filter((u) => u.role_level <= 2).length,
+  //     icon: Users,
+  //     color: 'bg-purple-500',
+  //   },
+  //   {
+  //     title: 'Active Apps',
+  //     value: apps.filter((app) => app.is_active).length,
+  //     icon: Activity,
+  //     color: 'bg-orange-500',
+  //   },
+  //   {
+  //     title: 'App Screens',
+  //     value: screens.length,
+  //     icon: Monitor,
+  //     color: 'bg-indigo-500',
+  //   },
+  //   {
+  //     title: 'Modules',
+  //     value: screenElements.length,
+  //     icon: Layers,
+  //     color: 'bg-pink-500',
+  //   },
+   ];
 
   return (
     <div className="min-h-screen bg-gray-50">

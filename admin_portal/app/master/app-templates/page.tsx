@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appTemplatesAPI } from '@/lib/api';
-import { ArrowLeft, Plus, Search, Edit, Trash2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Edit, Trash2, Sparkles, Eye } from 'lucide-react';
 
 export default function AppTemplates() {
   const router = useRouter();
@@ -279,6 +279,13 @@ export default function AppTemplates() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => router.push(`/master/app-templates/${template.id}`)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                        title="View Screens"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => handleOpenModal(template)}
                         className="p-2 text-primary hover:bg-primary/10 rounded-lg"
