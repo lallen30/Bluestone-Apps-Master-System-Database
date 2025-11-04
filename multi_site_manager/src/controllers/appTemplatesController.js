@@ -81,11 +81,12 @@ const getAppTemplateById = async (req, res) => {
       screen.elements = elements;
     }
 
-    template.screens = screens;
-
     res.json({
       success: true,
-      data: template
+      data: {
+        template: template,
+        screens: screens
+      }
     });
   } catch (error) {
     console.error('Get app template by ID error:', error);
