@@ -5,7 +5,8 @@ exports.getAllScreens = async (req, res) => {
   try {
     const screens = await db.query(
       `SELECT s.*, u.first_name, u.last_name,
-              (SELECT COUNT(*) FROM app_screen_assignments WHERE screen_id = s.id) as app_count
+              (SELECT COUNT(*) FROM app_screen_assignments WHERE screen_id = s.id) as app_count,
+              (SELECT COUNT(*) FROM screen_element_instances WHERE screen_id = s.id) as element_count
        FROM app_screens s
        LEFT JOIN users u ON s.created_by = u.id
        WHERE s.is_active = 1
