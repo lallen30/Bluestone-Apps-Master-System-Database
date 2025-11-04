@@ -141,7 +141,7 @@ const createAppFromTemplate = async (req, res) => {
       [app_name, domain, template.description, created_by]
     );
 
-    const appId = appResult[0].insertId;
+    const appId = appResult.insertId;
 
     // Get template screens
     const screens = await db.query(
@@ -168,7 +168,7 @@ const createAppFromTemplate = async (req, res) => {
         ]
       );
 
-      const screenId = screenResult[0].insertId;
+      const screenId = screenResult.insertId;
 
       // Get elements for this template screen
       const elements = await db.query(
