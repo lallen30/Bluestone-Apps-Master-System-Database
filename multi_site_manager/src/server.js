@@ -20,6 +20,7 @@ const mobileRoutes = require('./routes/mobileRoutes');
 const mobileAuthRoutes = require('./routes/mobileAuth');
 const mobileProfileRoutes = require('./routes/mobileProfile');
 const appUsersRoutes = require('./routes/appUsers');
+const rolesRoutes = require('./routes/roles');
 const templateRoutes = require('./routes/templateRoutes');
 
 // Initialize Express app
@@ -83,7 +84,9 @@ app.get('/health', (req, res) => {
 app.use(`/api/${API_VERSION}/auth`, authRoutes);
 app.use(`/api/${API_VERSION}/users`, userRoutes);
 app.use(`/api/${API_VERSION}/apps`, appUsersRoutes); // App users management
+app.use(`/api/${API_VERSION}/apps`, rolesRoutes); // Roles management
 app.use(`/api/${API_VERSION}/apps`, appRoutes);
+app.use(`/api/${API_VERSION}`, rolesRoutes); // Permissions endpoint
 app.use(`/api/${API_VERSION}/permissions`, permissionRoutes);
 app.use(`/api/${API_VERSION}/screens`, screenRoutes);
 app.use(`/api/${API_VERSION}/screen-elements`, screenElementRoutes);
