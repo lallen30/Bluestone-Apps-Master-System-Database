@@ -1,0 +1,267 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useAuthStore } from '@/lib/store';
+import { appsAPI, rolesAPI } from '@/lib/api';
+import AppLayout from '@/components/layouts/AppLayout';
+import { Shield, Users, Key, ChevronRight } from 'lucide-react';
+
+interface Role {
+  id: number;
+  name: string;
+  display_name: string;
+  description: string;
+  is_default: number;
+  user_count: number;
+  permission_count: number;
+}
+
+interface Permission {
+  id: number;
+  name: string;
+  display_name: string;
+  description: string;
+  category: string;
+}
+
+export default function RolesPage() {
+  const router = useRouter();
+  const params = useParams();
+  const appId = params.id as string;
+  const { user, isAuthenticated } = useAuthStore();
+  
+  const [app, setApp] = useState<any>(null);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [permissionsByCategory, setPermissionsByCategory] = useState<Record<string, Permission[]>>({});
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [rolePermissions, setRolePermissions] = useState<Permission[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    
+    if (!token && !isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+
+    if (token && !user) {
+      return;
+    }
+
+    fetchData();
+  }, [isAuthenticated, user, appId, router]);
+
+  const fetchData = async () => {
+    try {
+      // Fetch app details
+      const appResponse = await appsAPI.getById(parseInt(appId));
+      setApp(appResponse.data);
+
+      // Fetch roles
+      const rolesResponse = await rolesAPI.getAppRoles(parseInt(appId));
+      setRoles(rolesResponse.data || []);
+
+      // Fetch all permissions
+      const permissionsResponse = await rolesAPI.getAllPermissions();
+      setPermissions(permissionsResponse.data.all || []);
+      setPermissionsByCategory(permissionsResponse.data.byCategory || {});
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setLoading(false);
+    }
+  };
+
+  const handleRoleClick = async (role: Role) => {
+    setSelectedRole(role);
+    try {
+      const roleDetails = await rolesAPI.getRoleDetails(parseInt(appId), role.id);
+      setRolePermissions(roleDetails.data.permissions || []);
+    } catch (error) {
+      console.error('Error fetching role details:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <AppLayout appId={appId} appName={app?.name || 'Loading...'}>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">Loading...</div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  return (
+    <AppLayout appId={appId} appName={app?.name || 'App'}>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Roles & Permissions</h1>
+            <p className="text-gray-600 mt-1">
+              Manage roles and permissions for {app?.name}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Roles List */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Roles ({roles.length})
+              </h2>
+            </div>
+            <div className="divide-y">
+              {roles.map((role) => (
+                <button
+                  key={role.id}
+                  onClick={() => handleRoleClick(role)}
+                  className={`w-full text-left p-6 hover:bg-gray-50 transition-colors ${
+                    selectedRole?.id === role.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900">{role.display_name}</h3>
+                        {role.is_default === 1 && (
+                          <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      {role.description && (
+                        <p className="text-sm text-gray-600 mt-1">{role.description}</p>
+                      )}
+                      <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Users className="w-4 h-4" />
+                          {role.user_count} users
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Key className="w-4 h-4" />
+                          {role.permission_count} permissions
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 mt-1" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Role Details / Permissions */}
+          <div className="bg-white rounded-lg shadow">
+            {selectedRole ? (
+              <>
+                <div className="p-6 border-b">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {selectedRole.display_name} Permissions
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {rolePermissions.length} permissions assigned
+                  </p>
+                </div>
+                <div className="p-6 max-h-[600px] overflow-y-auto">
+                  {Object.keys(permissionsByCategory).map((category) => {
+                    const categoryPerms = rolePermissions.filter(p => p.category === category);
+                    if (categoryPerms.length === 0) return null;
+                    
+                    return (
+                      <div key={category} className="mb-6">
+                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">
+                          {category}
+                        </h3>
+                        <div className="space-y-2">
+                          {categoryPerms.map((perm) => (
+                            <div
+                              key={perm.id}
+                              className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-lg"
+                            >
+                              <div className="mt-0.5">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900 text-sm">
+                                  {perm.display_name}
+                                </p>
+                                {perm.description && (
+                                  <p className="text-xs text-gray-600 mt-0.5">
+                                    {perm.description}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-500 mt-1 font-mono">
+                                  {perm.name}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="p-12 text-center">
+                <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">Select a role to view its permissions</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* All Permissions Reference */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6 border-b">
+            <h2 className="text-lg font-semibold text-gray-900">
+              All Available Permissions ({permissions.length})
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Complete list of permissions that can be assigned to roles
+            </p>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Object.entries(permissionsByCategory).map(([category, perms]) => (
+                <div key={category}>
+                  <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">
+                    {category} ({perms.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {perms.map((perm) => (
+                      <div
+                        key={perm.id}
+                        className="p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                      >
+                        <p className="font-medium text-gray-900 text-sm">
+                          {perm.display_name}
+                        </p>
+                        {perm.description && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {perm.description}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1 font-mono">
+                          {perm.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  );
+}
