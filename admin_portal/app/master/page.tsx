@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, usersAPI, appScreensAPI, screenElementsAPI } from '@/lib/api';
 import { Users, Globe, Activity, LogOut, Monitor, Layers } from 'lucide-react';
-import Image from 'next/image';
 
 export default function MasterDashboard() {
   const router = useRouter();
@@ -130,12 +129,10 @@ export default function MasterDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
-                <Image 
+                <img 
                   src="/logo.png" 
                   alt="Logo" 
-                  width={40} 
-                  height={40}
-                  className="object-contain"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div>
