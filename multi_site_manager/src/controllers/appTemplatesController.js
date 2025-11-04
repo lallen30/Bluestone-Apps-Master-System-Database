@@ -130,9 +130,15 @@ const createAppFromTemplate = async (req, res) => {
     const template = templates[0];
 
     // Generate domain from app name if not provided
-    const domain = app_domain || app_name.toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') + '.app';
+    let domain = app_domain;
+    if (!domain) {
+      const baseDomain = app_name.toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      // Add timestamp to ensure uniqueness
+      const timestamp = Date.now();
+      domain = `${baseDomain}-${timestamp}.app`;
+    }
 
     // Create the app
     const appResult = await db.query(
