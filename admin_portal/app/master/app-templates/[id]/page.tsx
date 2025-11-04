@@ -297,6 +297,9 @@ export default function AppTemplateDetail() {
                   Key
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Modules
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Home
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -337,6 +340,11 @@ export default function AppTemplateDetail() {
                     <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
                       {screen.screen_key}
                     </code>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {screen.elements?.length || 0} modules
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {screen.is_home_screen ? (
