@@ -129,11 +129,16 @@ const createAppFromTemplate = async (req, res) => {
 
     const template = templates[0];
 
+    // Generate domain from app name if not provided
+    const domain = app_domain || app_name.toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') + '.app';
+
     // Create the app
     const appResult = await db.query(
       `INSERT INTO apps (name, domain, description, is_active, created_by)
        VALUES (?, ?, ?, TRUE, ?)`,
-      [app_name, app_domain || null, template.description, created_by]
+      [app_name, domain, template.description, created_by]
     );
 
     const appId = appResult[0].insertId;
