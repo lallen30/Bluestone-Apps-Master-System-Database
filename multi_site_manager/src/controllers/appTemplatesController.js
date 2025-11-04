@@ -166,6 +166,7 @@ const createAppFromTemplate = async (req, res) => {
       );
 
       let screenId;
+      let isNewScreen = false;
       
       if (existingScreens && existingScreens.length > 0) {
         // Use existing screen
@@ -185,6 +186,7 @@ const createAppFromTemplate = async (req, res) => {
           ]
         );
         screenId = screenResult.insertId;
+        isNewScreen = true;
       }
 
       // Assign screen to app
@@ -194,35 +196,38 @@ const createAppFromTemplate = async (req, res) => {
         [appId, screenId, templateScreen.display_order, created_by]
       );
 
-      // Get elements for this template screen
-      const elements = await db.query(
-        `SELECT * FROM app_template_screen_elements 
-         WHERE template_screen_id = ? 
-         ORDER BY display_order`,
-        [templateScreen.id]
-      );
-
-      // Create screen elements
-      for (let element of elements) {
-        await db.query(
-          `INSERT INTO screen_element_instances 
-           (screen_id, element_id, field_key, label, placeholder, default_value, 
-            is_required, is_readonly, display_order, config, validation_rules)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            screenId,
-            element.element_id,
-            element.field_key,
-            element.label,
-            element.placeholder,
-            element.default_value,
-            element.is_required,
-            element.is_readonly,
-            element.display_order,
-            element.config,
-            element.validation_rules
-          ]
+      // Only add elements if this is a new screen (existing screens already have elements)
+      if (isNewScreen) {
+        // Get elements for this template screen
+        const elements = await db.query(
+          `SELECT * FROM app_template_screen_elements 
+           WHERE template_screen_id = ? 
+           ORDER BY display_order`,
+          [templateScreen.id]
         );
+
+        // Create screen elements
+        for (let element of elements) {
+          await db.query(
+            `INSERT INTO screen_element_instances 
+             (screen_id, element_id, field_key, label, placeholder, default_value, 
+              is_required, is_readonly, display_order, config, validation_rules)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              screenId,
+              element.element_id,
+              element.field_key,
+              element.label,
+              element.placeholder,
+              element.default_value,
+              element.is_required,
+              element.is_readonly,
+              element.display_order,
+              element.config,
+              element.validation_rules
+            ]
+          );
+        }
       }
     }
 
