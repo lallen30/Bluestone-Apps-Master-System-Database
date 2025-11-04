@@ -266,7 +266,8 @@ const getAppUsers = async (req, res) => {
     const { app_id } = req.params;
 
     const users = await query(
-      `SELECT u.id, u.email, u.first_name, u.last_name, r.name as role_name,
+      `SELECT u.id as user_id, u.email, u.first_name, u.last_name, 
+              r.name as role_name, r.level as role_level,
               usp.can_view, usp.can_edit, usp.can_delete, usp.can_publish,
               usp.can_manage_users, usp.can_manage_settings, usp.custom_permissions,
               CONCAT(granted.first_name, ' ', granted.last_name) as granted_by_name
