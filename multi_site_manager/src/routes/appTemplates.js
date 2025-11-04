@@ -5,10 +5,10 @@ const {
   getAppTemplateById,
   createAppFromTemplate
 } = require('../controllers/appTemplatesController');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 
 // All routes require authentication
-router.use(authenticateToken);
+router.use(authenticate);
 
 // Get all app templates
 router.get('/', getAllAppTemplates);
