@@ -159,21 +159,33 @@ const createAppFromTemplate = async (req, res) => {
 
     // Create screens and their elements
     for (let templateScreen of screens) {
-      // Create screen in app_screens (master screens table)
-      const screenResult = await db.query(
-        `INSERT INTO app_screens (name, screen_key, description, icon, category, is_active, created_by)
-         VALUES (?, ?, ?, ?, ?, TRUE, ?)`,
-        [
-          templateScreen.screen_name,
-          `${templateScreen.screen_key}_${appId}_${Date.now()}`, // Make screen_key unique
-          templateScreen.screen_description,
-          templateScreen.screen_icon,
-          templateScreen.screen_category,
-          created_by
-        ]
+      // Check if screen with this name already exists
+      const existingScreens = await db.query(
+        `SELECT id FROM app_screens WHERE name = ? LIMIT 1`,
+        [templateScreen.screen_name]
       );
 
-      const screenId = screenResult.insertId;
+      let screenId;
+      
+      if (existingScreens && existingScreens.length > 0) {
+        // Use existing screen
+        screenId = existingScreens[0].id;
+      } else {
+        // Create new screen in app_screens (master screens table)
+        const screenResult = await db.query(
+          `INSERT INTO app_screens (name, screen_key, description, icon, category, is_active, created_by)
+           VALUES (?, ?, ?, ?, ?, TRUE, ?)`,
+          [
+            templateScreen.screen_name,
+            `${templateScreen.screen_key}_${appId}_${Date.now()}`, // Make screen_key unique
+            templateScreen.screen_description,
+            templateScreen.screen_icon,
+            templateScreen.screen_category,
+            created_by
+          ]
+        );
+        screenId = screenResult.insertId;
+      }
 
       // Assign screen to app
       await db.query(
