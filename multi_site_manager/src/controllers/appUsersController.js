@@ -37,7 +37,7 @@ async function createAppUser(req, res) {
     }
     
     // Check if app exists
-    const [apps] = await db.query('SELECT id FROM apps WHERE id = ?', [appId]);
+    const apps = await db.query('SELECT id FROM apps WHERE id = ?', [appId]);
     if (apps.length === 0) {
       return res.status(404).json({
         success: false,
@@ -46,7 +46,7 @@ async function createAppUser(req, res) {
     }
     
     // Check if email already exists for this app
-    const [existingUsers] = await db.query(
+    const existingUsers = await db.query(
       'SELECT id FROM app_users WHERE app_id = ? AND email = ?',
       [appId, email]
     );
@@ -89,7 +89,7 @@ async function createAppUser(req, res) {
     );
     
     // Get created user
-    const [users] = await db.query(
+    const users = await db.query(
       `SELECT id, email, first_name, last_name, phone, email_verified, status, created_at
        FROM app_users WHERE id = ?`,
       [user_id]
@@ -151,7 +151,7 @@ async function getAppUsers(req, res) {
     const whereClause = whereConditions.join(' AND ');
     
     // Get total count
-    const [countResult] = await db.query(
+    const countResult = await db.query(
       `SELECT COUNT(*) as total FROM app_users WHERE ${whereClause}`,
       queryParams
     );
@@ -167,7 +167,7 @@ async function getAppUsers(req, res) {
     const sortDirection = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
     
     // Get users
-    const [users] = await db.query(
+    const users = await db.query(
       `SELECT 
         id, email, first_name, last_name, phone, 
         email_verified, status, last_login_at, created_at
@@ -209,7 +209,7 @@ async function getAppUserStats(req, res) {
     const { appId } = req.params;
     
     // Get various stats
-    const [stats] = await db.query(
+    const stats = await db.query(
       `SELECT 
         COUNT(*) as total_users,
         SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_users,
@@ -249,7 +249,7 @@ async function getAppUser(req, res) {
     const { appId, userId } = req.params;
     
     // Get user details
-    const [users] = await db.query(
+    const users = await db.query(
       `SELECT 
         id, app_id, email, first_name, last_name, phone, bio, 
         avatar_url, date_of_birth, gender, email_verified, status, 
@@ -269,13 +269,13 @@ async function getAppUser(req, res) {
     const user = users[0];
     
     // Get user settings
-    const [settings] = await db.query(
+    const settings = await db.query(
       'SELECT * FROM user_settings WHERE user_id = ?',
       [userId]
     );
     
     // Get recent activity (last 10 actions)
-    const [activity] = await db.query(
+    const activity = await db.query(
       `SELECT action, resource_type, resource_id, ip_address, created_at
        FROM user_activity_log 
        WHERE user_id = ? 
@@ -285,7 +285,7 @@ async function getAppUser(req, res) {
     );
     
     // Get active sessions count
-    const [sessions] = await db.query(
+    const sessions = await db.query(
       `SELECT COUNT(*) as active_sessions
        FROM user_sessions 
        WHERE user_id = ? AND expires_at > NOW()`,
@@ -317,11 +317,17 @@ async function getAppUser(req, res) {
  */
 async function updateAppUser(req, res) {
   try {
-    const { appId, userId } = req.params;
-    const { first_name, last_name, phone, bio, date_of_birth, gender } = req.body;
+    const appId = req.params.appId;
+    const userId = req.params.userId;
+    const first_name = req.body.first_name;
+    const last_name = req.body.last_name;
+    const phone = req.body.phone;
+    const bio = req.body.bio;
+    const date_of_birth = req.body.date_of_birth;
+    const gender = req.body.gender;
     
     // Check if user exists
-    const [users] = await db.query(
+    const users = await db.query(
       'SELECT id FROM app_users WHERE id = ? AND app_id = ?',
       [userId, appId]
     );
@@ -343,7 +349,7 @@ async function updateAppUser(req, res) {
     );
     
     // Get updated user
-    const [updatedUsers] = await db.query(
+    const updatedUsers = await db.query(
       `SELECT id, email, first_name, last_name, phone, bio, 
               date_of_birth, gender, email_verified, status, 
               last_login_at, created_at, updated_at
@@ -386,12 +392,12 @@ async function updateAppUserStatus(req, res) {
     }
     
     // Check if user exists
-    const [users] = await db.query(
+    const users = await db.query(
       'SELECT id FROM app_users WHERE id = ? AND app_id = ?',
       [userId, appId]
     );
     
-    if (users.length === 0) {
+    if (!users || users.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -502,21 +508,21 @@ async function deleteAppUser(req, res) {
     const { appId, userId } = req.params;
     
     // Check if user exists
-    const [users] = await db.query(
+    const users = await db.query(
       'SELECT id FROM app_users WHERE id = ? AND app_id = ?',
       [userId, appId]
     );
     
-    if (users.length === 0) {
+    if (!users || users.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
     
-    // Delete user (cascade will delete sessions, settings, activity logs)
+    // Delete user (soft delete by setting status to 'deleted') sessions, settings, activity logs)
     await db.query(
-      'DELETE FROM app_users WHERE id = ? AND app_id = ?',
+      'UPDATE app_users SET status = "deleted", updated_at = NOW() WHERE id = ? AND app_id = ?',
       [userId, appId]
     );
     
@@ -543,12 +549,12 @@ async function resendVerificationEmail(req, res) {
     const { appId, userId } = req.params;
     
     // Get user
-    const [users] = await db.query(
+    const users = await db.query(
       'SELECT id, email, email_verified FROM app_users WHERE id = ? AND app_id = ?',
       [userId, appId]
     );
     
-    if (users.length === 0) {
+    if (!users || users.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
