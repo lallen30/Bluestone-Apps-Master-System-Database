@@ -393,6 +393,16 @@ export const appTemplatesAPI = {
     const response = await api.delete(`/app-templates/${templateId}/screens/${screenId}`);
     return response.data;
   },
+  
+  addElementToScreen: async (templateId: number, screenId: number, data: { element_id: number; field_key: string; label?: string; placeholder?: string; default_value?: string; is_required?: boolean; is_readonly?: boolean; display_order?: number; config?: any }) => {
+    const response = await api.post(`/app-templates/${templateId}/screens/${screenId}/elements`, data);
+    return response.data;
+  },
+  
+  deleteElementFromScreen: async (templateId: number, screenId: number, elementId: number) => {
+    const response = await api.delete(`/app-templates/${templateId}/screens/${screenId}/elements/${elementId}`);
+    return response.data;
+  },
 };
 
 // App Users API

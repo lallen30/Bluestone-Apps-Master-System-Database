@@ -563,6 +563,84 @@ const deleteTemplateScreen = async (req, res) => {
   }
 };
 
+/**
+ * Add element to template screen
+ * POST /api/v1/app-templates/:templateId/screens/:screenId/elements
+ */
+const addElementToTemplateScreen = async (req, res) => {
+  try {
+    const { templateId, screenId } = req.params;
+    const { element_id, field_key, label, placeholder, default_value, is_required, is_readonly, display_order, config } = req.body;
+
+    if (!element_id || !field_key) {
+      return res.status(400).json({
+        success: false,
+        message: 'Element ID and field key are required'
+      });
+    }
+
+    const result = await db.query(
+      `INSERT INTO app_template_screen_elements 
+       (template_screen_id, element_id, field_key, label, placeholder, default_value, is_required, is_readonly, display_order, config)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [screenId, element_id, field_key, label, placeholder, default_value, is_required || false, is_readonly || false, display_order || 0, config ? JSON.stringify(config) : null]
+    );
+
+    res.json({
+      success: true,
+      message: 'Element added to screen successfully',
+      data: {
+        id: result.insertId
+      }
+    });
+  } catch (error) {
+    console.error('Add element to template screen error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add element to screen',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Delete element from template screen
+ * DELETE /api/v1/app-templates/:templateId/screens/:screenId/elements/:elementId
+ */
+const deleteElementFromTemplateScreen = async (req, res) => {
+  try {
+    const { templateId, screenId, elementId } = req.params;
+
+    // Check if element exists
+    const existing = await db.query(
+      'SELECT id FROM app_template_screen_elements WHERE id = ? AND template_screen_id = ?',
+      [elementId, screenId]
+    );
+
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Element not found'
+      });
+    }
+
+    // Delete element
+    await db.query('DELETE FROM app_template_screen_elements WHERE id = ? AND template_screen_id = ?', [elementId, screenId]);
+
+    res.json({
+      success: true,
+      message: 'Element deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete element from template screen error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete element',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllAppTemplates,
   getAppTemplateById,
@@ -572,5 +650,7 @@ module.exports = {
   addScreenToTemplate,
   updateTemplateScreen,
   deleteTemplateScreen,
+  addElementToTemplateScreen,
+  deleteElementFromTemplateScreen,
   createAppFromTemplate
 };

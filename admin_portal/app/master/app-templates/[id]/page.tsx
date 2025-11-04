@@ -322,7 +322,12 @@ export default function AppTemplateDetail() {
                         <Monitor className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{screen.screen_name}</div>
+                        <button
+                          onClick={() => router.push(`/master/app-templates/${templateId}/screens/${screen.id}`)}
+                          className="text-sm font-medium text-gray-900 hover:text-primary text-left"
+                        >
+                          {screen.screen_name}
+                        </button>
                         <div className="text-sm text-gray-500">{screen.screen_description || 'No description'}</div>
                       </div>
                     </div>
