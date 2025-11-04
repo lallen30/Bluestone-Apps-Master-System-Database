@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const { getUserPermissions } = require('../middleware/permissions');
 
 /**
  * Get current user's profile
@@ -150,8 +151,48 @@ async function getUserProfile(req, res) {
   }
 }
 
+/**
+ * Get current user's permissions
+ * GET /api/v1/mobile/profile/permissions
+ */
+async function getUserPermissionsEndpoint(req, res) {
+  try {
+    const userId = req.user.id;
+    const appId = req.user.app_id;
+    
+    const permissions = await getUserPermissions(userId, appId);
+    
+    // Group by category
+    const byCategory = {};
+    permissions.forEach(perm => {
+      const category = perm.category || 'other';
+      if (!byCategory[category]) {
+        byCategory[category] = [];
+      }
+      byCategory[category].push(perm);
+    });
+    
+    res.json({
+      success: true,
+      data: {
+        permissions,
+        byCategory,
+        permissionNames: permissions.map(p => p.name)
+      }
+    });
+    
+  } catch (error) {
+    console.error('Get user permissions error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch permissions'
+    });
+  }
+}
+
 module.exports = {
   getProfile,
   updateProfile,
-  getUserProfile
+  getUserProfile,
+  getUserPermissionsEndpoint
 };

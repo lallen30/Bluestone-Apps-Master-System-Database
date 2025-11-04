@@ -18,6 +18,13 @@ router.get('/', authenticateMobileUser, mobileProfileController.getProfile);
 router.put('/', authenticateMobileUser, mobileProfileController.updateProfile);
 
 /**
+ * @route   GET /api/v1/mobile/profile/permissions
+ * @desc    Get current user's permissions
+ * @access  Private (Mobile User)
+ */
+router.get('/permissions', authenticateMobileUser, mobileProfileController.getUserPermissionsEndpoint);
+
+/**
  * @route   GET /api/v1/mobile/profile/:userId
  * @desc    Get another user's public profile
  * @access  Private (Mobile User)
