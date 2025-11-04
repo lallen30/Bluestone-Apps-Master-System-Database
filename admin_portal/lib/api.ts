@@ -415,6 +415,40 @@ export const appUsersAPI = {
     const response = await api.post(`/apps/${appId}/users/${userId}/resend-verification`);
     return response.data;
   },
+  
+  // Role management
+  getRoles: async (appId: number, userId: number) => {
+    const response = await api.get(`/apps/${appId}/users/${userId}/roles`);
+    return response.data;
+  },
+  
+  assignRole: async (appId: number, userId: number, roleId: number) => {
+    const response = await api.post(`/apps/${appId}/users/${userId}/roles`, { role_id: roleId });
+    return response.data;
+  },
+  
+  removeRole: async (appId: number, userId: number, roleId: number) => {
+    const response = await api.delete(`/apps/${appId}/users/${userId}/roles/${roleId}`);
+    return response.data;
+  },
+};
+
+// Roles API
+export const rolesAPI = {
+  getAppRoles: async (appId: number) => {
+    const response = await api.get(`/apps/${appId}/roles`);
+    return response.data;
+  },
+  
+  getRoleDetails: async (appId: number, roleId: number) => {
+    const response = await api.get(`/apps/${appId}/roles/${roleId}`);
+    return response.data;
+  },
+  
+  getAllPermissions: async () => {
+    const response = await api.get('/permissions');
+    return response.data;
+  },
 };
 
 export default api;

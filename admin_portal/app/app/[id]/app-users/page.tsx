@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appsAPI, appUsersAPI } from '@/lib/api';
+import { appsAPI, appUsersAPI, rolesAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { Users, Search, Mail, Ban, Trash2, CheckCircle, XCircle, RefreshCw, Plus, X, Edit, Key } from 'lucide-react';
+import { Users, Search, Mail, Ban, Trash2, CheckCircle, XCircle, RefreshCw, Plus, X, Edit, Key, Shield } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
 interface AppUser {
@@ -52,6 +52,9 @@ export default function AppUsersPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isRolesModalOpen, setIsRolesModalOpen] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState<any[]>([]);
+  const [userRoles, setUserRoles] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -96,6 +99,10 @@ export default function AppUsersPage() {
       // Fetch user stats
       const statsResponse = await appUsersAPI.getStats(parseInt(appId));
       setStats(statsResponse.data);
+      
+      // Fetch available roles
+      const rolesResponse = await rolesAPI.getAppRoles(parseInt(appId));
+      setAvailableRoles(rolesResponse.data || []);
 
       // Fetch users
       const params: any = {
@@ -247,6 +254,48 @@ export default function AppUsersPage() {
       alert(error.response?.data?.message || 'Failed to change password');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRolesClick = async (user: AppUser) => {
+    setSelectedUser(user);
+    try {
+      const rolesResponse = await appUsersAPI.getRoles(parseInt(appId), user.id);
+      setUserRoles(rolesResponse.data || []);
+      setIsRolesModalOpen(true);
+    } catch (error) {
+      console.error('Error fetching user roles:', error);
+      alert('Failed to load user roles');
+    }
+  };
+
+  const handleAssignRole = async (roleId: number) => {
+    if (!selectedUser) return;
+    
+    try {
+      await appUsersAPI.assignRole(parseInt(appId), selectedUser.id, roleId);
+      const rolesResponse = await appUsersAPI.getRoles(parseInt(appId), selectedUser.id);
+      setUserRoles(rolesResponse.data || []);
+      alert('Role assigned successfully');
+    } catch (error: any) {
+      console.error('Error assigning role:', error);
+      alert(error.response?.data?.message || 'Failed to assign role');
+    }
+  };
+
+  const handleRemoveRole = async (roleId: number) => {
+    if (!selectedUser) return;
+    
+    if (!confirm('Are you sure you want to remove this role?')) return;
+    
+    try {
+      await appUsersAPI.removeRole(parseInt(appId), selectedUser.id, roleId);
+      const rolesResponse = await appUsersAPI.getRoles(parseInt(appId), selectedUser.id);
+      setUserRoles(rolesResponse.data || []);
+      alert('Role removed successfully');
+    } catch (error: any) {
+      console.error('Error removing role:', error);
+      alert(error.response?.data?.message || 'Failed to remove role');
     }
   };
 
@@ -487,6 +536,14 @@ export default function AppUsersPage() {
                           title="Change password"
                         >
                           <Key className="w-4 h-4" />
+                        </button>
+                        
+                        <button
+                          onClick={() => handleRolesClick(user)}
+                          className="text-green-600 hover:text-green-900"
+                          title="Manage roles"
+                        >
+                          <Shield className="w-4 h-4" />
                         </button>
                         
                         {!user.email_verified && (
@@ -819,6 +876,94 @@ export default function AppUsersPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Manage Roles Modal */}
+        {isRolesModalOpen && selectedUser && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Manage Roles</h2>
+                  <p className="text-sm text-gray-600 mt-1">{selectedUser.email}</p>
+                </div>
+                <button onClick={() => setIsRolesModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="p-6">
+                {/* Current Roles */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Current Roles</h3>
+                  {userRoles.length === 0 ? (
+                    <p className="text-gray-500 text-sm">No roles assigned</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {userRoles.map((role) => (
+                        <div key={role.id} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div>
+                            <p className="font-medium text-gray-900">{role.display_name}</p>
+                            {role.description && (
+                              <p className="text-sm text-gray-600">{role.description}</p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleRemoveRole(role.id)}
+                            className="text-red-600 hover:text-red-900 text-sm font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Available Roles */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Available Roles</h3>
+                  <div className="space-y-2">
+                    {availableRoles
+                      .filter(role => !userRoles.some(ur => ur.id === role.id))
+                      .map((role) => (
+                        <div key={role.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900">{role.display_name}</p>
+                              {role.is_default === 1 && (
+                                <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">Default</span>
+                              )}
+                            </div>
+                            {role.description && (
+                              <p className="text-sm text-gray-600 mt-1">{role.description}</p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-1">
+                              {role.user_count} users • {role.permission_count} permissions
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleAssignRole(role.id)}
+                            className="ml-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium"
+                          >
+                            Assign
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t">
+                  <button
+                    onClick={() => setIsRolesModalOpen(false)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
