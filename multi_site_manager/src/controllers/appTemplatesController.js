@@ -400,11 +400,176 @@ const deleteAppTemplate = async (req, res) => {
   }
 };
 
+/**
+ * Add screen to app template
+ * POST /api/v1/app-templates/:templateId/screens
+ */
+const addScreenToTemplate = async (req, res) => {
+  try {
+    const { templateId } = req.params;
+    const { screen_name, screen_key, screen_description, screen_icon, screen_category, display_order, is_home_screen } = req.body;
+
+    if (!screen_name || !screen_key) {
+      return res.status(400).json({
+        success: false,
+        message: 'Screen name and key are required'
+      });
+    }
+
+    const result = await db.query(
+      `INSERT INTO app_template_screens 
+       (template_id, screen_name, screen_key, screen_description, screen_icon, screen_category, display_order, is_home_screen)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [templateId, screen_name, screen_key, screen_description, screen_icon, screen_category, display_order || 0, is_home_screen || false]
+    );
+
+    res.json({
+      success: true,
+      message: 'Screen added to template successfully',
+      data: {
+        id: result.insertId,
+        screen_name
+      }
+    });
+  } catch (error) {
+    console.error('Add screen to template error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add screen to template',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Update template screen
+ * PUT /api/v1/app-templates/:templateId/screens/:screenId
+ */
+const updateTemplateScreen = async (req, res) => {
+  try {
+    const { templateId, screenId } = req.params;
+    const { screen_name, screen_key, screen_description, screen_icon, screen_category, display_order, is_home_screen } = req.body;
+
+    // Check if screen exists
+    const existing = await db.query(
+      'SELECT id FROM app_template_screens WHERE id = ? AND template_id = ?',
+      [screenId, templateId]
+    );
+
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Screen not found'
+      });
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+
+    if (screen_name !== undefined) {
+      updates.push('screen_name = ?');
+      values.push(screen_name);
+    }
+    if (screen_key !== undefined) {
+      updates.push('screen_key = ?');
+      values.push(screen_key);
+    }
+    if (screen_description !== undefined) {
+      updates.push('screen_description = ?');
+      values.push(screen_description);
+    }
+    if (screen_icon !== undefined) {
+      updates.push('screen_icon = ?');
+      values.push(screen_icon);
+    }
+    if (screen_category !== undefined) {
+      updates.push('screen_category = ?');
+      values.push(screen_category);
+    }
+    if (display_order !== undefined) {
+      updates.push('display_order = ?');
+      values.push(display_order);
+    }
+    if (is_home_screen !== undefined) {
+      updates.push('is_home_screen = ?');
+      values.push(is_home_screen);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update'
+      });
+    }
+
+    values.push(screenId);
+    values.push(templateId);
+    await db.query(
+      `UPDATE app_template_screens SET ${updates.join(', ')} WHERE id = ? AND template_id = ?`,
+      values
+    );
+
+    res.json({
+      success: true,
+      message: 'Screen updated successfully'
+    });
+  } catch (error) {
+    console.error('Update template screen error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update screen',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Delete template screen
+ * DELETE /api/v1/app-templates/:templateId/screens/:screenId
+ */
+const deleteTemplateScreen = async (req, res) => {
+  try {
+    const { templateId, screenId } = req.params;
+
+    // Check if screen exists
+    const existing = await db.query(
+      'SELECT id, screen_name FROM app_template_screens WHERE id = ? AND template_id = ?',
+      [screenId, templateId]
+    );
+
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Screen not found'
+      });
+    }
+
+    // Delete screen (cascade will handle elements)
+    await db.query('DELETE FROM app_template_screens WHERE id = ? AND template_id = ?', [screenId, templateId]);
+
+    res.json({
+      success: true,
+      message: 'Screen deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete template screen error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete screen',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllAppTemplates,
   getAppTemplateById,
   createAppTemplate,
   updateAppTemplate,
   deleteAppTemplate,
+  addScreenToTemplate,
+  updateTemplateScreen,
+  deleteTemplateScreen,
   createAppFromTemplate
 };

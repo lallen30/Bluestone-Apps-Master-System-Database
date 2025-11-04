@@ -241,7 +241,12 @@ export default function AppTemplates() {
                         <Sparkles className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{template.name}</div>
+                        <button
+                          onClick={() => router.push(`/master/app-templates/${template.id}`)}
+                          className="text-sm font-medium text-gray-900 hover:text-primary text-left"
+                        >
+                          {template.name}
+                        </button>
                         <div className="text-sm text-gray-500 line-clamp-1">{template.description || 'No description'}</div>
                       </div>
                     </div>

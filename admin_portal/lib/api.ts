@@ -378,6 +378,21 @@ export const appTemplatesAPI = {
     const response = await api.post('/app-templates/create-from-template', data);
     return response.data;
   },
+  
+  addScreen: async (templateId: number, data: { screen_name: string; screen_key: string; screen_description?: string; screen_icon?: string; screen_category?: string; display_order?: number; is_home_screen?: boolean }) => {
+    const response = await api.post(`/app-templates/${templateId}/screens`, data);
+    return response.data;
+  },
+  
+  updateScreen: async (templateId: number, screenId: number, data: { screen_name?: string; screen_key?: string; screen_description?: string; screen_icon?: string; screen_category?: string; display_order?: number; is_home_screen?: boolean }) => {
+    const response = await api.put(`/app-templates/${templateId}/screens/${screenId}`, data);
+    return response.data;
+  },
+  
+  deleteScreen: async (templateId: number, screenId: number) => {
+    const response = await api.delete(`/app-templates/${templateId}/screens/${screenId}`);
+    return response.data;
+  },
 };
 
 // App Users API
