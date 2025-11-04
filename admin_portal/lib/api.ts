@@ -359,6 +359,21 @@ export const appTemplatesAPI = {
     return response.data;
   },
   
+  create: async (data: { name: string; description?: string; category?: string; icon?: string; is_active?: boolean; created_by: number }) => {
+    const response = await api.post('/app-templates', data);
+    return response.data;
+  },
+  
+  update: async (id: number, data: { name?: string; description?: string; category?: string; icon?: string; is_active?: boolean }) => {
+    const response = await api.put(`/app-templates/${id}`, data);
+    return response.data;
+  },
+  
+  delete: async (id: number) => {
+    const response = await api.delete(`/app-templates/${id}`);
+    return response.data;
+  },
+  
   createFromTemplate: async (data: { template_id: number; app_name: string; app_domain?: string; created_by: number }) => {
     const response = await api.post('/app-templates/create-from-template', data);
     return response.data;

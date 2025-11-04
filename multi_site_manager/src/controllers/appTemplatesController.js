@@ -14,7 +14,6 @@ const getAllAppTemplates = async (req, res) => {
        FROM app_templates at
        LEFT JOIN app_template_screens ats ON at.id = ats.template_id
        LEFT JOIN users u ON at.created_by = u.id
-       WHERE at.is_active = TRUE
        GROUP BY at.id
        ORDER BY at.category, at.name`
     );
@@ -250,8 +249,162 @@ const createAppFromTemplate = async (req, res) => {
   }
 };
 
+/**
+ * Create a new app template
+ * POST /api/v1/app-templates
+ */
+const createAppTemplate = async (req, res) => {
+  try {
+    const { name, description, category, icon, is_active, created_by } = req.body;
+
+    if (!name || !created_by) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name and created_by are required'
+      });
+    }
+
+    const result = await db.query(
+      `INSERT INTO app_templates (name, description, category, icon, is_active, created_by)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [name, description, category, icon, is_active !== false, created_by]
+    );
+
+    res.json({
+      success: true,
+      message: 'App template created successfully',
+      data: {
+        id: result.insertId,
+        name
+      }
+    });
+  } catch (error) {
+    console.error('Create app template error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create app template',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Update an app template
+ * PUT /api/v1/app-templates/:id
+ */
+const updateAppTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, category, icon, is_active } = req.body;
+
+    // Check if template exists
+    const existing = await db.query(
+      'SELECT id FROM app_templates WHERE id = ?',
+      [id]
+    );
+
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Template not found'
+      });
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description);
+    }
+    if (category !== undefined) {
+      updates.push('category = ?');
+      values.push(category);
+    }
+    if (icon !== undefined) {
+      updates.push('icon = ?');
+      values.push(icon);
+    }
+    if (is_active !== undefined) {
+      updates.push('is_active = ?');
+      values.push(is_active);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update'
+      });
+    }
+
+    values.push(id);
+    await db.query(
+      `UPDATE app_templates SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+
+    res.json({
+      success: true,
+      message: 'App template updated successfully'
+    });
+  } catch (error) {
+    console.error('Update app template error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update app template',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Delete an app template
+ * DELETE /api/v1/app-templates/:id
+ */
+const deleteAppTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if template exists
+    const existing = await db.query(
+      'SELECT id, name FROM app_templates WHERE id = ?',
+      [id]
+    );
+
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Template not found'
+      });
+    }
+
+    // Delete template (cascade will handle screens and elements)
+    await db.query('DELETE FROM app_templates WHERE id = ?', [id]);
+
+    res.json({
+      success: true,
+      message: 'App template deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete app template error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete app template',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllAppTemplates,
   getAppTemplateById,
+  createAppTemplate,
+  updateAppTemplate,
+  deleteAppTemplate,
   createAppFromTemplate
 };

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, usersAPI, appScreensAPI, screenElementsAPI } from '@/lib/api';
-import { Users, Globe, Activity, LogOut, Monitor, Layers } from 'lucide-react';
+import { Users, Globe, Activity, LogOut, Monitor, Layers, Sparkles } from 'lucide-react';
 
 export default function MasterDashboard() {
   const router = useRouter();
@@ -153,6 +153,69 @@ export default function MasterDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Quick Links */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <button
+            onClick={() => router.push('/master/apps')}
+            className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Globe className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Apps</h3>
+                <p className="text-sm text-gray-500">Manage applications</p>
+              </div>
+            </div>
+          </button>
+          
+          <button
+            onClick={() => router.push('/master/screens')}
+            className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Monitor className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Screens</h3>
+                <p className="text-sm text-gray-500">Manage screens</p>
+              </div>
+            </div>
+          </button>
+          
+          <button
+            onClick={() => router.push('/master/screen-elements')}
+            className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <Layers className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Modules</h3>
+                <p className="text-sm text-gray-500">Element library</p>
+              </div>
+            </div>
+          </button>
+          
+          <button
+            onClick={() => router.push('/master/app-templates')}
+            className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">App Templates</h3>
+                <p className="text-sm text-gray-500">Template management</p>
+              </div>
+            </div>
+          </button>
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {stats.map((stat) => (
