@@ -159,14 +159,13 @@ const createAppFromTemplate = async (req, res) => {
 
     // Create screens and their elements
     for (let templateScreen of screens) {
-      // Create screen
+      // Create screen in app_screens (master screens table)
       const screenResult = await db.query(
-        `INSERT INTO app_screens (app_id, name, screen_key, description, icon, category, is_active, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, TRUE, ?)`,
+        `INSERT INTO app_screens (name, screen_key, description, icon, category, is_active, created_by)
+         VALUES (?, ?, ?, ?, ?, TRUE, ?)`,
         [
-          appId,
           templateScreen.screen_name,
-          templateScreen.screen_key,
+          `${templateScreen.screen_key}_${appId}_${Date.now()}`, // Make screen_key unique
           templateScreen.screen_description,
           templateScreen.screen_icon,
           templateScreen.screen_category,
@@ -175,6 +174,13 @@ const createAppFromTemplate = async (req, res) => {
       );
 
       const screenId = screenResult.insertId;
+
+      // Assign screen to app
+      await db.query(
+        `INSERT INTO app_screen_assignments (app_id, screen_id, is_active, display_order, assigned_by)
+         VALUES (?, ?, TRUE, ?, ?)`,
+        [appId, screenId, templateScreen.display_order, created_by]
+      );
 
       // Get elements for this template screen
       const elements = await db.query(
