@@ -141,8 +141,8 @@ export default function ScreenElementsLibrary() {
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Screen Elements Library</h1>
-                <p className="text-sm text-gray-500">{Array.isArray(elements) ? elements.length : 0} available elements</p>
+                <h1 className="text-2xl font-bold text-gray-900">Modules</h1>
+                <p className="text-sm text-gray-500">{Array.isArray(elements) ? elements.length : 0} available modules</p>
               </div>
             </div>
           </div>
@@ -160,7 +160,7 @@ export default function ScreenElementsLibrary() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search elements..."
+                  placeholder="Search modules..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -188,7 +188,7 @@ export default function ScreenElementsLibrary() {
           {(!Array.isArray(filteredElements) || filteredElements.length === 0) ? (
             <div className="p-12 text-center">
               <Layers className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No elements found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No modules found</h3>
               <p className="text-gray-500">Try adjusting your search or filter criteria</p>
             </div>
           ) : (
@@ -200,7 +200,7 @@ export default function ScreenElementsLibrary() {
                       onClick={() => handleSort('name')}
                       className="flex items-center gap-2 hover:text-gray-700"
                     >
-                      Element
+                      Module
                       <SortIcon field="name" />
                     </button>
                   </th>

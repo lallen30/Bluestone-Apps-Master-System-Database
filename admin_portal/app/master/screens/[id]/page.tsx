@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appScreensAPI, screenElementsAPI } from '@/lib/api';
-import { ArrowLeft, Save, Eye, Plus, X, GripVertical, Settings, Trash2, ChevronDown, User, Home, Settings as SettingsIcon, ShoppingCart, MessageSquare, Bell, Calendar, FileText, Image, MapPin, Search, LayoutDashboard, Heart, Star, Edit, Mail, Phone, Lock, LogOut, Menu, Filter, Download, Upload, Share2, Bookmark, Flag, Tag, Zap, TrendingUp, BarChart, PieChart, Activity, Briefcase, CreditCard, DollarSign, Gift, Package, Truck, Clock, CheckCircle, XCircle, AlertCircle, Info, HelpCircle, Shield, Key, Users, UserPlus, UserCheck, Globe, Wifi, Smartphone, Tablet, Monitor, Laptop, Printer, Camera, Video, Music, Headphones, Mic, Volume2, Play, Pause, SkipForward, SkipBack, Repeat, Shuffle, Building, Building2, Store, Warehouse } from 'lucide-react';
+import { ArrowLeft, Save, Plus, X, GripVertical, Settings, Trash2, ChevronDown, User, Home, Settings as SettingsIcon, ShoppingCart, MessageSquare, Bell, Calendar, FileText, Image, MapPin, Search, LayoutDashboard, Heart, Star, Edit, Mail, Phone, Lock, LogOut, Menu, Filter, Download, Upload, Share2, Bookmark, Flag, Tag, Zap, TrendingUp, BarChart, PieChart, Activity, Briefcase, CreditCard, DollarSign, Gift, Package, Truck, Clock, CheckCircle, XCircle, AlertCircle, Info, HelpCircle, Shield, Key, Users, UserPlus, UserCheck, Globe, Wifi, Smartphone, Tablet, Monitor, Laptop, Printer, Camera, Video, Music, Headphones, Mic, Volume2, Play, Pause, SkipForward, SkipBack, Repeat, Shuffle, Building, Building2, Store, Warehouse } from 'lucide-react';
 
 interface ScreenElement {
   id: number;
@@ -120,7 +120,7 @@ export default function EditScreen() {
       
       setSelectedElements(instances);
       
-      // Fetch available elements
+      // Fetch available modules
       const elementsResponse = await screenElementsAPI.getAll();
       const elementsData = Array.isArray(elementsResponse.data) ? elementsResponse.data : [];
       setAvailableElements(elementsData);
@@ -335,13 +335,6 @@ export default function EditScreen() {
               >
                 <Trash2 className="w-4 h-4" />
                 Delete
-              </button>
-              <button
-                onClick={() => alert('Preview coming soon!')}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                <Eye className="w-4 h-4" />
-                Preview
               </button>
               <button
                 onClick={handleSave}
@@ -586,7 +579,7 @@ export default function EditScreen() {
                   className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Element
+                  Add Module
                 </button>
               </div>
             </div>
@@ -595,13 +588,13 @@ export default function EditScreen() {
           {/* Screen Builder */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">Screen Elements ({selectedElements.length})</h2>
+              <h2 className="text-lg font-semibold mb-4">Modules ({selectedElements.length})</h2>
               
               {selectedElements.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
                   <Plus className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No elements added</h3>
-                  <p className="text-gray-500 mb-4">Click "Add Element" to start building your screen</p>
+                  <p className="text-gray-500 mb-4">Click "Add Module" to start building your screen</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -689,7 +682,7 @@ export default function EditScreen() {
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
             <div className="p-6 border-b">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Add Element</h2>
+                <h2 className="text-xl font-bold">Add Module</h2>
                 <button
                   onClick={() => setShowElementLibrary(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg"

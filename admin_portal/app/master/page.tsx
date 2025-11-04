@@ -114,7 +114,7 @@ export default function MasterDashboard() {
       color: 'bg-indigo-500',
     },
     {
-      title: 'Screen Elements',
+      title: 'Modules',
       value: screenElements.length,
       icon: Layers,
       color: 'bg-pink-500',
@@ -401,7 +401,7 @@ export default function MasterDashboard() {
         {/* Screen Elements Summary */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Screen Elements</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Modules</h2>
             <button
               onClick={() => router.push('/master/screen-elements')}
               className="text-sm text-primary hover:text-primary/80 font-medium"

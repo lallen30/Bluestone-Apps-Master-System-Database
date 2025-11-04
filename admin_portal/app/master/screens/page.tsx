@@ -183,7 +183,7 @@ export default function MasterScreens() {
                 className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
               >
                 <Sparkles className="w-4 h-4" />
-                From Template
+                Screen Templates
               </button>
               <button
                 onClick={() => router.push('/master/screens/new')}
