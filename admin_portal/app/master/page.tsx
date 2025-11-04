@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, usersAPI, appScreensAPI, screenElementsAPI } from '@/lib/api';
-import { Shield, Users, Globe, Activity, LogOut, Monitor, Layers } from 'lucide-react';
+import { Users, Globe, Activity, LogOut, Monitor, Layers } from 'lucide-react';
+import Image from 'next/image';
 
 export default function MasterDashboard() {
   const router = useRouter();
@@ -104,7 +105,7 @@ export default function MasterDashboard() {
     {
       title: 'Admin Users',
       value: users.filter((u) => u.role_level <= 2).length,
-      icon: Shield,
+      icon: Users,
       color: 'bg-orange-500',
     },
     {
@@ -128,8 +129,14 @@ export default function MasterDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <Shield className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
+                <Image 
+                  src="/logo.png" 
+                  alt="Logo" 
+                  width={40} 
+                  height={40}
+                  className="object-contain"
+                />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Master Admin Portal</h1>
