@@ -96,6 +96,7 @@ services:
       - ./admin_portal/app:/app/app
       - ./admin_portal/components:/app/components
       - ./admin_portal/lib:/app/lib
+      - ./admin_portal/public:/app/public
       - ./admin_portal/middleware.ts:/app/middleware.ts
       - ./admin_portal/next.config.js:/app/next.config.js
       - ./admin_portal/tailwind.config.js:/app/tailwind.config.js
