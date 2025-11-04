@@ -245,22 +245,25 @@ export default function AppUsers() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
-                        {appUser.can_view && (
+                        {!!appUser.can_view && (
                           <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">View</span>
                         )}
-                        {appUser.can_edit && (
+                        {!!appUser.can_edit && (
                           <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Edit</span>
                         )}
-                        {appUser.can_delete && (
+                        {!!appUser.can_delete && (
                           <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">Delete</span>
                         )}
-                        {appUser.can_manage_users && (
+                        {!!appUser.can_publish && (
+                          <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs">Publish</span>
+                        )}
+                        {!!appUser.can_manage_users && (
                           <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">Users</span>
                         )}
-                        {appUser.can_manage_settings && (
+                        {!!appUser.can_manage_settings && (
                           <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Settings</span>
                         )}
-                        {!appUser.can_view && !appUser.can_edit && !appUser.can_delete && !appUser.can_manage_users && !appUser.can_manage_settings && (
+                        {!appUser.can_view && !appUser.can_edit && !appUser.can_delete && !appUser.can_publish && !appUser.can_manage_users && !appUser.can_manage_settings && (
                           <span className="text-xs text-gray-400 italic">No permissions</span>
                         )}
                       </div>
