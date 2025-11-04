@@ -347,6 +347,24 @@ export const templatesAPI = {
   },
 };
 
+// App Templates API
+export const appTemplatesAPI = {
+  getAll: async () => {
+    const response = await api.get('/app-templates');
+    return response.data;
+  },
+  
+  getById: async (id: number) => {
+    const response = await api.get(`/app-templates/${id}`);
+    return response.data;
+  },
+  
+  createFromTemplate: async (data: { template_id: number; app_name: string; app_domain?: string; created_by: number }) => {
+    const response = await api.post('/app-templates/create-from-template', data);
+    return response.data;
+  },
+};
+
 // App Users API
 export const appUsersAPI = {
   createUser: async (appId: number, data: {

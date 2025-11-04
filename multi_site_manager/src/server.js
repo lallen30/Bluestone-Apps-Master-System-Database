@@ -22,6 +22,7 @@ const mobileProfileRoutes = require('./routes/mobileProfile');
 const appUsersRoutes = require('./routes/appUsers');
 const rolesRoutes = require('./routes/roles');
 const templateRoutes = require('./routes/templateRoutes');
+const appTemplatesRoutes = require('./routes/appTemplates');
 
 // Initialize Express app
 const app = express();
@@ -96,6 +97,7 @@ app.use(`/api/${API_VERSION}/mobile/auth`, mobileAuthRoutes);
 app.use(`/api/${API_VERSION}/mobile/profile`, mobileProfileRoutes);
 app.use(`/api/${API_VERSION}/mobile`, mobileRoutes);
 app.use(`/api/${API_VERSION}/templates`, templateRoutes);
+app.use(`/api/${API_VERSION}/app-templates`, appTemplatesRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

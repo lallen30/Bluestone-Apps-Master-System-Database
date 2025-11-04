@@ -90,25 +90,25 @@ export default function MasterDashboard() {
       color: 'bg-blue-500',
     },
     {
-      title: 'Total Users',
+      title: 'App Administrators',
       value: users.length,
       icon: Users,
       color: 'bg-green-500',
     },
     {
-      title: 'Active Apps',
-      value: apps.filter((app) => app.is_active).length,
-      icon: Activity,
+      title: 'Total Admins',
+      value: users.filter((u) => u.role_level <= 2).length,
+      icon: Users,
       color: 'bg-purple-500',
     },
     {
-      title: 'Admin Users',
-      value: users.filter((u) => u.role_level <= 2).length,
-      icon: Users,
+      title: 'Active Apps',
+      value: apps.filter((app) => app.is_active).length,
+      icon: Activity,
       color: 'bg-orange-500',
     },
     {
-      title: 'Total Screens',
+      title: 'App Screens',
       value: screens.length,
       icon: Monitor,
       color: 'bg-indigo-500',
@@ -247,12 +247,12 @@ export default function MasterDashboard() {
         {/* Users List */}
         <div className="bg-white rounded-lg shadow mb-8">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Users</h2>
+            <h2 className="text-lg font-semibold text-gray-900">App Administrators</h2>
             <button
               onClick={() => router.push('/master/users')}
               className="text-sm text-primary hover:text-primary/80 font-medium"
             >
-              Manage Users →
+              Manage Administrators →
             </button>
           </div>
           <div className="overflow-x-auto">
@@ -328,7 +328,7 @@ export default function MasterDashboard() {
         {/* Screens List */}
         <div className="bg-white rounded-lg shadow mb-8">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Screens</h2>
+            <h2 className="text-lg font-semibold text-gray-900">App Screens</h2>
             <button
               onClick={() => router.push('/master/screens')}
               className="text-sm text-primary hover:text-primary/80 font-medium"

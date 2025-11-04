@@ -200,7 +200,7 @@ export default function ScreenElementsLibrary() {
                       onClick={() => handleSort('name')}
                       className="flex items-center gap-2 hover:text-gray-700"
                     >
-                      Module
+                      Modules
                       <SortIcon field="name" />
                     </button>
                   </th>
