@@ -48,7 +48,7 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
       icon: Users,
     },
     {
-      name: 'Roles & Permissions',
+      name: 'App Users Roles',
       href: `/app/${appId}/roles`,
       icon: Shield,
     },

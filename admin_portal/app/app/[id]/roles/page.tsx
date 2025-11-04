@@ -89,8 +89,10 @@ export default function RolesPage() {
   if (loading) {
     return (
       <AppLayout appId={appId} appName={app?.name || 'Loading...'}>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading...</div>
+        <div className="p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-gray-500">Loading...</div>
+          </div>
         </div>
       </AppLayout>
     );
@@ -98,12 +100,12 @@ export default function RolesPage() {
 
   return (
     <AppLayout appId={appId} appName={app?.name || 'App'}>
-      <div className="space-y-6">
+      <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Roles & Permissions</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-3xl font-bold text-gray-900">Roles & Permissions</h1>
+            <p className="text-gray-600 mt-2">
               Manage roles and permissions for {app?.name}
             </p>
           </div>
