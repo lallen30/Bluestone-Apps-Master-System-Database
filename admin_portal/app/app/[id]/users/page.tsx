@@ -260,6 +260,9 @@ export default function AppUsers() {
                         {appUser.can_manage_settings && (
                           <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Settings</span>
                         )}
+                        {!appUser.can_view && !appUser.can_edit && !appUser.can_delete && !appUser.can_manage_users && !appUser.can_manage_settings && (
+                          <span className="text-xs text-gray-400 italic">No permissions</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

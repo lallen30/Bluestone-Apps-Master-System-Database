@@ -98,10 +98,33 @@ const updateUserPermissions = async (req, res) => {
       [user_id, app_id]
     );
 
+    // If permission doesn't exist, create it first
     if (!permission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Permission not found'
+      await query(
+        `INSERT INTO user_app_permissions (user_id, app_id, can_view, can_edit, can_delete, can_publish, can_manage_users, can_manage_settings)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          user_id,
+          app_id,
+          updates.can_view || false,
+          updates.can_edit || false,
+          updates.can_delete || false,
+          updates.can_publish || false,
+          updates.can_manage_users || false,
+          updates.can_manage_settings || false
+        ]
+      );
+      
+      // Get the newly created permission
+      const newPermission = await queryOne(
+        'SELECT * FROM user_app_permissions WHERE user_id = ? AND app_id = ?',
+        [user_id, app_id]
+      );
+      
+      return res.json({
+        success: true,
+        message: 'Permissions created successfully',
+        data: newPermission
       });
     }
 
