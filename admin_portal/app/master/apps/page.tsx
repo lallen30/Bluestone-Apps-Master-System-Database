@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appsAPI } from '@/lib/api';
-import { Plus, Edit, Trash2, Globe, ArrowLeft, Search, Monitor } from 'lucide-react';
+import { appsAPI, appTemplatesAPI } from '@/lib/api';
+import { Plus, Edit, Trash2, Globe, ArrowLeft, Search, Monitor, Sparkles } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 
@@ -28,7 +28,11 @@ export default function AppsManagement() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [templateAppName, setTemplateAppName] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     domain: '',
@@ -100,6 +104,47 @@ export default function AppsManagement() {
       console.error('Error fetching apps:', error);
       setLoading(false);
     }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const response = await appTemplatesAPI.getAll();
+      setTemplates(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
+  const handleCreateFromTemplate = async () => {
+    if (!selectedTemplate || !templateAppName || !user) return;
+
+    setSubmitting(true);
+    try {
+      const response = await appTemplatesAPI.createFromTemplate({
+        template_id: selectedTemplate.id,
+        app_name: templateAppName,
+        created_by: user.id
+      });
+
+      if (response.success) {
+        setIsTemplateModalOpen(false);
+        setSelectedTemplate(null);
+        setTemplateAppName('');
+        fetchApps();
+        // Navigate to the new app
+        router.push(`/app/${response.data.app_id}`);
+      }
+    } catch (error) {
+      console.error('Error creating app from template:', error);
+      alert('Failed to create app from template. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openTemplateModal = () => {
+    fetchTemplates();
+    setIsTemplateModalOpen(true);
   };
 
   // Pagination calculations
@@ -244,10 +289,19 @@ export default function AppsManagement() {
                 </div>
               </div>
             </div>
-            <Button onClick={openCreateModal}>
-              <Plus className="w-5 h-5 mr-2" />
-              Create App
-            </Button>
+            <div className="flex gap-2">
+              <button
+                onClick={openTemplateModal}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                <Sparkles className="w-4 h-4" />
+                App Templates
+              </button>
+              <Button onClick={openCreateModal}>
+                <Plus className="w-5 h-5 mr-2" />
+                Create App
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -607,6 +661,132 @@ export default function AppsManagement() {
           </div>
         </div>
       </Modal>
+
+      {/* App Template Modal */}
+      {isTemplateModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">Create App from Template</h2>
+              <p className="text-gray-600 mt-1">
+                Choose a template to get started quickly with pre-configured screens and modules
+              </p>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* App Name Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  App Name *
+                </label>
+                <input
+                  type="text"
+                  value={templateAppName}
+                  onChange={(e) => setTemplateAppName(e.target.value)}
+                  placeholder="Enter app name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+
+              {/* Template Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Choose Template *
+                </label>
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Template
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Category
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Screens
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {templates.map((template) => (
+                        <tr
+                          key={template.id}
+                          onClick={() => setSelectedTemplate(template)}
+                          className={`cursor-pointer transition-colors ${
+                            selectedTemplate?.id === template.id
+                              ? 'bg-purple-50'
+                              : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                selectedTemplate?.id === template.id
+                                  ? 'bg-purple-600'
+                                  : 'bg-purple-100'
+                              }`}>
+                                <Sparkles className={`w-4 h-4 ${
+                                  selectedTemplate?.id === template.id
+                                    ? 'text-white'
+                                    : 'text-purple-600'
+                                }`} />
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900">{template.name}</div>
+                                <div className="text-sm text-gray-600">{template.description}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
+                              {template.category}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {template.screen_count} screens
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Selected Template Info */}
+              {selectedTemplate && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-purple-900 mb-2">Selected: {selectedTemplate.name}</h3>
+                  <p className="text-sm text-purple-700 mb-2">{selectedTemplate.description}</p>
+                  <p className="text-xs text-purple-600">
+                    This template includes {selectedTemplate.screen_count} pre-configured screens with modules
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setIsTemplateModalOpen(false);
+                  setSelectedTemplate(null);
+                  setTemplateAppName('');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateFromTemplate}
+                disabled={!selectedTemplate || !templateAppName || submitting}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? 'Creating...' : 'Create App'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
