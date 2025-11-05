@@ -415,6 +415,36 @@ export const appTemplatesAPI = {
   },
 };
 
+// Upload API
+export const uploadAPI = {
+  uploadImage: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/upload/image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+  
+  uploadFile: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/upload/file', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+  
+  deleteFile: async (filename: string) => {
+    const response = await api.delete(`/upload/${filename}`);
+    return response.data;
+  },
+};
+
 // App Users API
 export const appUsersAPI = {
   createUser: async (appId: number, data: {

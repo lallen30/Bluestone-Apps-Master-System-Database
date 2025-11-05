@@ -23,6 +23,7 @@ const appUsersRoutes = require('./routes/appUsers');
 const rolesRoutes = require('./routes/roles');
 const templateRoutes = require('./routes/templateRoutes');
 const appTemplatesRoutes = require('./routes/appTemplates');
+const uploadRoutes = require('./routes/upload');
 
 // Initialize Express app
 const app = express();
@@ -98,6 +99,10 @@ app.use(`/api/${API_VERSION}/mobile/profile`, mobileProfileRoutes);
 app.use(`/api/${API_VERSION}/mobile`, mobileRoutes);
 app.use(`/api/${API_VERSION}/templates`, templateRoutes);
 app.use(`/api/${API_VERSION}/app-templates`, appTemplatesRoutes);
+app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
+
+// Serve uploaded files statically
+app.use('/uploads', express.static('uploads'));
 
 // Root endpoint
 app.get('/', (req, res) => {

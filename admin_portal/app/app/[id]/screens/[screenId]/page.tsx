@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appsAPI, appScreensAPI } from '@/lib/api';
+import { appsAPI, appScreensAPI, uploadAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { ArrowLeft, Save, Monitor } from 'lucide-react';
+import { ArrowLeft, Save, Monitor, Upload, X, Image as ImageIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import 'react-quill/dist/quill.snow.css';
 
@@ -398,6 +398,59 @@ export default function EditScreenContent() {
                         )}
                       </div>
                     )}
+                    {element.element_type === 'image_upload' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary cursor-pointer transition-colors bg-gray-50 hover:bg-gray-100">
+                            <Upload className="w-5 h-5 text-gray-600" />
+                            <span className="text-sm font-medium text-gray-700">
+                              {contentValues[element.id] ? 'Change Image' : 'Upload Image'}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  try {
+                                    const response = await uploadAPI.uploadImage(file);
+                                    const imageUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}${response.data.url}`;
+                                    handleContentChange(element.id, imageUrl);
+                                  } catch (error) {
+                                    console.error('Upload error:', error);
+                                    alert('Failed to upload image. Please try again.');
+                                  }
+                                }
+                              }}
+                              disabled={element.is_readonly}
+                            />
+                          </label>
+                          {contentValues[element.id] && (
+                            <button
+                              onClick={() => handleContentChange(element.id, '')}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                              title="Remove image"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
+                        {contentValues[element.id] && (
+                          <div className="mt-2 border border-gray-200 rounded-lg p-2 bg-gray-50">
+                            <img
+                              src={contentValues[element.id]}
+                              alt="Uploaded image"
+                              className="max-w-full h-auto mx-auto rounded"
+                              style={{ maxHeight: '200px' }}
+                            />
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500">
+                          Max file size: 5MB • Supported formats: JPG, PNG, GIF, WebP
+                        </p>
+                      </div>
+                    )}
                     {element.element_type === 'button' && (
                       <div className="space-y-2">
                         <input
@@ -438,7 +491,7 @@ export default function EditScreenContent() {
                         </div>
                       </div>
                     )}
-                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button', 'email_input', 'phone_input', 'url_input', 'number_input', 'date_picker', 'image_display', 'button', 'link'].includes(element.element_type) && (
+                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button', 'email_input', 'phone_input', 'url_input', 'number_input', 'date_picker', 'image_display', 'image_upload', 'button', 'link'].includes(element.element_type) && (
                       <div className="text-sm text-gray-500 italic">
                         {element.element_type} - Content editing coming soon
                       </div>
