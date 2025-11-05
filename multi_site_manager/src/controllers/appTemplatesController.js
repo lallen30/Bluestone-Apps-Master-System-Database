@@ -724,12 +724,105 @@ const deleteElementFromTemplateScreen = async (req, res) => {
   }
 };
 
+/**
+ * Duplicate app template
+ * POST /api/v1/app-templates/:id/duplicate
+ */
+const duplicateAppTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, created_by } = req.body;
+
+    if (!name || !created_by) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name and created_by are required'
+      });
+    }
+
+    // Get original template
+    const originalTemplate = await db.query(
+      'SELECT * FROM app_templates WHERE id = ?',
+      [id]
+    );
+
+    if (!originalTemplate || originalTemplate.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Template not found'
+      });
+    }
+
+    const template = originalTemplate[0];
+
+    // Create new template
+    const newTemplateResult = await db.query(
+      `INSERT INTO app_templates (name, description, category, icon, is_active, created_by)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [name, template.description, template.category, template.icon, template.is_active, created_by]
+    );
+
+    const newTemplateId = newTemplateResult.insertId;
+
+    // Get all screens from original template
+    const screens = await db.query(
+      'SELECT * FROM app_template_screens WHERE template_id = ? ORDER BY display_order',
+      [id]
+    );
+
+    // Copy each screen
+    for (const screen of screens) {
+      const newScreenResult = await db.query(
+        `INSERT INTO app_template_screens 
+         (template_id, screen_name, screen_key, screen_description, screen_icon, screen_category, display_order, is_home_screen)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [newTemplateId, screen.screen_name, screen.screen_key, screen.screen_description, screen.screen_icon, screen.screen_category, screen.display_order, screen.is_home_screen]
+      );
+
+      const newScreenId = newScreenResult.insertId;
+
+      // Get all elements from original screen
+      const elements = await db.query(
+        'SELECT * FROM app_template_screen_elements WHERE template_screen_id = ? ORDER BY display_order',
+        [screen.id]
+      );
+
+      // Copy each element
+      for (const element of elements) {
+        await db.query(
+          `INSERT INTO app_template_screen_elements 
+           (template_screen_id, element_id, field_key, label, placeholder, default_value, is_required, is_readonly, display_order, config)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [newScreenId, element.element_id, element.field_key, element.label, element.placeholder, element.default_value, element.is_required, element.is_readonly, element.display_order, element.config]
+        );
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Template duplicated successfully',
+      data: {
+        id: newTemplateId,
+        name: name
+      }
+    });
+  } catch (error) {
+    console.error('Duplicate app template error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to duplicate template',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllAppTemplates,
   getAppTemplateById,
   createAppTemplate,
   updateAppTemplate,
   deleteAppTemplate,
+  duplicateAppTemplate,
   addScreenToTemplate,
   updateTemplateScreen,
   deleteTemplateScreen,

@@ -6,6 +6,7 @@ const {
   createAppTemplate,
   updateAppTemplate,
   deleteAppTemplate,
+  duplicateAppTemplate,
   addScreenToTemplate,
   updateTemplateScreen,
   deleteTemplateScreen,
@@ -33,6 +34,9 @@ router.put('/:id', updateAppTemplate);
 
 // Delete app template
 router.delete('/:id', deleteAppTemplate);
+
+// Duplicate app template
+router.post('/:id/duplicate', duplicateAppTemplate);
 
 // Add screen to template
 router.post('/:templateId/screens', addScreenToTemplate);

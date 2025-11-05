@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appTemplatesAPI } from '@/lib/api';
-import { ArrowLeft, Plus, Search, Edit, Trash2, Sparkles, Eye } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Edit, Trash2, Sparkles, Eye, Copy } from 'lucide-react';
 
 export default function AppTemplates() {
   const router = useRouter();
@@ -14,6 +14,9 @@ export default function AppTemplates() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicatingTemplate, setDuplicatingTemplate] = useState<any>(null);
+  const [duplicateName, setDuplicateName] = useState('');
   const [editingTemplate, setEditingTemplate] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -132,6 +135,50 @@ export default function AppTemplates() {
     } catch (error) {
       console.error('Error saving template:', error);
       alert('Failed to save template. Please try again.');
+    }
+  };
+
+  const handleOpenDuplicateModal = (template: any) => {
+    setDuplicatingTemplate(template);
+    setDuplicateName(`${template.name} (Copy)`);
+    setShowDuplicateModal(true);
+  };
+
+  const handleCloseDuplicateModal = () => {
+    setShowDuplicateModal(false);
+    setDuplicatingTemplate(null);
+    setDuplicateName('');
+  };
+
+  const handleDuplicate = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!duplicateName.trim()) {
+      alert('Template name is required');
+      return;
+    }
+
+    if (!user?.id) {
+      alert('User not authenticated');
+      return;
+    }
+
+    try {
+      const response = await appTemplatesAPI.duplicate(duplicatingTemplate.id, {
+        name: duplicateName,
+        created_by: user.id
+      });
+      
+      handleCloseDuplicateModal();
+      fetchTemplates();
+      
+      // Navigate to the new template
+      if (response.data?.id) {
+        router.push(`/master/app-templates/${response.data.id}`);
+      }
+    } catch (error) {
+      console.error('Error duplicating template:', error);
+      alert('Failed to duplicate template. Please try again.');
     }
   };
 
@@ -287,6 +334,13 @@ export default function AppTemplates() {
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
+                        onClick={() => handleOpenDuplicateModal(template)}
+                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                        title="Duplicate Template"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => handleOpenModal(template)}
                         className="p-2 text-primary hover:bg-primary/10 rounded-lg"
                         title="Edit Template"
@@ -422,6 +476,72 @@ export default function AppTemplates() {
                   className="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
                 >
                   {editingTemplate ? 'Update Template' : 'Create Template'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Template Modal */}
+      {showDuplicateModal && duplicatingTemplate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">Duplicate Template</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Create a copy of "{duplicatingTemplate.name}"
+              </p>
+            </div>
+
+            <form onSubmit={handleDuplicate} className="p-6 space-y-4">
+              {/* Original Template Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">{duplicatingTemplate.name}</p>
+                    <p className="text-xs text-blue-700">
+                      {duplicatingTemplate.screen_count || 0} screens • {duplicatingTemplate.category || 'No category'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* New Template Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  New Template Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={duplicateName}
+                  onChange={(e) => setDuplicateName(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Enter name for the copy"
+                  required
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  All screens and modules will be copied to the new template
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseDuplicateModal}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  Duplicate
                 </button>
               </div>
             </form>

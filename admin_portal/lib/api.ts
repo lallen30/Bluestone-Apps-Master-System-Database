@@ -374,6 +374,11 @@ export const appTemplatesAPI = {
     return response.data;
   },
   
+  duplicate: async (id: number, data: { name: string; created_by: number }) => {
+    const response = await api.post(`/app-templates/${id}/duplicate`, data);
+    return response.data;
+  },
+  
   createFromTemplate: async (data: { template_id: number; app_name: string; app_domain?: string; created_by: number }) => {
     const response = await api.post('/app-templates/create-from-template', data);
     return response.data;
