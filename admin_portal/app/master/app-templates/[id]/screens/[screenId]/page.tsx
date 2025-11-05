@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appTemplatesAPI, screenElementsAPI } from '@/lib/api';
-import { ArrowLeft, Plus, Search, Trash2, Monitor, Layers, GripVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, Monitor, Layers, GripVertical, Edit } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -25,10 +25,11 @@ import { CSS } from '@dnd-kit/utilities';
 
 interface SortableModuleRowProps {
   element: any;
+  handleEdit: (element: any) => void;
   handleDelete: (id: number, name: string) => void;
 }
 
-function SortableModuleRow({ element, handleDelete }: SortableModuleRowProps) {
+function SortableModuleRow({ element, handleEdit, handleDelete }: SortableModuleRowProps) {
   const {
     attributes,
     listeners,
@@ -85,13 +86,22 @@ function SortableModuleRow({ element, handleDelete }: SortableModuleRowProps) {
         </code>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-        <button
-          onClick={() => handleDelete(element.id, element.label || element.element_name)}
-          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-          title="Remove Module"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => handleEdit(element)}
+            className="p-2 text-primary hover:bg-primary/10 rounded-lg"
+            title="Edit Module"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDelete(element.id, element.label || element.element_name)}
+            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+            title="Remove Module"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -109,10 +119,20 @@ export default function TemplateScreenModules() {
   const [availableElements, setAvailableElements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingElement, setEditingElement] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredElements, setFilteredElements] = useState<any[]>([]);
   const [selectedElement, setSelectedElement] = useState<any>(null);
   const [isReordering, setIsReordering] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    label: '',
+    field_key: '',
+    placeholder: '',
+    default_value: '',
+    is_required: false,
+    is_readonly: false,
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -192,6 +212,55 @@ export default function TemplateScreenModules() {
     } catch (error) {
       console.error('Error adding element:', error);
       alert('Failed to add module. Please try again.');
+    }
+  };
+
+  const handleEditElement = (element: any) => {
+    setEditingElement(element);
+    setEditFormData({
+      label: element.label || '',
+      field_key: element.field_key || '',
+      placeholder: element.placeholder || '',
+      default_value: element.default_value || '',
+      is_required: element.is_required || false,
+      is_readonly: element.is_readonly || false,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingElement(null);
+    setEditFormData({
+      label: '',
+      field_key: '',
+      placeholder: '',
+      default_value: '',
+      is_required: false,
+      is_readonly: false,
+    });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!editFormData.label.trim() || !editFormData.field_key.trim()) {
+      alert('Label and field key are required');
+      return;
+    }
+
+    try {
+      await appTemplatesAPI.updateElementInScreen(
+        parseInt(templateId),
+        parseInt(screenId),
+        editingElement.id,
+        editFormData
+      );
+      handleCloseEditModal();
+      fetchData();
+    } catch (error) {
+      console.error('Error updating element:', error);
+      alert('Failed to update module. Please try again.');
     }
   };
 
@@ -410,6 +479,7 @@ export default function TemplateScreenModules() {
                         <SortableModuleRow
                           key={element.id}
                           element={element}
+                          handleEdit={handleEditElement}
                           handleDelete={handleDeleteElement}
                         />
                       ))}
@@ -510,6 +580,141 @@ export default function TemplateScreenModules() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Module Modal */}
+      {showEditModal && editingElement && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">Edit Module Configuration</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Configure how this module appears on the screen
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+              {/* Module Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <Layers className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">{editingElement.element_name}</p>
+                    <p className="text-xs text-blue-700">{editingElement.element_type}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Label */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Label <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.label}
+                  onChange={(e) => setEditFormData({ ...editFormData, label: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="e.g., Email Address"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">The label shown to users</p>
+              </div>
+
+              {/* Field Key */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Field Key <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.field_key}
+                  onChange={(e) => setEditFormData({ ...editFormData, field_key: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm"
+                  placeholder="e.g., email_address"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">Unique identifier for this field (use lowercase and underscores)</p>
+              </div>
+
+              {/* Placeholder */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Placeholder Text
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.placeholder}
+                  onChange={(e) => setEditFormData({ ...editFormData, placeholder: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="e.g., Enter your email"
+                />
+                <p className="text-xs text-gray-500 mt-1">Hint text shown inside the field</p>
+              </div>
+
+              {/* Default Value */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Default Value
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.default_value}
+                  onChange={(e) => setEditFormData({ ...editFormData, default_value: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Optional default value"
+                />
+                <p className="text-xs text-gray-500 mt-1">Pre-filled value for this field</p>
+              </div>
+
+              {/* Checkboxes */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={editFormData.is_required}
+                    onChange={(e) => setEditFormData({ ...editFormData, is_required: e.target.checked })}
+                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Required Field</span>
+                    <p className="text-xs text-gray-500">User must fill this field</p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={editFormData.is_readonly}
+                    onChange={(e) => setEditFormData({ ...editFormData, is_readonly: e.target.checked })}
+                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Read Only</span>
+                    <p className="text-xs text-gray-500">User cannot edit this field</p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseEditModal}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
