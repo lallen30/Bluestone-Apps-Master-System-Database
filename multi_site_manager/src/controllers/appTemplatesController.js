@@ -604,6 +604,89 @@ const addElementToTemplateScreen = async (req, res) => {
 };
 
 /**
+ * Update element in template screen
+ * PUT /api/v1/app-templates/:templateId/screens/:screenId/elements/:elementId
+ */
+const updateElementInTemplateScreen = async (req, res) => {
+  try {
+    const { templateId, screenId, elementId } = req.params;
+    const { label, placeholder, default_value, is_required, is_readonly, display_order, config } = req.body;
+
+    // Check if element exists
+    const existing = await db.query(
+      'SELECT id FROM app_template_screen_elements WHERE id = ? AND template_screen_id = ?',
+      [elementId, screenId]
+    );
+
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Element not found'
+      });
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+
+    if (label !== undefined) {
+      updates.push('label = ?');
+      values.push(label);
+    }
+    if (placeholder !== undefined) {
+      updates.push('placeholder = ?');
+      values.push(placeholder);
+    }
+    if (default_value !== undefined) {
+      updates.push('default_value = ?');
+      values.push(default_value);
+    }
+    if (is_required !== undefined) {
+      updates.push('is_required = ?');
+      values.push(is_required);
+    }
+    if (is_readonly !== undefined) {
+      updates.push('is_readonly = ?');
+      values.push(is_readonly);
+    }
+    if (display_order !== undefined) {
+      updates.push('display_order = ?');
+      values.push(display_order);
+    }
+    if (config !== undefined) {
+      updates.push('config = ?');
+      values.push(JSON.stringify(config));
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update'
+      });
+    }
+
+    values.push(elementId, screenId);
+
+    await db.query(
+      `UPDATE app_template_screen_elements SET ${updates.join(', ')} WHERE id = ? AND template_screen_id = ?`,
+      values
+    );
+
+    res.json({
+      success: true,
+      message: 'Element updated successfully'
+    });
+  } catch (error) {
+    console.error('Update element in template screen error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update element',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Delete element from template screen
  * DELETE /api/v1/app-templates/:templateId/screens/:screenId/elements/:elementId
  */
@@ -651,6 +734,7 @@ module.exports = {
   updateTemplateScreen,
   deleteTemplateScreen,
   addElementToTemplateScreen,
+  updateElementInTemplateScreen,
   deleteElementFromTemplateScreen,
   createAppFromTemplate
 };

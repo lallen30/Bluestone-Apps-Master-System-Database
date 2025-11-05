@@ -5,6 +5,130 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appTemplatesAPI } from '@/lib/api';
 import { ArrowLeft, Plus, Search, Edit, Trash2, Sparkles, Monitor, GripVertical, Eye } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+interface SortableRowProps {
+  screen: any;
+  templateId: string;
+  router: any;
+  handleOpenModal: (screen: any) => void;
+  handleDelete: (id: number, name: string) => void;
+}
+
+function SortableRow({ screen, templateId, router, handleOpenModal, handleDelete }: SortableRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: screen.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style} className="hover:bg-gray-50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+            <GripVertical className="w-4 h-4 text-gray-400" />
+          </div>
+          <span className="text-sm font-medium text-gray-900">{screen.display_order}</span>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+            <Monitor className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <button
+              onClick={() => router.push(`/master/app-templates/${templateId}/screens/${screen.id}`)}
+              className="text-sm font-medium text-gray-900 hover:text-primary text-left"
+            >
+              {screen.screen_name}
+            </button>
+            <div className="text-sm text-gray-500">{screen.screen_description || 'No description'}</div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {screen.screen_category ? (
+          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+            {screen.screen_category}
+          </span>
+        ) : (
+          <span className="text-sm text-gray-400">-</span>
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+          {screen.screen_key}
+        </code>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm text-gray-900">
+          {screen.elements?.length || 0} modules
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {screen.is_home_screen ? (
+          <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+            Home
+          </span>
+        ) : (
+          <span className="text-sm text-gray-400">-</span>
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => router.push(`/master/app-templates/${templateId}/screens/${screen.id}`)}
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+            title="View Modules"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleOpenModal(screen)}
+            className="p-2 text-primary hover:bg-primary/10 rounded-lg"
+            title="Edit Screen"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDelete(screen.id, screen.screen_name)}
+            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+            title="Delete Screen"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 export default function AppTemplateDetail() {
   const router = useRouter();
@@ -18,6 +142,14 @@ export default function AppTemplateDetail() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingScreen, setEditingScreen] = useState<any>(null);
+  const [isReordering, setIsReordering] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
   const [formData, setFormData] = useState({
     screen_name: '',
     screen_key: '',
@@ -140,7 +272,7 @@ export default function AppTemplateDetail() {
   };
 
   const handleDelete = async (screenId: number, screenName: string) => {
-    if (!confirm(`Are you sure you want to delete "${screenName}"? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete "${screenName}"?`)) {
       return;
     }
 
@@ -150,6 +282,50 @@ export default function AppTemplateDetail() {
     } catch (error) {
       console.error('Error deleting screen:', error);
       alert('Failed to delete screen. Please try again.');
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = filteredScreens.findIndex((screen) => screen.id === active.id);
+    const newIndex = filteredScreens.findIndex((screen) => screen.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // Optimistically update UI
+    const newScreens = arrayMove(filteredScreens, oldIndex, newIndex);
+    setFilteredScreens(newScreens);
+    setScreens(newScreens);
+
+    // Update display_order on backend
+    setIsReordering(true);
+    try {
+      // Update all affected screens with new display orders
+      const updates = newScreens.map((screen, index) => ({
+        id: screen.id,
+        display_order: index + 1
+      }));
+
+      // Send batch update to backend
+      for (const update of updates) {
+        await appTemplatesAPI.updateScreen(parseInt(templateId), update.id, {
+          display_order: update.display_order
+        });
+      }
+    } catch (error) {
+      console.error('Error reordering screens:', error);
+      alert('Failed to reorder screens. Please try again.');
+      // Revert on error
+      fetchTemplateDetails();
+    } finally {
+      setIsReordering(false);
     }
   };
 
@@ -281,114 +457,61 @@ export default function AppTemplateDetail() {
 
         {/* Screens Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Order
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Screen
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Key
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Modules
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Home
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredScreens.map((screen) => (
-                <tr key={screen.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <GripVertical className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-900">{screen.display_order}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Monitor className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <button
-                          onClick={() => router.push(`/master/app-templates/${templateId}/screens/${screen.id}`)}
-                          className="text-sm font-medium text-gray-900 hover:text-primary text-left"
-                        >
-                          {screen.screen_name}
-                        </button>
-                        <div className="text-sm text-gray-500">{screen.screen_description || 'No description'}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {screen.screen_category ? (
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                        {screen.screen_category}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-400">-</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                      {screen.screen_key}
-                    </code>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {screen.elements?.length || 0} modules
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {screen.is_home_screen ? (
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                        Home
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-400">-</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => router.push(`/master/app-templates/${templateId}/screens/${screen.id}`)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                        title="View Modules"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleOpenModal(screen)}
-                        className="p-2 text-primary hover:bg-primary/10 rounded-lg"
-                        title="Edit Screen"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(screen.id, screen.screen_name)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                        title="Delete Screen"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+          {isReordering && (
+            <div className="px-6 py-2 bg-blue-50 border-b border-blue-200">
+              <p className="text-sm text-blue-800">Saving new order...</p>
+            </div>
+          )}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Order
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Screen
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Category
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Key
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Modules
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Home
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <SortableContext
+                items={filteredScreens.map(s => s.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredScreens.map((screen) => (
+                    <SortableRow
+                      key={screen.id}
+                      screen={screen}
+                      templateId={templateId}
+                      router={router}
+                      handleOpenModal={handleOpenModal}
+                      handleDelete={handleDelete}
+                    />
+                  ))}
+                </tbody>
+              </SortableContext>
+            </table>
+          </DndContext>
         </div>
 
         {filteredScreens.length === 0 && (

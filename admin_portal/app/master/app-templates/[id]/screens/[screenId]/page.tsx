@@ -5,6 +5,97 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appTemplatesAPI, screenElementsAPI } from '@/lib/api';
 import { ArrowLeft, Plus, Search, Trash2, Monitor, Layers, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+interface SortableModuleRowProps {
+  element: any;
+  handleDelete: (id: number, name: string) => void;
+}
+
+function SortableModuleRow({ element, handleDelete }: SortableModuleRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: element.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style} className="hover:bg-gray-50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+            <GripVertical className="w-4 h-4 text-gray-400" />
+          </div>
+          <span className="text-sm font-medium text-gray-900">{element.display_order}</span>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+            <Layers className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <div className="text-sm font-medium text-gray-900">{element.label || element.element_name}</div>
+            <div className="text-sm text-gray-500">{element.placeholder || '-'}</div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+          {element.element_type}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {element.element_category ? (
+          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+            {element.element_category}
+          </span>
+        ) : (
+          <span className="text-sm text-gray-400">-</span>
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+          {element.field_key}
+        </code>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <button
+          onClick={() => handleDelete(element.id, element.label || element.element_name)}
+          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+          title="Remove Module"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </td>
+    </tr>
+  );
+}
 
 export default function TemplateScreenModules() {
   const router = useRouter();
@@ -21,6 +112,14 @@ export default function TemplateScreenModules() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredElements, setFilteredElements] = useState<any[]>([]);
   const [selectedElement, setSelectedElement] = useState<any>(null);
+  const [isReordering, setIsReordering] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -107,6 +206,49 @@ export default function TemplateScreenModules() {
     } catch (error) {
       console.error('Error deleting element:', error);
       alert('Failed to remove module. Please try again.');
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = screenElements.findIndex((element) => element.id === active.id);
+    const newIndex = screenElements.findIndex((element) => element.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // Optimistically update UI
+    const newElements = arrayMove(screenElements, oldIndex, newIndex);
+    setScreenElements(newElements);
+
+    // Update display_order on backend
+    setIsReordering(true);
+    try {
+      // Update all affected elements with new display orders
+      const updates = newElements.map((element, index) => ({
+        id: element.id,
+        display_order: index + 1
+      }));
+
+      // Send batch update to backend
+      for (const update of updates) {
+        await appTemplatesAPI.updateElementInScreen(parseInt(templateId), parseInt(screenId), update.id, {
+          display_order: update.display_order
+        });
+      }
+    } catch (error) {
+      console.error('Error reordering elements:', error);
+      alert('Failed to reorder modules. Please try again.');
+      // Revert on error
+      fetchData();
+    } finally {
+      setIsReordering(false);
     }
   };
 
@@ -225,81 +367,57 @@ export default function TemplateScreenModules() {
           </div>
           
           {screenElements.length > 0 ? (
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Order
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Module
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Field Key
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {screenElements.map((element) => (
-                  <tr key={element.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-900">{element.display_order}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                          <Layers className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{element.label || element.element_name}</div>
-                          <div className="text-sm text-gray-500">{element.placeholder || '-'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
-                        {element.element_type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {element.element_category ? (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                          {element.element_category}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                        {element.field_key}
-                      </code>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleDeleteElement(element.id, element.label || element.element_name)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                        title="Remove Module"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <>
+              {isReordering && (
+                <div className="px-6 py-2 bg-blue-50 border-b border-blue-200">
+                  <p className="text-sm text-blue-800">Saving new order...</p>
+                </div>
+              )}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Order
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Module
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Category
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Field Key
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <SortableContext
+                    items={screenElements.map(e => e.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {screenElements.map((element) => (
+                        <SortableModuleRow
+                          key={element.id}
+                          element={element}
+                          handleDelete={handleDeleteElement}
+                        />
+                      ))}
+                    </tbody>
+                  </SortableContext>
+                </table>
+              </DndContext>
+            </>
           ) : (
             <div className="text-center py-12">
               <Layers className="w-16 h-16 text-gray-400 mx-auto mb-4" />

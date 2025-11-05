@@ -10,6 +10,7 @@ const {
   updateTemplateScreen,
   deleteTemplateScreen,
   addElementToTemplateScreen,
+  updateElementInTemplateScreen,
   deleteElementFromTemplateScreen,
   createAppFromTemplate
 } = require('../controllers/appTemplatesController');
@@ -44,6 +45,9 @@ router.delete('/:templateId/screens/:screenId', deleteTemplateScreen);
 
 // Add element to template screen
 router.post('/:templateId/screens/:screenId/elements', addElementToTemplateScreen);
+
+// Update element in template screen
+router.put('/:templateId/screens/:screenId/elements/:elementId', updateElementInTemplateScreen);
 
 // Delete element from template screen
 router.delete('/:templateId/screens/:screenId/elements/:elementId', deleteElementFromTemplateScreen);

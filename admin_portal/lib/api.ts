@@ -399,6 +399,11 @@ export const appTemplatesAPI = {
     return response.data;
   },
   
+  updateElementInScreen: async (templateId: number, screenId: number, elementId: number, data: { label?: string; placeholder?: string; default_value?: string; is_required?: boolean; is_readonly?: boolean; display_order?: number; config?: any }) => {
+    const response = await api.put(`/app-templates/${templateId}/screens/${screenId}/elements/${elementId}`, data);
+    return response.data;
+  },
+  
   deleteElementFromScreen: async (templateId: number, screenId: number, elementId: number) => {
     const response = await api.delete(`/app-templates/${templateId}/screens/${screenId}/elements/${elementId}`);
     return response.data;
