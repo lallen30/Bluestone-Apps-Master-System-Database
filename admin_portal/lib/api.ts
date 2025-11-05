@@ -417,9 +417,11 @@ export const appTemplatesAPI = {
 
 // Upload API
 export const uploadAPI = {
-  uploadImage: async (file: File) => {
+  uploadImage: async (file: File, appId?: number, appName?: string) => {
     const formData = new FormData();
     formData.append('file', file);
+    if (appId) formData.append('app_id', appId.toString());
+    if (appName) formData.append('app_name', appName);
     const response = await api.post('/upload/image', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -428,9 +430,11 @@ export const uploadAPI = {
     return response.data;
   },
   
-  uploadFile: async (file: File) => {
+  uploadFile: async (file: File, appId?: number, appName?: string) => {
     const formData = new FormData();
     formData.append('file', file);
+    if (appId) formData.append('app_id', appId.toString());
+    if (appName) formData.append('app_name', appName);
     const response = await api.post('/upload/file', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -439,8 +443,8 @@ export const uploadAPI = {
     return response.data;
   },
   
-  deleteFile: async (filename: string) => {
-    const response = await api.delete(`/upload/${filename}`);
+  deleteFile: async (appFolder: string, filename: string) => {
+    const response = await api.delete(`/upload/${appFolder}/${filename}`);
     return response.data;
   },
 };

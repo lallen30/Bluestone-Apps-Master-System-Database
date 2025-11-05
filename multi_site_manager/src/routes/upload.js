@@ -14,6 +14,6 @@ router.post('/image', uploadImage.single('file'), uploadFile);
 router.post('/file', uploadFileMiddleware.single('file'), uploadFile);
 
 // Delete file
-router.delete('/:filename', deleteFile);
+router.delete('/:appFolder/:filename', deleteFile);
 
 module.exports = router;

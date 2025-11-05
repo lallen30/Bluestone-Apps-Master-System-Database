@@ -2,7 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure uploads directory exists
+// Ensure base uploads directory exists
 const uploadsDir = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -11,7 +11,27 @@ if (!fs.existsSync(uploadsDir)) {
 // Configure storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, uploadsDir);
+    // Get app_id or app_name from request body or query
+    const appId = req.body.app_id || req.query.app_id;
+    const appName = req.body.app_name || req.query.app_name;
+    
+    // Create app-specific folder
+    let appFolder = 'general'; // Default folder if no app specified
+    if (appName) {
+      // Sanitize app name for folder name (remove special chars, spaces to underscores)
+      appFolder = appName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    } else if (appId) {
+      appFolder = `app_${appId}`;
+    }
+    
+    const appUploadsDir = path.join(uploadsDir, appFolder);
+    
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(appUploadsDir)) {
+      fs.mkdirSync(appUploadsDir, { recursive: true });
+    }
+    
+    cb(null, appUploadsDir);
   },
   filename: function (req, file, cb) {
     // Generate unique filename: timestamp-randomstring-originalname

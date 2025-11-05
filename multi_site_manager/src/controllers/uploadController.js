@@ -15,7 +15,14 @@ const uploadFile = async (req, res) => {
     }
 
     const file = req.file;
-    const fileUrl = `/uploads/${file.filename}`;
+    
+    // Extract app folder from the file path
+    const pathParts = file.path.split(path.sep);
+    const uploadsIndex = pathParts.indexOf('uploads');
+    const appFolder = pathParts[uploadsIndex + 1]; // Get folder after 'uploads'
+    
+    // Construct URL with app folder
+    const fileUrl = `/uploads/${appFolder}/${file.filename}`;
 
     res.json({
       success: true,
@@ -26,7 +33,8 @@ const uploadFile = async (req, res) => {
         mimetype: file.mimetype,
         size: file.size,
         url: fileUrl,
-        path: file.path
+        path: file.path,
+        appFolder: appFolder
       }
     });
   } catch (error) {
@@ -41,13 +49,13 @@ const uploadFile = async (req, res) => {
 
 /**
  * Delete file
- * DELETE /api/v1/upload/:filename
+ * DELETE /api/v1/upload/:appFolder/:filename
  */
 const deleteFile = async (req, res) => {
   try {
-    const { filename } = req.params;
+    const { appFolder, filename } = req.params;
     const uploadsDir = path.join(__dirname, '../../uploads');
-    const filePath = path.join(uploadsDir, filename);
+    const filePath = path.join(uploadsDir, appFolder, filename);
 
     // Check if file exists
     try {

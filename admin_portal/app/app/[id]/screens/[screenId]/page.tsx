@@ -414,7 +414,11 @@ export default function EditScreenContent() {
                                 const file = e.target.files?.[0];
                                 if (file) {
                                   try {
-                                    const response = await uploadAPI.uploadImage(file);
+                                    const response = await uploadAPI.uploadImage(
+                                      file, 
+                                      app?.id, 
+                                      app?.name
+                                    );
                                     const imageUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}${response.data.url}`;
                                     handleContentChange(element.id, imageUrl);
                                   } catch (error) {
