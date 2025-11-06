@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const bcrypt = require('bcryptjs');
 const { getUserPermissions } = require('../middleware/permissions');
 
 /**
@@ -190,9 +191,144 @@ async function getUserPermissionsEndpoint(req, res) {
   }
 }
 
+/**
+ * Upload/Update user avatar
+ * POST /api/v1/mobile/profile/avatar
+ */
+async function uploadAvatar(req, res) {
+  try {
+    const userId = req.user.id;
+    const appId = req.user.app_id;
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+    
+    const file = req.file;
+    
+    // Extract app folder from the file path
+    const path = require('path');
+    const pathParts = file.path.split(path.sep);
+    const uploadsIndex = pathParts.indexOf('uploads');
+    const appFolder = pathParts[uploadsIndex + 1];
+    
+    // Construct avatar URL
+    const avatarUrl = `/uploads/${appFolder}/${file.filename}`;
+    
+    // Update user's avatar_url
+    await db.query(
+      'UPDATE app_users SET avatar_url = ?, updated_at = NOW() WHERE id = ? AND app_id = ?',
+      [avatarUrl, userId, appId]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Avatar uploaded successfully',
+      data: {
+        avatar_url: avatarUrl,
+        filename: file.filename
+      }
+    });
+    
+  } catch (error) {
+    console.error('Upload avatar error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload avatar',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Change user password
+ * PUT /api/v1/mobile/profile/password
+ */
+async function changePassword(req, res) {
+  try {
+    const userId = req.user.id;
+    const appId = req.user.app_id;
+    const { current_password, new_password } = req.body;
+    
+    // Validation
+    if (!current_password || !new_password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required'
+      });
+    }
+    
+    // Validate new password strength (min 8 chars)
+    if (new_password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters long'
+      });
+    }
+    
+    // Get user's current password hash
+    const users = await db.query(
+      'SELECT password_hash FROM app_users WHERE id = ? AND app_id = ?',
+      [userId, appId]
+    );
+    
+    if (!users || users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    const user = users[0];
+    
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(current_password, user.password_hash);
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+    
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const newPasswordHash = await bcrypt.hash(new_password, salt);
+    
+    // Update password
+    await db.query(
+      'UPDATE app_users SET password_hash = ?, updated_at = NOW() WHERE id = ? AND app_id = ?',
+      [newPasswordHash, userId, appId]
+    );
+    
+    // Log activity
+    await db.query(
+      `INSERT INTO user_activity_log (user_id, app_id, activity_type, activity_description, ip_address, user_agent, created_at)
+       VALUES (?, ?, 'password_change', 'User changed password', ?, ?, NOW())`,
+      [userId, appId, req.ip, req.get('user-agent')]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+    
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to change password'
+    });
+  }
+}
+
 module.exports = {
   getProfile,
   updateProfile,
   getUserProfile,
-  getUserPermissionsEndpoint
+  getUserPermissionsEndpoint,
+  uploadAvatar,
+  changePassword
 };
