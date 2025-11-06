@@ -375,16 +375,45 @@ export default function EditScreenContent() {
                     )}
                     {element.element_type === 'image_display' && (
                       <div className="space-y-2">
-                        <input
-                          type="url"
-                          placeholder="Image URL"
-                          value={contentValues[element.id] || element.config?.imageUrl || ''}
-                          onChange={(e) => handleContentChange(element.id, e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                          disabled={element.is_readonly}
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="url"
+                            placeholder="Image URL or upload below"
+                            value={contentValues[element.id] || element.config?.imageUrl || ''}
+                            onChange={(e) => handleContentChange(element.id, e.target.value)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                            disabled={element.is_readonly}
+                          />
+                          <label className="flex items-center gap-2 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary hover:text-white cursor-pointer transition-colors">
+                            <Upload className="w-4 h-4" />
+                            <span className="text-sm font-medium">Upload</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  try {
+                                    const response = await uploadAPI.uploadImage(
+                                      file, 
+                                      app?.id, 
+                                      app?.name
+                                    );
+                                    const imageUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}${response.data.url}`;
+                                    handleContentChange(element.id, imageUrl);
+                                  } catch (error) {
+                                    console.error('Upload error:', error);
+                                    alert('Failed to upload image. Please try again.');
+                                  }
+                                }
+                              }}
+                              disabled={element.is_readonly}
+                            />
+                          </label>
+                        </div>
                         {(contentValues[element.id] || element.config?.imageUrl) && (
-                          <div className="mt-2 border border-gray-200 rounded-lg p-2 bg-gray-50">
+                          <div className="mt-2 border border-gray-200 rounded-lg p-2 bg-gray-50 relative">
                             <img
                               src={contentValues[element.id] || element.config?.imageUrl}
                               alt={element.config?.altText || 'Preview'}
@@ -394,6 +423,15 @@ export default function EditScreenContent() {
                                 width: element.config?.width || 'auto'
                               }}
                             />
+                            {!element.is_readonly && (
+                              <button
+                                onClick={() => handleContentChange(element.id, '')}
+                                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                title="Remove image"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
