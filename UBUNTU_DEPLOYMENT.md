@@ -131,6 +131,7 @@ Add the following:
 
 ```env
 NEXT_PUBLIC_API_URL=http://knoxdev.org:3000
+NEXT_PUBLIC_MASTER_DOMAIN=knoxdev.org:3001
 ```
 
 ## 6. Start Docker Services

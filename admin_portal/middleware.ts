@@ -16,7 +16,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Detect if this is master admin domain
-  const isMasterDomain = domain.includes('master') || domain.includes('localhost:3001');
+  const isMasterDomain = domain.includes('master') || domain.includes('localhost:3001') || domain.includes('knoxdev.org:3001');
 
   // Create response
   const response = NextResponse.next();
