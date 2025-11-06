@@ -63,35 +63,19 @@ git clone <your-github-repo-url> bluestone-apps
 cd bluestone-apps
 ```
 
-## 4.1. Fix Docker Platform Configuration (IMPORTANT for x86_64 servers)
+## 4.1. Use Ubuntu-Specific Docker Compose File
 
-The repository was developed on M1 Mac (ARM64). You need to update the `docker-compose.yml` for x86_64 architecture:
+The repository includes a pre-configured `docker-compose.ubuntu.yml` file for x86_64/AMD64 architecture (Intel/AMD processors).
 
 ```bash
-# Edit docker-compose.yml
-nano docker-compose.yml
+# Use the Ubuntu-specific compose file
+cp docker-compose.ubuntu.yml docker-compose.yml
+
+# Or use it directly with -f flag (recommended)
+# This way you keep both files and can switch between them
 ```
 
-**Find and REMOVE or CHANGE this line:**
-```yaml
-platform: linux/arm64  # Line 7 - REMOVE THIS LINE
-```
-
-**Or change it to:**
-```yaml
-platform: linux/amd64  # For x86_64/AMD64 architecture
-```
-
-**Alternatively, remove the platform line entirely** and Docker will auto-detect the correct architecture.
-
-**Quick fix with sed:**
-```bash
-# Remove the platform line
-sed -i '/platform: linux\/arm64/d' docker-compose.yml
-
-# Or replace it with amd64
-sed -i 's/platform: linux\/arm64/platform: linux\/amd64/g' docker-compose.yml
-```
+**Note:** The main `docker-compose.yml` is configured for ARM64 (M1 Mac). The `docker-compose.ubuntu.yml` uses `platform: linux/amd64` for Intel/AMD processors.
 
 ## 5. Configure Environment Variables
 
@@ -170,11 +154,14 @@ NEXT_PUBLIC_MASTER_DOMAIN=knoxdev.org:3001
 # Return to project root
 cd /opt/bluestone-apps
 
-# Start all services
-./start.sh
+# Option 1: Use the Ubuntu compose file directly
+docker-compose -f docker-compose.ubuntu.yml up -d
 
-# Or manually with docker-compose:
+# Option 2: If you copied it to docker-compose.yml
 docker-compose up -d
+
+# Option 3: Use start script (if it exists)
+./start.sh
 ```
 
 This will start:
@@ -430,15 +417,14 @@ sudo dpkg-reconfigure --priority=low unattended-upgrades
 ### Architecture mismatch errors (ARM64 vs AMD64)
 ```bash
 # If you see errors like "exec format error" or "no matching manifest"
-# This means the Docker image was built for wrong architecture
+# This means you're using the wrong docker-compose file
 
-# Solution: Update docker-compose.yml platform setting
-sed -i 's/platform: linux\/arm64/platform: linux\/amd64/g' docker-compose.yml
+# Solution: Use the Ubuntu-specific compose file
+docker-compose down
+docker-compose -f docker-compose.ubuntu.yml up -d --build
 
-# Or remove platform line entirely
-sed -i '/platform: linux\/arm64/d' docker-compose.yml
-
-# Rebuild containers
+# Or copy it permanently
+cp docker-compose.ubuntu.yml docker-compose.yml
 docker-compose down
 docker-compose build --no-cache
 docker-compose up -d
