@@ -809,7 +809,7 @@ export default function EditScreen() {
                   </>
                 )}
 
-                {editingElement.element.has_options && (
+                {Boolean(editingElement.element.has_options) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Options</label>
                     <div className="space-y-2 mb-2">
