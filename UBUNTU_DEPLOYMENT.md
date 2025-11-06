@@ -63,6 +63,36 @@ git clone <your-github-repo-url> bluestone-apps
 cd bluestone-apps
 ```
 
+## 4.1. Fix Docker Platform Configuration (IMPORTANT for x86_64 servers)
+
+The repository was developed on M1 Mac (ARM64). You need to update the `docker-compose.yml` for x86_64 architecture:
+
+```bash
+# Edit docker-compose.yml
+nano docker-compose.yml
+```
+
+**Find and REMOVE or CHANGE this line:**
+```yaml
+platform: linux/arm64  # Line 7 - REMOVE THIS LINE
+```
+
+**Or change it to:**
+```yaml
+platform: linux/amd64  # For x86_64/AMD64 architecture
+```
+
+**Alternatively, remove the platform line entirely** and Docker will auto-detect the correct architecture.
+
+**Quick fix with sed:**
+```bash
+# Remove the platform line
+sed -i '/platform: linux\/arm64/d' docker-compose.yml
+
+# Or replace it with amd64
+sed -i 's/platform: linux\/arm64/platform: linux\/amd64/g' docker-compose.yml
+```
+
 ## 5. Configure Environment Variables
 
 ### Multi-Site Manager (Backend API)
@@ -396,6 +426,23 @@ sudo dpkg-reconfigure --priority=low unattended-upgrades
 ```
 
 ## Troubleshooting
+
+### Architecture mismatch errors (ARM64 vs AMD64)
+```bash
+# If you see errors like "exec format error" or "no matching manifest"
+# This means the Docker image was built for wrong architecture
+
+# Solution: Update docker-compose.yml platform setting
+sed -i 's/platform: linux\/arm64/platform: linux\/amd64/g' docker-compose.yml
+
+# Or remove platform line entirely
+sed -i '/platform: linux\/arm64/d' docker-compose.yml
+
+# Rebuild containers
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+```
 
 ### Services won't start
 ```bash
