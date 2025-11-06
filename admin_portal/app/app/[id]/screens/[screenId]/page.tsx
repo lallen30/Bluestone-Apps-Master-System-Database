@@ -413,14 +413,14 @@ export default function EditScreenContent() {
                           </label>
                         </div>
                         {(contentValues[element.id] || element.config?.imageUrl) && (
-                          <div className="mt-2 border border-gray-200 rounded-lg p-2 bg-gray-50 relative">
+                          <div className="mt-2 border border-gray-200 rounded-lg p-2 bg-gray-50 relative flex justify-center">
                             <img
                               src={contentValues[element.id] || element.config?.imageUrl}
                               alt={element.config?.altText || 'Preview'}
-                              className="max-w-full h-auto mx-auto"
+                              className="h-auto object-contain"
                               style={{
                                 maxHeight: '200px',
-                                width: element.config?.width || 'auto'
+                                maxWidth: '100%'
                               }}
                             />
                             {!element.is_readonly && (
@@ -479,12 +479,12 @@ export default function EditScreenContent() {
                           )}
                         </div>
                         {contentValues[element.id] && (
-                          <div className="mt-2 border border-gray-200 rounded-lg p-2 bg-gray-50">
+                          <div className="mt-2 border border-gray-200 rounded-lg p-2 bg-gray-50 flex justify-center">
                             <img
                               src={contentValues[element.id]}
                               alt="Uploaded image"
-                              className="max-w-full h-auto mx-auto rounded"
-                              style={{ maxHeight: '200px' }}
+                              className="h-auto object-contain rounded"
+                              style={{ maxHeight: '200px', maxWidth: '100%' }}
                             />
                           </div>
                         )}
