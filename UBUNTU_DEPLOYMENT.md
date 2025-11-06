@@ -83,7 +83,7 @@ Configure the following variables in `.env`:
 # Server Configuration
 NODE_ENV=production
 PORT=3000
-API_BASE_URL=http://localhost:3000
+API_BASE_URL=http://knoxdev.org:3000
 
 # Database Configuration (matches docker-compose.yml)
 DB_HOST=mysql
@@ -91,6 +91,9 @@ DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=rootpassword
 DB_NAME=multi_site_manager
+
+# CORS Configuration
+CORS_ORIGIN=http://knoxdev.org:3001,http://knoxdev.org:3000
 
 # JWT Configuration
 JWT_SECRET=<generate-a-strong-random-secret>
@@ -103,10 +106,10 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
-EMAIL_FROM=noreply@yourdomain.com
+EMAIL_FROM=noreply@knoxdev.org
 
 # Admin Configuration
-ADMIN_EMAIL=admin@yourdomain.com
+ADMIN_EMAIL=admin@knoxdev.org
 ADMIN_PASSWORD=<generate-a-strong-password>
 ```
 
@@ -127,7 +130,7 @@ nano .env.local
 Add the following:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://knoxdev.org:3000
 ```
 
 ## 6. Start Docker Services
