@@ -30,8 +30,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const API_VERSION = process.env.API_VERSION || 'v1';
 
-// Security middleware
-app.use(helmet());
+// Security middleware with CSP configuration to allow images from API
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "img-src": ["'self'", "data:", "http://localhost:3000", "https:"],
+    },
+  },
+}));
 
 // CORS configuration
 const corsOptions = {
