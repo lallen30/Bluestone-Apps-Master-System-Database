@@ -14,6 +14,16 @@
       "key": "token",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "mobile_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "app_id",
+      "value": "1",
+      "type": "string"
     }
   ],
   "item": [
@@ -454,6 +464,442 @@
               "raw": "{{base_url}}/permissions/app/2",
               "host": ["{{base_url}}"],
               "path": ["permissions", "app", "2"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mobile API - Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('mobile_token', jsonData.data.tokens.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"app_id\": {{app_id}},\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('mobile_token', jsonData.tokens.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"app_id\": {{app_id}},\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"your_verification_token_here\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/auth/verify-email",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "auth", "verify-email"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mobile API - Profile",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/profile",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Updated\",\n  \"last_name\": \"Name\",\n  \"phone\": \"+1234567890\",\n  \"bio\": \"This is my bio\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/profile",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Upload Avatar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "avatar",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/profile/avatar",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "profile", "avatar"]
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"password123\",\n  \"new_password\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/profile/password",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "profile", "password"]
+            }
+          }
+        },
+        {
+          "name": "Get User Profile (Public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/profile/1",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "profile", "1"]
+            }
+          }
+        },
+        {
+          "name": "Get Permissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/profile/permissions",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "profile", "permissions"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mobile API - Settings",
+      "item": [
+        {
+          "name": "Get All Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/settings",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "settings"]
+            }
+          }
+        },
+        {
+          "name": "Update General Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"es\",\n  \"theme\": \"dark\",\n  \"timezone\": \"America/New_York\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/settings",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "settings"]
+            }
+          }
+        },
+        {
+          "name": "Get Notification Preferences",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/settings/notifications",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "settings", "notifications"]
+            }
+          }
+        },
+        {
+          "name": "Update Notification Preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notifications_enabled\": true,\n  \"email_notifications\": false,\n  \"push_notifications\": true,\n  \"sms_notifications\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/settings/notifications",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "settings", "notifications"]
+            }
+          }
+        },
+        {
+          "name": "Get Privacy Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/settings/privacy",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "settings", "privacy"]
+            }
+          }
+        },
+        {
+          "name": "Update Privacy Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profile_visibility\": \"friends\",\n  \"show_email\": false,\n  \"show_phone\": false,\n  \"show_location\": true,\n  \"show_online_status\": false,\n  \"allow_friend_requests\": true,\n  \"allow_messages\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/settings/privacy",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "settings", "privacy"]
+            }
+          }
+        },
+        {
+          "name": "Get Custom Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/settings/custom",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "settings", "custom"]
+            }
+          }
+        },
+        {
+          "name": "Update Custom Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"auto_play_videos\": true,\n  \"data_saver_mode\": false,\n  \"font_size\": \"medium\",\n  \"sound_effects\": true,\n  \"video_quality\": \"hd\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/settings/custom",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "settings", "custom"]
+            }
+          }
+        },
+        {
+          "name": "Reset Settings to Defaults",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/settings/reset",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "settings", "reset"]
             }
           }
         }
