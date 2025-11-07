@@ -131,7 +131,7 @@ export default function ScreenElementsLibrary() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -150,7 +150,7 @@ export default function ScreenElementsLibrary() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
@@ -192,10 +192,11 @@ export default function ScreenElementsLibrary() {
               <p className="text-gray-500">Try adjusting your search or filter criteria</p>
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-gray-200">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[250px]">
                     <button
                       onClick={() => handleSort('name')}
                       className="flex items-center gap-2 hover:text-gray-700"
@@ -204,7 +205,7 @@ export default function ScreenElementsLibrary() {
                       <SortIcon field="name" />
                     </button>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
                     <button
                       onClick={() => handleSort('element_type')}
                       className="flex items-center gap-2 hover:text-gray-700"
@@ -213,7 +214,7 @@ export default function ScreenElementsLibrary() {
                       <SortIcon field="element_type" />
                     </button>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
                     <button
                       onClick={() => handleSort('category')}
                       className="flex items-center gap-2 hover:text-gray-700"
@@ -222,13 +223,13 @@ export default function ScreenElementsLibrary() {
                       <SortIcon field="category" />
                     </button>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[250px]">
                     Description
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
                     Properties
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                     <button
                       onClick={() => handleSort('is_active')}
                       className="flex items-center gap-2 hover:text-gray-700"
@@ -299,6 +300,7 @@ export default function ScreenElementsLibrary() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </main>
