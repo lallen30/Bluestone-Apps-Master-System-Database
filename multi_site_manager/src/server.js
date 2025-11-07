@@ -19,6 +19,7 @@ const appScreenRoutes = require('./routes/appScreenRoutes');
 const mobileRoutes = require('./routes/mobileRoutes');
 const mobileAuthRoutes = require('./routes/mobileAuth');
 const mobileProfileRoutes = require('./routes/mobileProfile');
+const mobileSettingsRoutes = require('./routes/mobileSettings');
 const appUsersRoutes = require('./routes/appUsers');
 const rolesRoutes = require('./routes/roles');
 const templateRoutes = require('./routes/templateRoutes');
@@ -104,6 +105,7 @@ app.use(`/api/${API_VERSION}/app-screens`, appScreenRoutes);
 // Mobile routes - specific routes MUST come before general /mobile route
 app.use(`/api/${API_VERSION}/mobile/auth`, mobileAuthRoutes);
 app.use(`/api/${API_VERSION}/mobile/profile`, mobileProfileRoutes);
+app.use(`/api/${API_VERSION}/mobile/settings`, mobileSettingsRoutes);
 app.use(`/api/${API_VERSION}/mobile`, mobileRoutes);
 app.use(`/api/${API_VERSION}/templates`, templateRoutes);
 app.use(`/api/${API_VERSION}/app-templates`, appTemplatesRoutes);
