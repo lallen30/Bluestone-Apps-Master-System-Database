@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, appScreensAPI } from '@/lib/api';
-import { ArrowLeft, Plus, X, Monitor, Check, GripVertical } from 'lucide-react';
+import { ArrowLeft, Plus, X, Monitor, Check, GripVertical, Search } from 'lucide-react';
 
 interface Screen {
   id: number;
@@ -29,6 +29,7 @@ export default function AppScreensManagement() {
   const [allScreens, setAllScreens] = useState<Screen[]>([]);
   const [assignedScreens, setAssignedScreens] = useState<Screen[]>([]);
   const [availableScreens, setAvailableScreens] = useState<Screen[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -257,6 +258,18 @@ export default function AppScreensManagement() {
               <div className="p-6 border-b">
                 <h2 className="text-lg font-semibold">Available Screens ({availableScreens.length})</h2>
                 <p className="text-sm text-gray-500 mt-1">Click to assign to this app</p>
+                
+                {/* Search Field */}
+                <div className="mt-4 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search screens..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
               </div>
               
               <div className="p-6">
@@ -268,7 +281,18 @@ export default function AppScreensManagement() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {availableScreens.map((screen) => (
+                    {availableScreens
+                      .filter((screen) => {
+                        if (!searchTerm) return true;
+                        const search = searchTerm.toLowerCase();
+                        return (
+                          screen.name.toLowerCase().includes(search) ||
+                          screen.description?.toLowerCase().includes(search) ||
+                          screen.category?.toLowerCase().includes(search) ||
+                          screen.screen_key?.toLowerCase().includes(search)
+                        );
+                      })
+                      .map((screen) => (
                       <button
                         key={screen.id}
                         onClick={() => handleAssignScreen(screen.id)}
@@ -298,6 +322,21 @@ export default function AppScreensManagement() {
                         </div>
                       </button>
                     ))}
+                    {availableScreens.filter((screen) => {
+                      if (!searchTerm) return true;
+                      const search = searchTerm.toLowerCase();
+                      return (
+                        screen.name.toLowerCase().includes(search) ||
+                        screen.description?.toLowerCase().includes(search) ||
+                        screen.category?.toLowerCase().includes(search) ||
+                        screen.screen_key?.toLowerCase().includes(search)
+                      );
+                    }).length === 0 && searchTerm && (
+                      <div className="text-center py-8">
+                        <Search className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                        <p className="text-gray-500">No screens found matching "{searchTerm}"</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

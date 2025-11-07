@@ -19,7 +19,7 @@ interface App {
 
 export default function AppsManagement() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, isHydrated } = useAuthStore();
   const [apps, setApps] = useState<App[]>([]);
   const [filteredApps, setFilteredApps] = useState<App[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,13 +47,30 @@ export default function AppsManagement() {
   const ITEMS_PER_PAGE = 50;
 
   useEffect(() => {
-    if (!isAuthenticated || user?.role_level !== 1) {
+    // Check localStorage for token
+    const token = localStorage.getItem('auth_token');
+    
+    if (!token && !isAuthenticated) {
       router.push('/login');
       return;
     }
 
-    fetchApps();
-  }, [isAuthenticated, user, router]);
+    // Wait for store to hydrate before checking user
+    if (token && !isHydrated) {
+      return;
+    }
+
+    // After hydration, check if user is master admin
+    if (isHydrated && user?.role_level !== 1) {
+      router.push('/login');
+      return;
+    }
+
+    // Only fetch apps if we have a valid user
+    if (user) {
+      fetchApps();
+    }
+  }, [isAuthenticated, user, isHydrated, router]);
 
   useEffect(() => {
     // Filter apps based on search query

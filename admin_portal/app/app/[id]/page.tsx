@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appsAPI, permissionsAPI } from '@/lib/api';
+import { appsAPI, permissionsAPI, appScreensAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
 import { Users, Monitor, Settings as SettingsIcon, Activity } from 'lucide-react';
 
@@ -73,9 +73,11 @@ export default function AppDashboard() {
 
       // Fetch stats
       const usersResponse = await permissionsAPI.getAppUsers(appId);
+      const screensResponse = await appScreensAPI.getAppScreens(appId);
+      
       setStats({
         totalUsers: usersResponse.data?.length || 0,
-        totalScreens: 0, // Will be populated when screens are loaded
+        totalScreens: Array.isArray(screensResponse.data) ? screensResponse.data.length : 0,
         recentActivity: 0,
       });
 
