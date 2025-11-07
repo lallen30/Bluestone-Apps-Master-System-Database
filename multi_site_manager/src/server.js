@@ -25,6 +25,7 @@ const rolesRoutes = require('./routes/roles');
 const templateRoutes = require('./routes/templateRoutes');
 const appTemplatesRoutes = require('./routes/appTemplates');
 const uploadRoutes = require('./routes/upload');
+const appScreenElementsRoutes = require('./routes/appScreenElements');
 
 // Initialize Express app
 const app = express();
@@ -110,6 +111,7 @@ app.use(`/api/${API_VERSION}/mobile`, mobileRoutes);
 app.use(`/api/${API_VERSION}/templates`, templateRoutes);
 app.use(`/api/${API_VERSION}/app-templates`, appTemplatesRoutes);
 app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
+app.use(`/api/${API_VERSION}`, appScreenElementsRoutes); // App screen element overrides
 
 // Serve uploaded files statically
 app.use('/uploads', express.static('uploads'));
