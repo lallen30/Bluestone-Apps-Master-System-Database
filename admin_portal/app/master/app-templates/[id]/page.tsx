@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appTemplatesAPI } from '@/lib/api';
+import { appTemplatesAPI, appScreensAPI } from '@/lib/api';
 import { ArrowLeft, Plus, Search, Edit, Trash2, Sparkles, Monitor, GripVertical, Eye } from 'lucide-react';
 import {
   DndContext,
@@ -138,11 +138,14 @@ export default function AppTemplateDetail() {
   const [template, setTemplate] = useState<any>(null);
   const [screens, setScreens] = useState<any[]>([]);
   const [filteredScreens, setFilteredScreens] = useState<any[]>([]);
+  const [masterScreens, setMasterScreens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showSelectModal, setShowSelectModal] = useState(false);
   const [editingScreen, setEditingScreen] = useState<any>(null);
   const [isReordering, setIsReordering] = useState(false);
+  const [selectedScreenId, setSelectedScreenId] = useState<string>('');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -159,6 +162,19 @@ export default function AppTemplateDetail() {
     display_order: 0,
     is_home_screen: false
   });
+
+  useEffect(() => {
+    fetchMasterScreens();
+  }, []);
+
+  const fetchMasterScreens = async () => {
+    try {
+      const response = await appScreensAPI.getMasterScreens();
+      setMasterScreens(response.data || []);
+    } catch (error) {
+      console.error('Error fetching master screens:', error);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -219,19 +235,12 @@ export default function AppTemplateDetail() {
         display_order: screen.display_order || 0,
         is_home_screen: screen.is_home_screen || false
       });
+      setShowModal(true);
     } else {
-      setEditingScreen(null);
-      setFormData({
-        screen_name: '',
-        screen_key: '',
-        screen_description: '',
-        screen_icon: '',
-        screen_category: '',
-        display_order: screens.length + 1,
-        is_home_screen: false
-      });
+      // Show select screen modal instead
+      setSelectedScreenId('');
+      setShowSelectModal(true);
     }
-    setShowModal(true);
   };
 
   const handleCloseModal = () => {
@@ -257,17 +266,29 @@ export default function AppTemplateDetail() {
     }
 
     try {
-      if (editingScreen) {
-        await appTemplatesAPI.updateScreen(parseInt(templateId), editingScreen.id, formData);
-      } else {
-        await appTemplatesAPI.addScreen(parseInt(templateId), formData);
-      }
-      
+      await appTemplatesAPI.updateScreen(parseInt(templateId), editingScreen.id, formData);
       handleCloseModal();
       fetchTemplateDetails();
     } catch (error) {
       console.error('Error saving screen:', error);
       alert('Failed to save screen. Please try again.');
+    }
+  };
+
+  const handleAddScreen = async () => {
+    if (!selectedScreenId) {
+      alert('Please select a screen');
+      return;
+    }
+
+    try {
+      await appTemplatesAPI.addScreenFromMaster(parseInt(templateId), parseInt(selectedScreenId));
+      setShowSelectModal(false);
+      setSelectedScreenId('');
+      fetchTemplateDetails();
+    } catch (error) {
+      console.error('Error adding screen:', error);
+      alert('Failed to add screen. Please try again.');
     }
   };
 
@@ -389,7 +410,7 @@ export default function AppTemplateDetail() {
               </p>
             </div>
             <button
-              onClick={() => handleOpenModal()}
+              onClick={() => setShowSelectModal(true)}
               className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
             >
               <Plus className="w-5 h-5" />
@@ -527,7 +548,7 @@ export default function AppTemplateDetail() {
             </p>
             {!searchQuery && (
               <button
-                onClick={() => handleOpenModal()}
+                onClick={() => setShowSelectModal(true)}
                 className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
               >
                 <Plus className="w-5 h-5" />
@@ -538,7 +559,75 @@ export default function AppTemplateDetail() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Select Screen Modal */}
+      {showSelectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">Add Screen from List</h2>
+              <p className="text-sm text-gray-600 mt-1">Select a screen from the master screens list</p>
+            </div>
+
+            <div className="p-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Screen *
+              </label>
+              <select
+                value={selectedScreenId}
+                onChange={(e) => setSelectedScreenId(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="">Choose a screen...</option>
+                {masterScreens
+                  .filter(ms => !screens.some(s => s.screen_id === ms.id))
+                  .map((screen) => (
+                    <option key={screen.id} value={screen.id}>
+                      {screen.name} ({screen.category || 'No category'})
+                    </option>
+                  ))}
+              </select>
+              
+              {selectedScreenId && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-2">Screen Preview</h4>
+                  {(() => {
+                    const selected = masterScreens.find(s => s.id === parseInt(selectedScreenId));
+                    return selected ? (
+                      <div className="text-sm text-gray-600">
+                        <p><strong>Name:</strong> {selected.name}</p>
+                        <p><strong>Category:</strong> {selected.category || 'None'}</p>
+                        <p><strong>Description:</strong> {selected.description || 'No description'}</p>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              )}
+
+              <div className="flex items-center gap-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSelectModal(false);
+                    setSelectedScreenId('');
+                  }}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddScreen}
+                  disabled={!selectedScreenId}
+                  className="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add Screen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Screen Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">

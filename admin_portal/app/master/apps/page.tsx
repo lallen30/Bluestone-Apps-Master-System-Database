@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appsAPI, appTemplatesAPI } from '@/lib/api';
-import { Plus, Edit, Trash2, Globe, ArrowLeft, Search, Monitor, Sparkles } from 'lucide-react';
+import { appsAPI, appTemplatesAPI, appScreensAPI } from '@/lib/api';
+import { Plus, Edit, Trash2, Globe, ArrowLeft, Search, Monitor, Sparkles, Copy } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 
@@ -29,6 +29,7 @@ export default function AppsManagement() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
@@ -261,6 +262,65 @@ export default function AppsManagement() {
     setIsDeleteModalOpen(true);
   };
 
+  const openCopyModal = (app: App) => {
+    setSelectedApp(app);
+    setFormData({
+      name: `${app.name} (Copy)`,
+      domain: '',
+      description: app.description || '',
+      is_active: app.is_active,
+    });
+    setIsCopyModalOpen(true);
+  };
+
+  const handleCopy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm() || !selectedApp) return;
+
+    setSubmitting(true);
+    try {
+      // Create the new app
+      const createResponse = await appsAPI.create(formData);
+      
+      if (createResponse.success && createResponse.data?.id) {
+        const newAppId = createResponse.data.id;
+        
+        // Get screens from the original app
+        const screensResponse = await appScreensAPI.getAppScreens(selectedApp.id);
+        
+        console.log('Screens to copy:', screensResponse.data);
+        
+        if (screensResponse.success && Array.isArray(screensResponse.data)) {
+          // Copy each screen to the new app
+          for (const screen of screensResponse.data) {
+            try {
+              await appScreensAPI.assignToApp({
+                app_id: newAppId,
+                screen_id: screen.id, // Use 'id' not 'screen_id'
+                display_order: screen.assigned_order || screen.display_order || 0
+              });
+              console.log(`Copied screen ${screen.id} (${screen.name}) to app ${newAppId}`);
+            } catch (error) {
+              console.error(`Error copying screen ${screen.id}:`, error);
+            }
+          }
+        }
+        
+        setIsCopyModalOpen(false);
+        resetForm();
+        fetchApps();
+        
+        // Navigate to the new app
+        router.push(`/app/${newAppId}`);
+      }
+    } catch (error: any) {
+      console.error('Copy app error:', error);
+      setFormErrors({ submit: error.response?.data?.message || 'Failed to copy app' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -428,6 +488,16 @@ export default function AppsManagement() {
                         title="Manage Screens"
                       >
                         <Monitor className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openCopyModal(app);
+                        }}
+                        className="text-green-600 hover:text-green-900 mr-4"
+                        title="Copy App"
+                      >
+                        <Copy className="w-5 h-5" />
                       </button>
                       <button
                         onClick={(e) => {
@@ -641,6 +711,99 @@ export default function AppsManagement() {
             </Button>
             <Button type="submit" disabled={submitting}>
               {submitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Copy App Modal */}
+      <Modal
+        isOpen={isCopyModalOpen}
+        onClose={() => setIsCopyModalOpen(false)}
+        title="Copy App"
+      >
+        <form onSubmit={handleCopy} className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-blue-800">
+              <strong>Copying:</strong> {selectedApp?.name}
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              All screens and their configurations will be copied to the new app.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              New App Name *
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="My Application (Copy)"
+            />
+            {formErrors.name && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Domain *
+            </label>
+            <input
+              type="text"
+              value={formData.domain}
+              onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="newapp.example.com"
+            />
+            {formErrors.domain && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.domain}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              rows={3}
+              placeholder="Brief description of the application"
+            />
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="copy_is_active"
+              checked={formData.is_active}
+              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+            />
+            <label htmlFor="copy_is_active" className="ml-2 text-sm text-gray-700">
+              Active
+            </label>
+          </div>
+
+          {formErrors.submit && (
+            <p className="text-sm text-red-600">{formErrors.submit}</p>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsCopyModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Copying...' : 'Copy App'}
             </Button>
           </div>
         </form>

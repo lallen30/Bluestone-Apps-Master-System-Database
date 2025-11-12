@@ -8,6 +8,7 @@ const {
   deleteAppTemplate,
   duplicateAppTemplate,
   addScreenToTemplate,
+  addScreenFromMaster,
   updateTemplateScreen,
   deleteTemplateScreen,
   addElementToTemplateScreen,
@@ -40,6 +41,9 @@ router.post('/:id/duplicate', duplicateAppTemplate);
 
 // Add screen to template
 router.post('/:templateId/screens', addScreenToTemplate);
+
+// Add screen from master screens list
+router.post('/:templateId/screens/from-master', addScreenFromMaster);
 
 // Update template screen
 router.put('/:templateId/screens/:screenId', updateTemplateScreen);

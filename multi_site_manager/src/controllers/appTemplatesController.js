@@ -443,6 +443,77 @@ const addScreenToTemplate = async (req, res) => {
 };
 
 /**
+ * Add screen from master screens list
+ * POST /api/v1/app-templates/:templateId/screens/from-master
+ */
+const addScreenFromMaster = async (req, res) => {
+  try {
+    const { templateId } = req.params;
+    const { screen_id } = req.body;
+
+    if (!screen_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'screen_id is required'
+      });
+    }
+
+    // Get screen details from master screens
+    const screenResult = await db.query(
+      `SELECT id, name, description, category, icon FROM app_screens WHERE id = ?`,
+      [screen_id]
+    );
+
+    const screenData = Array.isArray(screenResult) && Array.isArray(screenResult[0]) 
+      ? screenResult[0] 
+      : screenResult;
+
+    if (!screenData || screenData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Screen not found'
+      });
+    }
+
+    const screen = screenData[0];
+
+    // Get next display order
+    const orderResult = await db.query(
+      `SELECT MAX(display_order) as max_order FROM app_template_screens WHERE template_id = ?`,
+      [templateId]
+    );
+    const orderData = Array.isArray(orderResult) && Array.isArray(orderResult[0]) 
+      ? orderResult[0] 
+      : orderResult;
+    const nextOrder = (orderData && orderData[0]?.max_order || 0) + 1;
+
+    // Add screen to template
+    const result = await db.query(
+      `INSERT INTO app_template_screens 
+       (template_id, screen_id, screen_name, screen_key, screen_description, screen_icon, screen_category, display_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [templateId, screen_id, screen.name, screen.name.toLowerCase().replace(/\s+/g, '_'), screen.description, screen.icon, screen.category, nextOrder]
+    );
+
+    res.json({
+      success: true,
+      message: 'Screen added to template successfully',
+      data: {
+        id: result.insertId,
+        screen_name: screen.name
+      }
+    });
+  } catch (error) {
+    console.error('Add screen from master error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add screen to template',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Update template screen
  * PUT /api/v1/app-templates/:templateId/screens/:screenId
  */
@@ -824,6 +895,7 @@ module.exports = {
   deleteAppTemplate,
   duplicateAppTemplate,
   addScreenToTemplate,
+  addScreenFromMaster,
   updateTemplateScreen,
   deleteTemplateScreen,
   addElementToTemplateScreen,
