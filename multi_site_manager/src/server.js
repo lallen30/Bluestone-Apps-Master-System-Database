@@ -26,6 +26,9 @@ const templateRoutes = require('./routes/templateRoutes');
 const appTemplatesRoutes = require('./routes/appTemplates');
 const uploadRoutes = require('./routes/upload');
 const appScreenElementsRoutes = require('./routes/appScreenElements');
+const mobileScreenRoutes = require('./routes/mobileScreenRoutes');
+const submissionsRoutes = require('./routes/submissions');
+const screenRolesRoutes = require('./routes/screenRoles');
 
 // Initialize Express app
 const app = express();
@@ -107,11 +110,14 @@ app.use(`/api/${API_VERSION}/app-screens`, appScreenRoutes);
 app.use(`/api/${API_VERSION}/mobile/auth`, mobileAuthRoutes);
 app.use(`/api/${API_VERSION}/mobile/profile`, mobileProfileRoutes);
 app.use(`/api/${API_VERSION}/mobile/settings`, mobileSettingsRoutes);
+app.use(`/api/${API_VERSION}/mobile`, mobileScreenRoutes); // Screen API for mobile apps
 app.use(`/api/${API_VERSION}/mobile`, mobileRoutes);
 app.use(`/api/${API_VERSION}/templates`, templateRoutes);
 app.use(`/api/${API_VERSION}/app-templates`, appTemplatesRoutes);
 app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
 app.use(`/api/${API_VERSION}`, appScreenElementsRoutes); // App screen element overrides
+app.use(`/api/${API_VERSION}`, submissionsRoutes); // Form submissions
+app.use(`/api/${API_VERSION}`, screenRolesRoutes); // Screen access & role management
 
 // Serve uploaded files statically
 app.use('/uploads', express.static('uploads'));

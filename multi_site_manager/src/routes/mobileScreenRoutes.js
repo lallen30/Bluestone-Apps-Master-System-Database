@@ -1,0 +1,43 @@
+const express = require('express');
+const router = express.Router();
+const mobileScreensController = require('../controllers/mobileScreensController');
+const { authenticateMobileUser } = require('../middleware/mobileAuth');
+
+// Note: These endpoints use optional authentication
+// If JWT token is provided, screens are filtered by user's role permissions
+// Without token, all published screens are returned (for preview/demo)
+
+/**
+ * GET /api/v1/mobile/apps/:appId/screens
+ * Get all published screens for an app
+ * Optional auth: Filters by user's role if authenticated
+ */
+router.get('/apps/:appId/screens', 
+  authenticateMobileUser({ required: false }),
+  mobileScreensController.getPublishedScreens
+);
+
+/**
+ * GET /api/v1/mobile/apps/:appId/screens/:screenId
+ * Get a specific screen with its elements
+ * Optional auth: Checks role permission if authenticated
+ */
+router.get('/apps/:appId/screens/:screenId',
+  authenticateMobileUser({ required: false }),
+  mobileScreensController.getScreenWithElements
+);
+
+/**
+ * POST /api/v1/mobile/apps/:appId/screens/:screenId/submit
+ * Submit form data for a screen
+ * Body: {
+ *   submission_data: { field_key1: value1, field_key2: value2, ... },
+ *   device_info: "iOS 15.0" // optional
+ * }
+ */
+router.post('/apps/:appId/screens/:screenId/submit', 
+  authenticateMobileUser({ required: false }), // Optional auth - captures user_id if logged in
+  mobileScreensController.submitScreenData
+);
+
+module.exports = router;

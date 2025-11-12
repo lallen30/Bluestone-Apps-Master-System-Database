@@ -4,18 +4,27 @@ const db = require('../config/database');
 /**
  * Middleware to authenticate mobile app users via JWT
  * Validates token and attaches user info to request
+ * Can be configured to allow optional authentication
  */
-async function authenticateMobileUser(req, res, next) {
-  try {
-    // Get token from Authorization header
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        message: 'No token provided. Please include Authorization header with Bearer token.'
-      });
-    }
+function authenticateMobileUser(options = {}) {
+  const required = options.required !== false; // Default to required
+  
+  return async (req, res, next) => {
+    try {
+      // Get token from Authorization header
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        if (!required) {
+          // Optional auth - continue without user
+          req.user = null;
+          return next();
+        }
+        return res.status(401).json({
+          success: false,
+          message: 'No token provided. Please include Authorization header with Bearer token.'
+        });
+      }
     
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     
@@ -64,13 +73,14 @@ async function authenticateMobileUser(req, res, next) {
     );
     
     next();
-  } catch (error) {
-    console.error('Authentication error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Authentication failed'
-    });
-  }
+    } catch (error) {
+      console.error('Authentication error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Authentication failed'
+      });
+    }
+  };
 }
 
 /**
