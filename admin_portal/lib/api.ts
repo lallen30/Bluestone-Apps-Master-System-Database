@@ -189,6 +189,11 @@ export const appScreensAPI = {
     return response.data;
   },
   
+  getMasterScreens: async () => {
+    const response = await api.get('/app-screens');
+    return response.data;
+  },
+  
   getById: async (id: number) => {
     const response = await api.get(`/app-screens/${id}`);
     return response.data;
@@ -238,6 +243,21 @@ export const appScreensAPI = {
   
   unassignFromApp: async (appId: number, screenId: number) => {
     const response = await api.delete(`/app-screens/app/${appId}/${screenId}`);
+    return response.data;
+  },
+  
+  // Auto-sync toggle
+  toggleAutoSync: async (appId: number, screenId: number, autoSyncEnabled: boolean) => {
+    const response = await api.put(`/app-screens/app/${appId}/screen/${screenId}/auto-sync`, {
+      auto_sync_enabled: autoSyncEnabled
+    });
+    return response.data;
+  },
+  
+  toggleAutoSyncAll: async (appId: number, autoSyncEnabled: boolean) => {
+    const response = await api.put(`/app-screens/app/${appId}/auto-sync-all`, {
+      auto_sync_enabled: autoSyncEnabled
+    });
     return response.data;
   },
   
@@ -386,6 +406,11 @@ export const appTemplatesAPI = {
   
   addScreen: async (templateId: number, data: { screen_name: string; screen_key: string; screen_description?: string; screen_icon?: string; screen_category?: string; display_order?: number; is_home_screen?: boolean }) => {
     const response = await api.post(`/app-templates/${templateId}/screens`, data);
+    return response.data;
+  },
+  
+  addScreenFromMaster: async (templateId: number, screenId: number) => {
+    const response = await api.post(`/app-templates/${templateId}/screens/from-master`, { screen_id: screenId });
     return response.data;
   },
   
@@ -549,6 +574,75 @@ export const rolesAPI = {
   
   getAllPermissions: async () => {
     const response = await api.get('/permissions');
+    return response.data;
+  },
+};
+
+// App Screen Elements API (for app-specific customization)
+export const appScreenElementsAPI = {
+  // Get all elements for an app's screen (master + overrides + custom)
+  getAppScreenElements: async (appId: number, screenId: number) => {
+    const response = await api.get(`/apps/${appId}/screens/${screenId}/elements`);
+    return response.data;
+  },
+  
+  // Create or update an override for a master element
+  createOrUpdateOverride: async (appId: number, screenId: number, elementInstanceId: number, data: any) => {
+    const response = await api.put(`/apps/${appId}/screens/${screenId}/elements/${elementInstanceId}/override`, data);
+    return response.data;
+  },
+  
+  // Delete an override (revert to master)
+  deleteOverride: async (appId: number, elementInstanceId: number) => {
+    const response = await api.delete(`/apps/${appId}/elements/${elementInstanceId}/override`);
+    return response.data;
+  },
+  
+  // Add a custom element to an app's screen
+  addCustomElement: async (appId: number, screenId: number, data: any) => {
+    const response = await api.post(`/apps/${appId}/screens/${screenId}/elements/custom`, data);
+    return response.data;
+  },
+  
+  // Update a custom element
+  updateCustomElement: async (appId: number, customElementId: number, data: any) => {
+    const response = await api.put(`/apps/${appId}/elements/custom/${customElementId}`, data);
+    return response.data;
+  },
+  
+  // Delete a custom element
+  deleteCustomElement: async (appId: number, customElementId: number) => {
+    const response = await api.delete(`/apps/${appId}/elements/custom/${customElementId}`);
+    return response.data;
+  },
+};
+
+// Submissions API
+export const submissionsAPI = {
+  // Get submissions for an app
+  getSubmissions: async (appId: number, params?: { screenId?: string; dateFilter?: string; page?: number; limit?: number }) => {
+    const response = await api.get(`/apps/${appId}/submissions`, { params });
+    return response.data;
+  },
+  
+  // Get submission statistics
+  getStats: async (appId: number) => {
+    const response = await api.get(`/apps/${appId}/submissions/stats`);
+    return response.data;
+  },
+  
+  // Export submissions as CSV
+  exportCSV: async (appId: number, params?: { screenId?: string; dateFilter?: string }) => {
+    const response = await api.get(`/apps/${appId}/submissions/export`, {
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+  
+  // Delete a submission
+  deleteSubmission: async (submissionId: number) => {
+    const response = await api.delete(`/submissions/${submissionId}`);
     return response.data;
   },
 };

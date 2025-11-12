@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appsAPI, appScreensAPI, uploadAPI } from '@/lib/api';
+import { appsAPI, appScreensAPI, appScreenElementsAPI, uploadAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
 import { ArrowLeft, Save, Monitor, Upload, X, Image as ImageIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -51,7 +51,10 @@ export default function EditScreenContent() {
       // Fetch screen with content
       const screenResponse = await appScreensAPI.getAppScreenContent(parseInt(appId), parseInt(screenId));
       setScreen(screenResponse.data);
-      const elementsData = screenResponse.data.elements || [];
+      
+      // Fetch elements with app-specific overrides and custom elements
+      const elementsResponse = await appScreenElementsAPI.getAppScreenElements(parseInt(appId), parseInt(screenId));
+      const elementsData = elementsResponse.elements || [];
       
       console.log('🔵 NEW CODE: Got elements, count:', elementsData.length);
       

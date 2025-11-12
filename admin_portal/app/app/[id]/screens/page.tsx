@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, permissionsAPI, appScreensAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { Monitor, Sparkles, Edit, Eye, EyeOff, GripVertical } from 'lucide-react';
+import { Monitor, Sparkles, Edit, Eye, EyeOff, GripVertical, Settings, RefreshCw, RefreshCwOff } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -28,9 +28,12 @@ interface SortableRowProps {
   screen: any;
   onPublishToggle: (screenId: number, isPublished: boolean) => void;
   onEdit: (screenId: number) => void;
+  onManageFields: (screenId: number) => void;
+  onToggleAutoSync: (screenId: number, autoSyncEnabled: boolean) => void;
+  isMasterAdmin: boolean;
 }
 
-function SortableRow({ screen, onPublishToggle, onEdit }: SortableRowProps) {
+function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, isMasterAdmin }: SortableRowProps) {
   const {
     attributes,
     listeners,
@@ -100,6 +103,28 @@ function SortableRow({ screen, onPublishToggle, onEdit }: SortableRowProps) {
           >
             {screen.is_published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
+          {isMasterAdmin && (
+            <>
+              <button
+                onClick={() => onToggleAutoSync(screen.id, !screen.auto_sync_enabled)}
+                className={`p-2 rounded-lg ${
+                  screen.auto_sync_enabled
+                    ? 'text-blue-600 hover:bg-blue-50'
+                    : 'text-gray-400 hover:bg-gray-100'
+                }`}
+                title={screen.auto_sync_enabled ? 'Auto-Sync ON: New modules will appear' : 'Auto-Sync OFF: New modules will be hidden'}
+              >
+                {screen.auto_sync_enabled ? <RefreshCw className="w-4 h-4" /> : <RefreshCwOff className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={() => onManageFields(screen.id)}
+                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+                title="Manage Fields (Master Admin Only)"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            </>
+          )}
           <button
             onClick={() => onEdit(screen.id)}
             className="p-2 text-primary hover:bg-primary/10 rounded-lg"
@@ -194,6 +219,40 @@ export default function AppScreens() {
     }
   };
 
+  const handleEdit = (screenId: number) => {
+    const appId = params.id as string;
+    router.push(`/app/${appId}/screens/${screenId}`);
+  };
+
+  const handleManageFields = (screenId: number) => {
+    const appId = params.id as string;
+    router.push(`/app/${appId}/screens/${screenId}/elements`);
+  };
+
+  const handleToggleAutoSync = async (screenId: number, autoSyncEnabled: boolean) => {
+    try {
+      const appId = params.id as string;
+      await appScreensAPI.toggleAutoSync(parseInt(appId), screenId, autoSyncEnabled);
+      // Refresh the screens list to show updated state
+      fetchData();
+    } catch (error) {
+      console.error('Error toggling auto-sync:', error);
+      alert('Failed to toggle auto-sync. Please try again.');
+    }
+  };
+
+  const handleToggleAutoSyncAll = async (autoSyncEnabled: boolean) => {
+    try {
+      const appId = params.id as string;
+      await appScreensAPI.toggleAutoSyncAll(parseInt(appId), autoSyncEnabled);
+      // Refresh the screens list to show updated state
+      fetchData();
+    } catch (error) {
+      console.error('Error toggling auto-sync for all:', error);
+      alert('Failed to toggle auto-sync for all screens. Please try again.');
+    }
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -242,11 +301,31 @@ export default function AppScreens() {
     <AppLayout appId={params.id as string} appName={app.name}>
       <div className="p-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Screens</h1>
-          <p className="text-gray-600 mt-2">
-            Manage screens and pages for {app.name}
-          </p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Screens</h1>
+            <p className="text-gray-600 mt-2">
+              Manage screens and pages for {app.name}
+            </p>
+          </div>
+          {user?.role_level === 1 && screens.length > 0 && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleToggleAutoSyncAll(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Enable All Auto-Sync
+              </button>
+              <button
+                onClick={() => handleToggleAutoSyncAll(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
+              >
+                <RefreshCwOff className="w-4 h-4" />
+                Disable All Auto-Sync
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Screens List */}
@@ -300,7 +379,10 @@ export default function AppScreens() {
                         key={screen.id}
                         screen={screen}
                         onPublishToggle={handlePublishToggle}
-                        onEdit={(screenId) => router.push(`/app/${params.id}/screens/${screenId}`)}
+                        onEdit={handleEdit}
+                        onManageFields={handleManageFields}
+                        onToggleAutoSync={handleToggleAutoSync}
+                        isMasterAdmin={user?.role_level === 1}
                       />
                     ))}
                   </SortableContext>

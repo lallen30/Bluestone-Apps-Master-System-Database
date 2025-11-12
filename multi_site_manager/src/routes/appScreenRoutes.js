@@ -35,4 +35,8 @@ router.post('/app/:app_id/screen/:screen_id/unpublish', appScreenController.unpu
 // Screen ordering
 router.post('/app/:app_id/reorder', appScreenController.updateScreenOrder);
 
+// Auto-sync toggle
+router.put('/app/:app_id/screen/:screen_id/auto-sync', appScreenController.toggleAutoSync);
+router.put('/app/:app_id/auto-sync-all', appScreenController.toggleAutoSyncAll);
+
 module.exports = router;

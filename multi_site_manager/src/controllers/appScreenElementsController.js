@@ -8,8 +8,22 @@ const getAppScreenElements = async (req, res) => {
   try {
     const { appId, screenId } = req.params;
 
+    console.log(`[getAppScreenElements] Fetching elements for app ${appId}, screen ${screenId}`);
+
+    // Check if auto-sync is enabled for this app-screen
+    const autoSyncResult = await db.query(
+      `SELECT auto_sync_enabled FROM app_screen_assignments WHERE app_id = ? AND screen_id = ?`,
+      [appId, screenId]
+    );
+    const autoSyncData = Array.isArray(autoSyncResult) && Array.isArray(autoSyncResult[0]) 
+      ? autoSyncResult[0] 
+      : autoSyncResult;
+    const autoSyncEnabled = autoSyncData && autoSyncData.length > 0 ? autoSyncData[0].auto_sync_enabled : true;
+    
+    console.log(`[getAppScreenElements] Auto-sync enabled: ${autoSyncEnabled}`);
+
     // Get master elements for this screen
-    const [masterElements] = await db.query(
+    const masterElementsResult = await db.query(
       `SELECT 
         sei.id as element_instance_id,
         sei.element_id,
@@ -21,7 +35,7 @@ const getAppScreenElements = async (req, res) => {
         sei.is_required as master_is_required,
         sei.display_order as master_display_order,
         se.name as element_name,
-        se.type as element_type,
+        se.element_type,
         se.category as element_category,
         se.icon as element_icon
        FROM screen_element_instances sei
@@ -31,8 +45,21 @@ const getAppScreenElements = async (req, res) => {
       [screenId]
     );
 
+    console.log(`[getAppScreenElements] Query result type:`, Array.isArray(masterElementsResult) ? 'array' : typeof masterElementsResult);
+    console.log(`[getAppScreenElements] Query result length:`, masterElementsResult?.length);
+    
+    // db.query returns [rows, fields], so we need the first element
+    const masterElements = Array.isArray(masterElementsResult) && Array.isArray(masterElementsResult[0]) 
+      ? masterElementsResult[0] 
+      : masterElementsResult;
+    
+    console.log(`[getAppScreenElements] Found ${masterElements ? masterElements.length : 0} master elements`);
+
+    // Ensure masterElements is an array
+    const safeMasterElements = masterElements || [];
+
     // Get overrides for this app
-    const [overrides] = await db.query(
+    const overridesResult = await db.query(
       `SELECT 
         element_instance_id,
         is_hidden,
@@ -47,9 +74,18 @@ const getAppScreenElements = async (req, res) => {
        WHERE app_id = ? AND screen_id = ?`,
       [appId, screenId]
     );
+    
+    const overrides = Array.isArray(overridesResult) && Array.isArray(overridesResult[0]) 
+      ? overridesResult[0] 
+      : overridesResult;
+
+    console.log(`[getAppScreenElements] Found ${overrides ? overrides.length : 0} overrides`);
+
+    // Ensure overrides is an array
+    const safeOverrides = overrides || [];
 
     // Get custom elements added by this app
-    const [customElements] = await db.query(
+    const customElementsResult = await db.query(
       `SELECT 
         acse.id as custom_element_id,
         acse.element_id,
@@ -63,7 +99,7 @@ const getAppScreenElements = async (req, res) => {
         acse.display_order,
         acse.config,
         se.name as element_name,
-        se.type as element_type,
+        se.element_type,
         se.category as element_category,
         se.icon as element_icon
        FROM app_custom_screen_elements acse
@@ -72,23 +108,30 @@ const getAppScreenElements = async (req, res) => {
        ORDER BY acse.display_order`,
       [appId, screenId]
     );
+    
+    const customElements = Array.isArray(customElementsResult) && Array.isArray(customElementsResult[0]) 
+      ? customElementsResult[0] 
+      : customElementsResult;
+
+    // Ensure customElements is an array
+    const safeCustomElements = customElements || [];
 
     // Create override map for quick lookup
     const overrideMap = {};
-    overrides.forEach(override => {
+    safeOverrides.forEach(override => {
       overrideMap[override.element_instance_id] = override;
     });
 
     // Merge master elements with overrides
-    const mergedElements = masterElements
+    const hiddenElements = [];
+    const mergedElements = safeMasterElements
       .map(element => {
         const override = overrideMap[element.element_instance_id];
         
-        if (override && override.is_hidden) {
-          return null; // Skip hidden elements
-        }
-
-        return {
+        // If auto-sync is disabled and there's no override, this is a new element - hide it automatically
+        const shouldAutoHide = !autoSyncEnabled && !override;
+        
+        const formattedElement = {
           element_instance_id: element.element_instance_id,
           element_id: element.element_id,
           element_name: element.element_name,
@@ -100,17 +143,26 @@ const getAppScreenElements = async (req, res) => {
           placeholder: override?.custom_placeholder || element.master_placeholder,
           default_value: override?.custom_default_value || element.master_default_value,
           validation_rules: override?.custom_validation_rules || element.master_validation_rules,
-          is_required: override?.is_required_override !== null ? override.is_required_override : element.master_is_required,
+          is_required: override && override.is_required_override !== null ? override.is_required_override : element.master_is_required,
           display_order: override?.custom_display_order || element.master_display_order,
           config: override?.custom_config || {},
           is_custom: false,
-          has_override: !!override
+          has_override: !!override,
+          is_hidden: (override?.is_hidden || shouldAutoHide) ? true : false
         };
+        
+        // Hide if explicitly hidden OR if auto-sync is off and it's a new element
+        if ((override && override.is_hidden) || shouldAutoHide) {
+          hiddenElements.push(formattedElement);
+          return null; // Skip hidden elements from main list
+        }
+
+        return formattedElement;
       })
       .filter(element => element !== null); // Remove hidden elements
 
-    // Add custom elements
-    const customElementsFormatted = customElements.map(element => ({
+    // Format custom elements
+    const customElementsFormatted = safeCustomElements.map(element => ({
       custom_element_id: element.custom_element_id,
       element_id: element.element_id,
       element_name: element.element_name,
@@ -134,22 +186,28 @@ const getAppScreenElements = async (req, res) => {
     const allElements = [...mergedElements, ...customElementsFormatted]
       .sort((a, b) => a.display_order - b.display_order);
 
+    console.log(`[getAppScreenElements] Returning ${allElements.length} total elements, ${hiddenElements.length} hidden`);
+
     res.json({
       success: true,
       elements: allElements,
+      hiddenElements: hiddenElements,
       counts: {
-        master: masterElements.length,
-        overridden: overrides.length,
-        custom: customElements.length,
-        total: allElements.length
+        master: safeMasterElements.length,
+        overridden: safeOverrides.length,
+        custom: safeCustomElements.length,
+        total: allElements.length,
+        hidden: hiddenElements.length
       }
     });
 
   } catch (error) {
-    console.error('Get app screen elements error:', error);
+    console.error('[getAppScreenElements] Error:', error);
+    console.error('[getAppScreenElements] Stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Failed to retrieve screen elements'
+      message: 'Failed to retrieve screen elements',
+      error: error.message
     });
   }
 };
@@ -163,13 +221,17 @@ const createOrUpdateOverride = async (req, res) => {
     const overrideData = req.body;
 
     // Check if override already exists
-    const [existing] = await db.query(
+    const existingResult = await db.query(
       `SELECT id FROM app_screen_element_overrides 
        WHERE app_id = ? AND element_instance_id = ?`,
       [appId, elementInstanceId]
     );
+    
+    const existing = Array.isArray(existingResult) && Array.isArray(existingResult[0]) 
+      ? existingResult[0] 
+      : existingResult;
 
-    if (existing.length > 0) {
+    if (existing && existing.length > 0) {
       // Update existing override
       const updates = [];
       const values = [];
@@ -304,7 +366,7 @@ const addCustomElement = async (req, res) => {
       });
     }
 
-    const [result] = await db.query(
+    const resultData = await db.query(
       `INSERT INTO app_custom_screen_elements 
        (app_id, screen_id, element_id, field_key, label, placeholder, 
         default_value, validation_rules, is_required, is_visible, 
@@ -325,6 +387,10 @@ const addCustomElement = async (req, res) => {
         elementData.config ? JSON.stringify(elementData.config) : null
       ]
     );
+    
+    const result = Array.isArray(resultData) && Array.isArray(resultData[0]) 
+      ? resultData[0] 
+      : resultData;
 
     res.status(201).json({
       success: true,

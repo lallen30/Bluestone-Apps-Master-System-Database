@@ -247,7 +247,7 @@ exports.getAppScreens = async (req, res) => {
     
     const screens = await db.query(
       `SELECT s.*, asa.is_active as assigned_active, asa.display_order as assigned_order,
-              asa.is_published, asa.published_at,
+              asa.is_published, asa.published_at, asa.auto_sync_enabled,
               (SELECT COUNT(*) FROM screen_element_instances WHERE screen_id = s.id) as element_count
        FROM app_screen_assignments asa
        JOIN app_screens s ON asa.screen_id = s.id
@@ -507,6 +507,56 @@ exports.updateScreenOrder = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating screen order'
+    });
+  }
+};
+
+// Toggle auto-sync for a specific screen
+exports.toggleAutoSync = async (req, res) => {
+  try {
+    const { app_id, screen_id } = req.params;
+    const { auto_sync_enabled } = req.body;
+    
+    await db.query(
+      'UPDATE app_screen_assignments SET auto_sync_enabled = ? WHERE app_id = ? AND screen_id = ?',
+      [auto_sync_enabled, app_id, screen_id]
+    );
+    
+    res.json({
+      success: true,
+      message: `Auto-sync ${auto_sync_enabled ? 'enabled' : 'disabled'} successfully`,
+      auto_sync_enabled
+    });
+  } catch (error) {
+    console.error('Error toggling auto-sync:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error toggling auto-sync'
+    });
+  }
+};
+
+// Toggle auto-sync for all screens in an app
+exports.toggleAutoSyncAll = async (req, res) => {
+  try {
+    const { app_id } = req.params;
+    const { auto_sync_enabled } = req.body;
+    
+    await db.query(
+      'UPDATE app_screen_assignments SET auto_sync_enabled = ? WHERE app_id = ?',
+      [auto_sync_enabled, app_id]
+    );
+    
+    res.json({
+      success: true,
+      message: `Auto-sync ${auto_sync_enabled ? 'enabled' : 'disabled'} for all screens`,
+      auto_sync_enabled
+    });
+  } catch (error) {
+    console.error('Error toggling auto-sync for all:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error toggling auto-sync for all screens'
     });
   }
 };
