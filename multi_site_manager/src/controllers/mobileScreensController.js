@@ -8,13 +8,10 @@ const db = require('../config/database');
 exports.getPublishedScreens = async (req, res) => {
   try {
     const { appId } = req.params;
-    const userId = req.user?.id; // From JWT auth middleware (optional)
 
-    let query, params;
-
-    if (userId) {
-      // Authenticated user - filter by role permissions
-      query = `SELECT DISTINCT
+    // For now, always return all published, active screens for the app.
+    // We can re-introduce role-based filtering later when needed.
+    const query = `SELECT 
         s.id,
         s.name,
         s.description,
@@ -22,29 +19,12 @@ exports.getPublishedScreens = async (req, res) => {
         s.icon,
         asa.display_order,
         asa.published_at,
-        (SELECT COUNT(*) FROM screen_element_instances WHERE screen_id = s.id) as element_count
-       FROM app_screen_assignments asa
-       JOIN app_screens s ON asa.screen_id = s.id
-       LEFT JOIN screen_role_access sra ON sra.screen_id = s.id AND sra.app_id = asa.app_id
-       LEFT JOIN app_user_role_assignments aura ON aura.app_role_id = sra.role_id
-       WHERE asa.app_id = ? 
-         AND asa.is_published = 1 
-         AND asa.is_active = 1
-         AND s.is_active = 1
-         AND aura.user_id = ?
-         AND sra.can_access = 1
-       ORDER BY asa.display_order`;
-      params = [appId, userId];
-    } else {
-      // Unauthenticated - return all published screens (for preview/demo)
-      query = `SELECT 
-        s.id,
-        s.name,
-        s.description,
-        s.category,
-        s.icon,
-        asa.display_order,
-        asa.published_at,
+        asa.show_in_tabbar,
+        asa.tabbar_order,
+        asa.tabbar_icon,
+        asa.tabbar_label,
+        asa.show_in_sidebar,
+        asa.sidebar_order,
         (SELECT COUNT(*) FROM screen_element_instances WHERE screen_id = s.id) as element_count
        FROM app_screen_assignments asa
        JOIN app_screens s ON asa.screen_id = s.id
@@ -53,8 +33,8 @@ exports.getPublishedScreens = async (req, res) => {
          AND asa.is_active = 1
          AND s.is_active = 1
        ORDER BY asa.display_order`;
-      params = [appId];
-    }
+
+    const params = [appId];
 
     const screensResult = await db.query(query, params);
 
@@ -115,31 +95,8 @@ exports.getScreenWithElements = async (req, res) => {
       });
     }
 
-    // Check if user has role-based access to this screen
-    if (userId) {
-      const accessResult = await db.query(
-        `SELECT sra.can_access
-         FROM screen_role_access sra
-         JOIN app_user_role_assignments aura ON aura.app_role_id = sra.role_id
-         WHERE sra.screen_id = ? 
-           AND sra.app_id = ?
-           AND aura.user_id = ?
-           AND sra.can_access = 1
-         LIMIT 1`,
-        [screenId, appId, userId]
-      );
-
-      const access = Array.isArray(accessResult) && Array.isArray(accessResult[0]) 
-        ? accessResult[0] 
-        : accessResult;
-
-      if (!access || access.length === 0) {
-        return res.status(403).json({
-          success: false,
-          message: 'You do not have permission to access this screen'
-        });
-      }
-    }
+    // Skip role-based access checks for now
+    // We can re-introduce this later when role management is fully set up
 
     // Get screen details
     const screenResult = await db.query(

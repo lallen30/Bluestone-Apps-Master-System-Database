@@ -5,7 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, permissionsAPI, appScreensAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { Monitor, Sparkles, Edit, Eye, EyeOff, GripVertical, Settings, RefreshCw, RefreshCwOff } from 'lucide-react';
+import MenuConfigModal, { MenuConfig } from '@/components/MenuConfigModal';
+import { Monitor, Sparkles, Edit, GripVertical, Settings, RefreshCw, RefreshCwOff, LayoutGrid } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -30,10 +31,11 @@ interface SortableRowProps {
   onEdit: (screenId: number) => void;
   onManageFields: (screenId: number) => void;
   onToggleAutoSync: (screenId: number, autoSyncEnabled: boolean) => void;
+  onMenuConfig: (screen: any) => void;
   isMasterAdmin: boolean;
 }
 
-function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, isMasterAdmin }: SortableRowProps) {
+function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, onMenuConfig, isMasterAdmin }: SortableRowProps) {
   const {
     attributes,
     listeners,
@@ -82,26 +84,43 @@ function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggle
         <div className="text-sm text-gray-900">{screen.element_count || 0} elements</div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-          screen.is_published 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-yellow-100 text-yellow-800'
-        }`}>
-          {screen.is_published ? 'Published' : 'Draft'}
-        </span>
+        <button
+          type="button"
+          onClick={() => onPublishToggle(screen.id, screen.is_published)}
+          className="inline-flex px-2 py-1 text-xs font-semibold rounded-full border border-transparent focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary cursor-pointer"
+          title={screen.is_published ? 'Click to mark as Draft' : 'Click to mark as Published'}
+        >
+          <span
+            className={
+              screen.is_published
+                ? 'bg-green-100 text-green-800 px-2 py-1 rounded-full'
+                : 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full'
+            }
+          >
+            {screen.is_published ? 'Published' : 'Draft'}
+          </span>
+        </button>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex items-center justify-end gap-2">
           <button
-            onClick={() => onPublishToggle(screen.id, screen.is_published)}
+            onClick={() => onMenuConfig(screen)}
             className={`p-2 rounded-lg ${
-              screen.is_published
-                ? 'text-gray-600 hover:bg-gray-100'
-                : 'text-green-600 hover:bg-green-50'
+              screen.show_in_tabbar
+                ? 'text-purple-600 hover:bg-purple-50'
+                : screen.show_in_sidebar
+                ? 'text-blue-600 hover:bg-blue-50'
+                : 'text-gray-400 hover:bg-gray-100'
             }`}
-            title={screen.is_published ? 'Unpublish' : 'Publish'}
+            title={
+              screen.show_in_tabbar
+                ? 'In Tab Bar - Click to configure'
+                : screen.show_in_sidebar
+                ? 'In Sidebar Menu - Click to configure'
+                : 'Not in any menu - Click to configure'
+            }
           >
-            {screen.is_published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <LayoutGrid className="w-4 h-4" />
           </button>
           {isMasterAdmin && (
             <>
@@ -145,6 +164,10 @@ export default function AppScreens() {
   const [app, setApp] = useState<any>(null);
   const [screens, setScreens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [menuConfigModal, setMenuConfigModal] = useState<{ isOpen: boolean; screen: any | null }>({
+    isOpen: false,
+    screen: null,
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -241,6 +264,22 @@ export default function AppScreens() {
     }
   };
 
+  const handleMenuConfig = (screen: any) => {
+    setMenuConfigModal({ isOpen: true, screen });
+  };
+
+  const handleSaveMenuConfig = async (config: MenuConfig) => {
+    try {
+      const appId = parseInt(params.id as string);
+      await appScreensAPI.updateMenuConfig(appId, menuConfigModal.screen.id, config);
+      // Refresh the screens list
+      fetchData();
+    } catch (error) {
+      console.error('Error saving menu config:', error);
+      throw error;
+    }
+  };
+
   const handleToggleAutoSyncAll = async (autoSyncEnabled: boolean) => {
     try {
       const appId = params.id as string;
@@ -301,7 +340,7 @@ export default function AppScreens() {
     <AppLayout appId={params.id as string} appName={app.name}>
       <div className="p-8">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
+        <div className="mb-6 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Screens</h1>
             <p className="text-gray-600 mt-2">
@@ -327,6 +366,29 @@ export default function AppScreens() {
             </div>
           )}
         </div>
+
+        {/* Menu Icon Legend */}
+        {screens.length > 0 && (
+          <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="w-4 h-4 text-gray-400" />
+                <span className="text-sm text-gray-600">Not configured</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="w-4 h-4 text-blue-600" />
+                <span className="text-sm text-gray-600">In Sidebar Menu</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="w-4 h-4 text-purple-600" />
+                <span className="text-sm text-gray-600">In Tab Bar</span>
+              </div>
+              <span className="text-xs text-gray-500 ml-auto">
+                Click the grid icon to configure where screens appear in the mobile app
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Screens List */}
         {screens.length === 0 ? (
@@ -382,6 +444,7 @@ export default function AppScreens() {
                         onEdit={handleEdit}
                         onManageFields={handleManageFields}
                         onToggleAutoSync={handleToggleAutoSync}
+                        onMenuConfig={handleMenuConfig}
                         isMasterAdmin={user?.role_level === 1}
                       />
                     ))}
@@ -392,6 +455,14 @@ export default function AppScreens() {
           </DndContext>
         )}
       </div>
+
+      {/* Menu Configuration Modal */}
+      <MenuConfigModal
+        isOpen={menuConfigModal.isOpen}
+        onClose={() => setMenuConfigModal({ isOpen: false, screen: null })}
+        screen={menuConfigModal.screen}
+        onSave={handleSaveMenuConfig}
+      />
     </AppLayout>
   );
 }

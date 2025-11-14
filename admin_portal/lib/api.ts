@@ -294,6 +294,12 @@ export const appScreensAPI = {
     return response.data;
   },
   
+  // Menu configuration
+  updateMenuConfig: async (appId: number, screenId: number, config: any) => {
+    const response = await api.put(`/app-screens/app/${appId}/screen/${screenId}/menu-config`, config);
+    return response.data;
+  },
+  
   // Aliases for convenience
   assignScreen: async (data: { app_id: number; screen_id: number; display_order?: number }) => {
     const response = await api.post('/app-screens/app/assign', data);
@@ -643,6 +649,64 @@ export const submissionsAPI = {
   // Delete a submission
   deleteSubmission: async (submissionId: number) => {
     const response = await api.delete(`/submissions/${submissionId}`);
+    return response.data;
+  },
+};
+
+// Property Listings API
+export const propertyListingsAPI = {
+  // Get all listings for an app
+  getListings: async (appId: number, params?: {
+    search?: string;
+    city?: string;
+    country?: string;
+    property_type?: string;
+    min_price?: number;
+    max_price?: number;
+    bedrooms?: number;
+    guests?: number;
+    status?: string;
+    user_id?: number;
+    page?: number;
+    per_page?: number;
+  }) => {
+    const response = await api.get(`/apps/${appId}/listings`, { params });
+    return response.data;
+  },
+  
+  // Get a single listing by ID
+  getListingById: async (appId: number, listingId: number) => {
+    const response = await api.get(`/apps/${appId}/listings/${listingId}`);
+    return response.data;
+  },
+  
+  // Get all amenities
+  getAmenities: async () => {
+    const response = await api.get('/amenities');
+    return response.data;
+  },
+  
+  // Create a new listing (admin function)
+  createListing: async (appId: number, data: any) => {
+    const response = await api.post(`/apps/${appId}/listings`, data);
+    return response.data;
+  },
+  
+  // Update a listing
+  updateListing: async (appId: number, listingId: number, data: any) => {
+    const response = await api.put(`/apps/${appId}/listings/${listingId}`, data);
+    return response.data;
+  },
+  
+  // Delete a listing
+  deleteListing: async (appId: number, listingId: number) => {
+    const response = await api.delete(`/apps/${appId}/listings/${listingId}`);
+    return response.data;
+  },
+  
+  // Publish/unpublish a listing
+  publishListing: async (appId: number, listingId: number, isPublished: boolean) => {
+    const response = await api.put(`/apps/${appId}/listings/${listingId}/publish`, { is_published: isPublished });
     return response.data;
   },
 };

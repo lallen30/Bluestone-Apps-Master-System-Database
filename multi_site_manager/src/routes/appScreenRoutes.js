@@ -39,4 +39,7 @@ router.post('/app/:app_id/reorder', appScreenController.updateScreenOrder);
 router.put('/app/:app_id/screen/:screen_id/auto-sync', appScreenController.toggleAutoSync);
 router.put('/app/:app_id/auto-sync-all', appScreenController.toggleAutoSyncAll);
 
+// Menu configuration
+router.put('/app/:app_id/screen/:screen_id/menu-config', appScreenController.updateMenuConfig);
+
 module.exports = router;

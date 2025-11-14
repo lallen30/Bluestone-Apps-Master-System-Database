@@ -114,3 +114,5 @@ networks:
 
 volumes:
   phpmyadmin_db_data:
+    external: true
+    name: bluestoneappsmastersystem_phpmyadmin_db_data

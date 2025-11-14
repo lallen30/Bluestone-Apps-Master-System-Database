@@ -29,6 +29,7 @@ const appScreenElementsRoutes = require('./routes/appScreenElements');
 const mobileScreenRoutes = require('./routes/mobileScreenRoutes');
 const submissionsRoutes = require('./routes/submissions');
 const screenRolesRoutes = require('./routes/screenRoles');
+const propertyListingsRoutes = require('./routes/propertyListings');
 
 // Initialize Express app
 const app = express();
@@ -98,6 +99,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use(`/api/${API_VERSION}/auth`, authRoutes);
 app.use(`/api/${API_VERSION}/users`, userRoutes);
+app.use(`/api/${API_VERSION}`, propertyListingsRoutes); // Property listings (MUST be before /apps routes)
 app.use(`/api/${API_VERSION}/apps`, appUsersRoutes); // App users management
 app.use(`/api/${API_VERSION}/apps`, rolesRoutes); // Roles management
 app.use(`/api/${API_VERSION}/apps`, appRoutes);

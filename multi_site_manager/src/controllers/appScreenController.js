@@ -248,6 +248,8 @@ exports.getAppScreens = async (req, res) => {
     const screens = await db.query(
       `SELECT s.*, asa.is_active as assigned_active, asa.display_order as assigned_order,
               asa.is_published, asa.published_at, asa.auto_sync_enabled,
+              asa.show_in_tabbar, asa.tabbar_order, asa.tabbar_icon, asa.tabbar_label,
+              asa.show_in_sidebar, asa.sidebar_order,
               (SELECT COUNT(*) FROM screen_element_instances WHERE screen_id = s.id) as element_count
        FROM app_screen_assignments asa
        JOIN app_screens s ON asa.screen_id = s.id
@@ -557,6 +559,44 @@ exports.toggleAutoSyncAll = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error toggling auto-sync for all screens'
+    });
+  }
+};
+
+// Update menu configuration for a screen
+exports.updateMenuConfig = async (req, res) => {
+  try {
+    const { app_id, screen_id } = req.params;
+    const {
+      show_in_tabbar,
+      tabbar_order,
+      tabbar_icon,
+      tabbar_label,
+      show_in_sidebar,
+      sidebar_order
+    } = req.body;
+    
+    await db.query(
+      `UPDATE app_screen_assignments 
+       SET show_in_tabbar = ?,
+           tabbar_order = ?,
+           tabbar_icon = ?,
+           tabbar_label = ?,
+           show_in_sidebar = ?,
+           sidebar_order = ?
+       WHERE app_id = ? AND screen_id = ?`,
+      [show_in_tabbar, tabbar_order, tabbar_icon, tabbar_label, show_in_sidebar, sidebar_order, app_id, screen_id]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Menu configuration updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating menu config:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating menu configuration'
     });
   }
 };

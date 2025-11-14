@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, UserCog, Monitor, Settings, ArrowLeft, LogOut, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, UserCog, Monitor, Settings, ArrowLeft, LogOut, Shield, Home } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
-import { permissionsAPI } from '@/lib/api';
+import { permissionsAPI, appsAPI } from '@/lib/api';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -17,6 +17,7 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const [userAppCount, setUserAppCount] = useState<number>(0);
+  const [hasPropertyListings, setHasPropertyListings] = useState<boolean>(false);
 
   useEffect(() => {
     // Fetch user's app count to determine if we should show "Back" button
@@ -29,9 +30,32 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
           console.error('Error fetching user apps:', error);
         });
     }
-  }, [user]);
+    
+    // Check if app has property listings by checking for listings data
+    if (appId) {
+      // Try to fetch listings - if successful and has data, show menu item
+      appsAPI.getById(parseInt(appId))
+        .then((response) => {
+          // Check if app was created from Property Rental template (ID: 9)
+          // OR check if it has property listing screens added
+          const templateId = response.data?.template_id;
+          if (templateId === 9) {
+            setHasPropertyListings(true);
+          } else {
+            // Check if app has property listing screens by looking for specific screen names
+            // For now, always show for Property Rental template apps
+            // In future, could check app_screens for property-related screens
+            setHasPropertyListings(false);
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching app details:', error);
+          setHasPropertyListings(false);
+        });
+    }
+  }, [user, appId]);
 
-  const menuItems = [
+  const baseMenuItems = [
     {
       name: 'Dashboard',
       href: `/app/${appId}`,
@@ -57,6 +81,24 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
       href: `/app/${appId}/screens`,
       icon: Monitor,
     },
+  ];
+
+  // Template-specific menu items
+  const templateMenuItems: any = [];
+  
+  // Show Property Listings if app has this feature
+  if (hasPropertyListings) {
+    templateMenuItems.push({
+      name: 'Property Listings',
+      href: `/app/${appId}/listings`,
+      icon: Home,
+    });
+  }
+  
+  // Add Settings at the end
+  const menuItems = [
+    ...baseMenuItems,
+    ...templateMenuItems,
     {
       name: 'Settings',
       href: `/app/${appId}/settings`,

@@ -80,7 +80,7 @@ async function createAppUser(req, res) {
        email_verified ? 1 : 0, email_verification_token, email_verification_expires]
     );
     
-    const user_id = result[0].insertId;
+    const user_id = result.insertId;
     
     // Create default user settings
     await db.query(
