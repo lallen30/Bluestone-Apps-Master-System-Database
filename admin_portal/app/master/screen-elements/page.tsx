@@ -141,8 +141,8 @@ export default function ScreenElementsLibrary() {
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Modules</h1>
-                <p className="text-sm text-gray-500">{Array.isArray(elements) ? elements.length : 0} available modules</p>
+                <h1 className="text-2xl font-bold text-gray-900">Screen Elements</h1>
+                <p className="text-sm text-gray-500">{Array.isArray(elements) ? elements.length : 0} available elements</p>
               </div>
             </div>
           </div>
@@ -160,7 +160,7 @@ export default function ScreenElementsLibrary() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search modules..."
+                  placeholder="Search elements..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"

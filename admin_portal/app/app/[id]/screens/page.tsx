@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appsAPI, permissionsAPI, appScreensAPI } from '@/lib/api';
+import { appsAPI, permissionsAPI, appScreensAPI, menuAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import MenuConfigModal, { MenuConfig } from '@/components/MenuConfigModal';
-import { Monitor, Sparkles, Edit, GripVertical, Settings, RefreshCw, RefreshCwOff, LayoutGrid } from 'lucide-react';
+import MenuConfigModal from '@/components/MenuConfigModal';
+import ModuleAssignmentModal from '@/components/ModuleAssignmentModal';
+import { Monitor, Sparkles, Edit, GripVertical, Settings, RefreshCw, RefreshCwOff, LayoutGrid, Package } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -32,10 +33,11 @@ interface SortableRowProps {
   onManageFields: (screenId: number) => void;
   onToggleAutoSync: (screenId: number, autoSyncEnabled: boolean) => void;
   onMenuConfig: (screen: any) => void;
+  onModuleConfig: (screen: any) => void;
   isMasterAdmin: boolean;
 }
 
-function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, onMenuConfig, isMasterAdmin }: SortableRowProps) {
+function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, onMenuConfig, onModuleConfig, isMasterAdmin }: SortableRowProps) {
   const {
     attributes,
     listeners,
@@ -122,6 +124,13 @@ function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggle
           >
             <LayoutGrid className="w-4 h-4" />
           </button>
+          <button
+            onClick={() => onModuleConfig(screen)}
+            className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+            title="Assign Modules (Header Bar, Footer, etc.)"
+          >
+            <Package className="w-4 h-4" />
+          </button>
           {isMasterAdmin && (
             <>
               <button
@@ -165,6 +174,10 @@ export default function AppScreens() {
   const [screens, setScreens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [menuConfigModal, setMenuConfigModal] = useState<{ isOpen: boolean; screen: any | null }>({
+    isOpen: false,
+    screen: null,
+  });
+  const [moduleModal, setModuleModal] = useState<{ isOpen: boolean; screen: any | null }>({
     isOpen: false,
     screen: null,
   });
@@ -268,10 +281,13 @@ export default function AppScreens() {
     setMenuConfigModal({ isOpen: true, screen });
   };
 
-  const handleSaveMenuConfig = async (config: MenuConfig) => {
+  const handleModuleConfig = (screen: any) => {
+    setModuleModal({ isOpen: true, screen });
+  };
+
+  const handleSaveMenuConfig = async (menuIds: number[]) => {
     try {
-      const appId = parseInt(params.id as string);
-      await appScreensAPI.updateMenuConfig(appId, menuConfigModal.screen.id, config);
+      await menuAPI.assignMenusToScreen(menuConfigModal.screen.id, menuIds);
       // Refresh the screens list
       fetchData();
     } catch (error) {
@@ -445,6 +461,7 @@ export default function AppScreens() {
                         onManageFields={handleManageFields}
                         onToggleAutoSync={handleToggleAutoSync}
                         onMenuConfig={handleMenuConfig}
+                        onModuleConfig={handleModuleConfig}
                         isMasterAdmin={user?.role_level === 1}
                       />
                     ))}
@@ -461,8 +478,22 @@ export default function AppScreens() {
         isOpen={menuConfigModal.isOpen}
         onClose={() => setMenuConfigModal({ isOpen: false, screen: null })}
         screen={menuConfigModal.screen}
+        appId={parseInt(params.id as string)}
         onSave={handleSaveMenuConfig}
       />
+
+      {/* Module Assignment Modal */}
+      {moduleModal.screen && (
+        <ModuleAssignmentModal
+          isOpen={moduleModal.isOpen}
+          onClose={() => setModuleModal({ isOpen: false, screen: null })}
+          screenId={moduleModal.screen.id}
+          screenName={moduleModal.screen.name}
+          onSave={() => {
+            fetchData();
+          }}
+        />
+      )}
     </AppLayout>
   );
 }

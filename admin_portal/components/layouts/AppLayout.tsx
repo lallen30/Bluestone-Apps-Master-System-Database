@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, UserCog, Monitor, Settings, ArrowLeft, LogOut, Shield, Home } from 'lucide-react';
+import { LayoutDashboard, Users, UserCog, Monitor, Settings, ArrowLeft, LogOut, Shield, Home, Menu } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { permissionsAPI, appsAPI } from '@/lib/api';
 
@@ -80,6 +80,11 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
       name: 'Screens',
       href: `/app/${appId}/screens`,
       icon: Monitor,
+    },
+    {
+      name: 'Menus',
+      href: `/app/${appId}/menus`,
+      icon: Menu,
     },
   ];
 

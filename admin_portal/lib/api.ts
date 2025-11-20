@@ -578,6 +578,49 @@ export const rolesAPI = {
     return response.data;
   },
   
+  createRole: async (appId: number, data: {
+    name: string;
+    display_name: string;
+    description?: string;
+    is_default?: boolean;
+  }) => {
+    const response = await api.post(`/apps/${appId}/roles`, data);
+    return response.data;
+  },
+  
+  updateRole: async (appId: number, roleId: number, data: {
+    name?: string;
+    display_name?: string;
+    description?: string;
+    is_default?: boolean;
+  }) => {
+    const response = await api.put(`/apps/${appId}/roles/${roleId}`, data);
+    return response.data;
+  },
+  
+  deleteRole: async (appId: number, roleId: number) => {
+    const response = await api.delete(`/apps/${appId}/roles/${roleId}`);
+    return response.data;
+  },
+  
+  getRoleScreens: async (appId: number, roleId: number) => {
+    const response = await api.get(`/apps/${appId}/roles/${roleId}/screens`);
+    return response.data;
+  },
+  
+  assignScreenToRole: async (appId: number, roleId: number, screenId: number, canAccess: boolean = true) => {
+    const response = await api.post(`/apps/${appId}/roles/${roleId}/screens`, {
+      screen_id: screenId,
+      can_access: canAccess
+    });
+    return response.data;
+  },
+  
+  removeScreenFromRole: async (appId: number, roleId: number, screenId: number) => {
+    const response = await api.delete(`/apps/${appId}/roles/${roleId}/screens/${screenId}`);
+    return response.data;
+  },
+  
   getAllPermissions: async () => {
     const response = await api.get('/permissions');
     return response.data;
@@ -707,6 +750,105 @@ export const propertyListingsAPI = {
   // Publish/unpublish a listing
   publishListing: async (appId: number, listingId: number, isPublished: boolean) => {
     const response = await api.put(`/apps/${appId}/listings/${listingId}/publish`, { is_published: isPublished });
+    return response.data;
+  },
+};
+
+// Menu API
+export const menuAPI = {
+  // Get all menus for an app
+  getAppMenus: async (appId: number) => {
+    const response = await api.get(`/app/${appId}/menus`);
+    return response.data;
+  },
+
+  // Get a single menu with items
+  getMenu: async (menuId: number) => {
+    const response = await api.get(`/menus/${menuId}`);
+    return response.data;
+  },
+
+  // Create a new menu
+  createMenu: async (appId: number, data: { name: string; menu_type: string; description?: string }) => {
+    const response = await api.post(`/app/${appId}/menus`, data);
+    return response.data;
+  },
+
+  // Update a menu
+  updateMenu: async (menuId: number, data: { name?: string; description?: string; is_active?: boolean }) => {
+    const response = await api.put(`/menus/${menuId}`, data);
+    return response.data;
+  },
+
+  // Delete a menu
+  deleteMenu: async (menuId: number) => {
+    const response = await api.delete(`/menus/${menuId}`);
+    return response.data;
+  },
+
+  // Add a screen to a menu
+  addMenuItem: async (menuId: number, data: { screen_id: number; display_order?: number; label?: string; icon?: string }) => {
+    const response = await api.post(`/menus/${menuId}/items`, data);
+    return response.data;
+  },
+
+  // Update a menu item
+  updateMenuItem: async (itemId: number, data: { display_order?: number; label?: string; icon?: string; is_active?: boolean }) => {
+    const response = await api.put(`/menu-items/${itemId}`, data);
+    return response.data;
+  },
+
+  // Remove a menu item
+  removeMenuItem: async (itemId: number) => {
+    const response = await api.delete(`/menu-items/${itemId}`);
+    return response.data;
+  },
+
+  // Get menus assigned to a screen
+  getScreenMenus: async (screenId: number) => {
+    const response = await api.get(`/screens/${screenId}/menus`);
+    return response.data;
+  },
+
+  // Assign menus to a screen
+  assignMenusToScreen: async (screenId: number, menuIds: number[]) => {
+    const response = await api.put(`/screens/${screenId}/menus`, { menu_ids: menuIds });
+    return response.data;
+  },
+};
+
+// Modules API
+export const modulesAPI = {
+  // Get all modules
+  getAll: async () => {
+    const response = await api.get('/modules');
+    return response.data;
+  },
+
+  // Get a single module
+  getById: async (moduleId: number) => {
+    const response = await api.get(`/modules/${moduleId}`);
+    return response.data;
+  },
+
+  // Get modules assigned to a screen
+  getScreenModules: async (screenId: number) => {
+    const response = await api.get(`/modules/screens/${screenId}`);
+    return response.data;
+  },
+
+  // Assign a module to a screen
+  assignToScreen: async (screenId: number, moduleId: number, config?: any) => {
+    const response = await api.post(`/modules/screens/${screenId}/assign`, {
+      module_id: moduleId,
+      config: config || {}
+    });
+    return response.data;
+  },
+
+  // Remove a module from a screen
+  removeFromScreen: async (screenId: number, moduleId: number) => {
+    const response = await api.delete(`/modules/screens/${screenId}/modules/${moduleId}`);
     return response.data;
   },
 };

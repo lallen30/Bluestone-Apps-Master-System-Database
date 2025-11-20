@@ -383,8 +383,23 @@ exports.saveScreenContent = async (req, res) => {
     const { content } = req.body;
     const updated_by = req.user.id;
     
+    console.log('[saveScreenContent] Received request:', { app_id, screen_id, contentCount: content?.length });
+    console.log('[saveScreenContent] Content items:', JSON.stringify(content, null, 2));
+    
     // Process each content item
     for (const item of content) {
+      // Convert undefined to null for MySQL2
+      const contentValue = item.content_value === undefined || item.content_value === '' ? null : item.content_value;
+      const elementInstanceId = item.element_instance_id !== undefined ? item.element_instance_id : null;
+      
+      console.log('[saveScreenContent] Processing item:', { 
+        element_instance_id: elementInstanceId, 
+        content_value: contentValue,
+        app_id,
+        screen_id,
+        updated_by
+      });
+      
       await db.query(
         `INSERT INTO app_screen_content 
          (app_id, screen_id, element_instance_id, content_value, updated_by)
@@ -392,7 +407,7 @@ exports.saveScreenContent = async (req, res) => {
          ON DUPLICATE KEY UPDATE 
          content_value = VALUES(content_value),
          updated_by = VALUES(updated_by)`,
-        [app_id, screen_id, item.element_instance_id, item.content_value, updated_by]
+        [app_id, screen_id, elementInstanceId, contentValue, updated_by]
       );
     }
     
@@ -415,6 +430,9 @@ exports.updateAppScreenContent = async (req, res) => {
     const { app_id, screen_id, element_instance_id, content_value, options } = req.body;
     const updated_by = req.user.id;
     
+    // Convert undefined to null for MySQL2
+    const contentValue = content_value === undefined || content_value === '' ? null : content_value;
+    
     await db.query(
       `INSERT INTO app_screen_content 
        (app_id, screen_id, element_instance_id, content_value, options, updated_by)
@@ -423,7 +441,7 @@ exports.updateAppScreenContent = async (req, res) => {
        content_value = VALUES(content_value),
        options = VALUES(options),
        updated_by = VALUES(updated_by)`,
-      [app_id, screen_id, element_instance_id, content_value,
+      [app_id, screen_id, element_instance_id, contentValue,
        options ? JSON.stringify(options) : null, updated_by]
     );
     

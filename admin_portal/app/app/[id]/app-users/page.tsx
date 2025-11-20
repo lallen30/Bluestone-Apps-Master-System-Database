@@ -193,7 +193,7 @@ export default function AppUsersPage() {
       first_name: user.first_name || '',
       last_name: user.last_name || '',
       phone: user.phone || '',
-      email: user.email
+      email: user.email || ''
     });
     setIsEditModalOpen(true);
   };
@@ -204,7 +204,9 @@ export default function AppUsersPage() {
     
     setSubmitting(true);
     try {
-      await appUsersAPI.updateUser(parseInt(appId), selectedUser.id, editFormData);
+      // Remove email from the payload as it's not editable
+      const { email, ...updateData } = editFormData;
+      await appUsersAPI.updateUser(parseInt(appId), selectedUser.id, updateData);
       setIsEditModalOpen(false);
       setSelectedUser(null);
       fetchData();

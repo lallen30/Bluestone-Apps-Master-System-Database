@@ -53,6 +53,9 @@ INSERT INTO `screen_elements` (`name`, `element_type`, `category`, `icon`, `desc
 ('Rating', 'rating', 'Interactive', 'Star', 'Star rating component', 0, 0, 0, 1, 54),
 ('Color Picker', 'color_picker', 'Interactive', 'Palette', 'Color selection', 0, 0, 0, 1, 55),
 
+-- Layout Elements
+('Header Bar', 'header_bar', 'Layout', 'LayoutDashboard', 'Top navigation bar with menu icons', 1, 0, 1, 0, 56),
+
 -- Advanced Elements
 ('Address Input', 'address_input', 'Advanced', 'MapPin', 'Structured address fields', 1, 0, 0, 1, 60),
 ('Location Picker', 'location_picker', 'Advanced', 'Map', 'GPS/map location', 0, 0, 0, 1, 61),

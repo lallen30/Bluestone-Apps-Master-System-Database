@@ -40,4 +40,14 @@ router.post('/apps/:appId/screens/:screenId/submit',
   mobileScreensController.submitScreenData
 );
 
+/**
+ * GET /api/v1/mobile/apps/:appId/screens/:screenId/menus
+ * Get all menus assigned to a specific screen
+ * Returns menus with their items that should display on this screen
+ */
+router.get('/apps/:appId/screens/:screenId/menus',
+  authenticateMobileUser({ required: false }),
+  mobileScreensController.getScreenMenus
+);
+
 module.exports = router;

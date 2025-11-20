@@ -63,7 +63,7 @@ exports.getScreenContent = async (req, res) => {
     }
     
     // Get elements with content
-    const elements = await db.query(
+    const elementsResult = await db.query(
       `SELECT 
         sei.id as instance_id,
         sei.element_id,
@@ -74,7 +74,7 @@ exports.getScreenContent = async (req, res) => {
         sei.is_required,
         sei.is_readonly,
         sei.display_order,
-        sei.config,
+        CAST(sei.config AS CHAR) as config,
         se.name as element_name,
         se.element_type,
         se.category,
@@ -94,22 +94,50 @@ exports.getScreenContent = async (req, res) => {
       [app_id, screen_id, screen_id]
     );
     
+    const elements = Array.isArray(elementsResult) && Array.isArray(elementsResult[0]) 
+      ? elementsResult[0] 
+      : elementsResult;
+    
+    console.log(`Found ${elements.length} elements for screen ${screen_id}`);
+    
     // Format elements for mobile
-    const formattedElements = elements.map(el => ({
-      id: el.instance_id,
-      element_id: el.element_id,
-      type: el.element_type,
-      field_key: el.field_key,
-      label: el.label,
-      value: el.content_value || el.default_value || '',
-      placeholder: el.placeholder,
-      is_required: Boolean(el.is_required),
-      is_readonly: Boolean(el.is_readonly),
-      is_input: Boolean(el.is_input_field),
-      display_order: el.display_order,
-      config: el.config ? JSON.parse(el.config) : {},
-      options: el.content_options ? JSON.parse(el.content_options) : null
-    }));
+    const formattedElements = (elements || []).map(el => {
+      // Debug log for gender field
+      if (el.field_key === 'gender') {
+        console.log('=== GENDER ELEMENT DEBUG ===');
+        console.log('Raw element:', JSON.stringify(el, null, 2));
+        console.log('Config exists:', !!el.config);
+        console.log('Config type:', typeof el.config);
+        console.log('Config value:', el.config);
+      }
+      
+      let parsedConfig = {};
+      try {
+        if (el.config) {
+          // If config is already an object, use it directly
+          parsedConfig = typeof el.config === 'object' ? el.config : JSON.parse(el.config);
+        }
+      } catch (e) {
+        console.error(`Failed to parse config for element ${el.instance_id}:`, e.message);
+        parsedConfig = {};
+      }
+      
+      return {
+        id: el.instance_id,
+        element_id: el.element_id,
+        element_type: el.element_type,
+        field_name: el.field_key,
+        label: el.label,
+        value: el.content_value || el.default_value || '',
+        placeholder: el.placeholder,
+        is_required: Boolean(el.is_required),
+        is_readonly: Boolean(el.is_readonly),
+        is_input: Boolean(el.is_input_field),
+        display_order: el.display_order,
+        config: parsedConfig,
+        options: el.content_options ? JSON.parse(el.content_options) : null
+      };
+    });
     
     res.json({
       success: true,

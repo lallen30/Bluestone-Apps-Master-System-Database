@@ -56,6 +56,21 @@ function authenticateMobileUser(options = {}) {
     
     const user = users[0];
     
+    // Load user's roles (mobile app roles)
+    const rolesResult = await db.query(
+      `SELECT r.id, r.name, r.display_name 
+       FROM app_user_role_assignments ura
+       JOIN app_roles r ON ura.app_role_id = r.id
+       WHERE ura.user_id = ?`,
+      [user.id]
+    );
+    
+    const roles = Array.isArray(rolesResult) && Array.isArray(rolesResult[0]) 
+      ? rolesResult[0] 
+      : rolesResult;
+    
+    const safeRoles = roles || [];
+    
     // Attach user info to request
     req.user = {
       id: user.id,
@@ -63,7 +78,10 @@ function authenticateMobileUser(options = {}) {
       email: user.email,
       first_name: user.first_name,
       last_name: user.last_name,
-      email_verified: user.email_verified
+      email_verified: user.email_verified,
+      roles: safeRoles.map(r => r.name), // ['guest', 'renter', 'host']
+      role_ids: safeRoles.map(r => r.id), // [24, 25, 26]
+      role_display_names: safeRoles.map(r => r.display_name) // ['Guest', 'Renter', 'Host']
     };
     
     // Update last activity

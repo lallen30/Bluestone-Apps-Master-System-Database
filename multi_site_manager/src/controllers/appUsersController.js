@@ -317,14 +317,8 @@ async function getAppUser(req, res) {
  */
 async function updateAppUser(req, res) {
   try {
-    const appId = req.params.appId;
-    const userId = req.params.userId;
-    const first_name = req.body.first_name;
-    const last_name = req.body.last_name;
-    const phone = req.body.phone;
-    const bio = req.body.bio;
-    const date_of_birth = req.body.date_of_birth;
-    const gender = req.body.gender;
+    const { appId, userId } = req.params;
+    const { first_name, last_name, phone, bio, date_of_birth, gender } = req.body;
     
     // Check if user exists
     const users = await db.query(
@@ -332,20 +326,58 @@ async function updateAppUser(req, res) {
       [userId, appId]
     );
     
-    if (users.length === 0) {
+    if (!users || users.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
     
+    // Build dynamic update query based on provided fields
+    const updateFields = [];
+    const updateValues = [];
+    
+    if (first_name !== undefined) {
+      updateFields.push('first_name = ?');
+      updateValues.push(first_name || null);
+    }
+    if (last_name !== undefined) {
+      updateFields.push('last_name = ?');
+      updateValues.push(last_name || null);
+    }
+    if (phone !== undefined) {
+      updateFields.push('phone = ?');
+      updateValues.push(phone || null);
+    }
+    if (bio !== undefined) {
+      updateFields.push('bio = ?');
+      updateValues.push(bio || null);
+    }
+    if (date_of_birth !== undefined) {
+      updateFields.push('date_of_birth = ?');
+      updateValues.push(date_of_birth || null);
+    }
+    if (gender !== undefined) {
+      updateFields.push('gender = ?');
+      updateValues.push(gender || null);
+    }
+    
+    // Always update the updated_at timestamp
+    updateFields.push('updated_at = NOW()');
+    
+    // If no fields to update, return error
+    if (updateFields.length === 1) { // Only updated_at
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update'
+      });
+    }
+    
     // Update user
+    updateValues.push(userId, appId);
     await db.query(
-      `UPDATE app_users 
-       SET first_name = ?, last_name = ?, phone = ?, bio = ?, 
-           date_of_birth = ?, gender = ?, updated_at = NOW()
-       WHERE id = ? AND app_id = ?`,
-      [first_name, last_name, phone, bio, date_of_birth, gender, userId, appId]
+      `UPDATE app_users SET ${updateFields.join(', ')} WHERE id = ? AND app_id = ?`,
+      updateValues
     );
     
     // Get updated user

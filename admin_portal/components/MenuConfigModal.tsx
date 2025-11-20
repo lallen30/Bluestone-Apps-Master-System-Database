@@ -1,13 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Menu as MenuIcon, LayoutGrid } from 'lucide-react';
+import { X, Menu as MenuIcon, Smartphone, SidebarIcon } from 'lucide-react';
+import { menuAPI } from '@/lib/api';
 
 interface MenuConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
   screen: any;
-  onSave: (config: MenuConfig) => Promise<void>;
+  appId: number;
+  onSave: (menuIds: number[]) => Promise<void>;
+}
+
+interface Menu {
+  id: number;
+  name: string;
+  menu_type: 'tabbar' | 'sidebar_left' | 'sidebar_right';
+  description: string | null;
+  item_count: number;
 }
 
 export interface MenuConfig {
@@ -19,59 +29,92 @@ export interface MenuConfig {
   sidebar_order: number | null;
 }
 
-const ICON_OPTIONS = [
-  { value: 'home', label: 'Home' },
-  { value: 'search', label: 'Search/Explore' },
-  { value: 'favorite', label: 'Favorites' },
-  { value: 'person', label: 'Profile' },
-  { value: 'settings', label: 'Settings' },
-  { value: 'notifications', label: 'Notifications' },
-  { value: 'message', label: 'Messages' },
-  { value: 'calendar', label: 'Calendar' },
-  { value: 'map', label: 'Map' },
-  { value: 'camera', label: 'Camera' },
-  { value: 'image', label: 'Gallery' },
-  { value: 'bookmark', label: 'Bookmarks' },
-  { value: 'share', label: 'Share' },
-  { value: 'list', label: 'List' },
-  { value: 'grid-view', label: 'Grid' },
-  { value: 'menu', label: 'Menu' },
-];
-
-export default function MenuConfigModal({ isOpen, onClose, screen, onSave }: MenuConfigModalProps) {
-  const [config, setConfig] = useState<MenuConfig>({
-    show_in_tabbar: false,
-    tabbar_order: null,
-    tabbar_icon: 'home',
-    tabbar_label: screen?.name || '',
-    show_in_sidebar: true,
-    sidebar_order: null,
-  });
+export default function MenuConfigModal({ isOpen, onClose, screen, appId, onSave }: MenuConfigModalProps) {
+  const [availableMenus, setAvailableMenus] = useState<Menu[]>([]);
+  const [selectedMenuIds, setSelectedMenuIds] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (screen) {
-      setConfig({
-        show_in_tabbar: screen.show_in_tabbar || false,
-        tabbar_order: screen.tabbar_order,
-        tabbar_icon: screen.tabbar_icon || 'home',
-        tabbar_label: screen.tabbar_label || screen.name,
-        show_in_sidebar: screen.show_in_sidebar !== undefined ? screen.show_in_sidebar : true,
-        sidebar_order: screen.sidebar_order,
-      });
+    if (isOpen && screen) {
+      fetchMenus();
     }
-  }, [screen]);
+  }, [isOpen, screen, appId]);
+
+  const fetchMenus = async () => {
+    try {
+      setLoading(true);
+      const [menusResponse, screenMenusResponse] = await Promise.all([
+        menuAPI.getAppMenus(appId),
+        menuAPI.getScreenMenus(screen.id),
+      ]);
+
+      setAvailableMenus(menusResponse.data || []);
+      setSelectedMenuIds(screenMenusResponse.data.map((m: Menu) => m.id));
+    } catch (error) {
+      console.error('Error fetching menus:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleMenu = (menuId: number) => {
+    setSelectedMenuIds((prev) =>
+      prev.includes(menuId)
+        ? prev.filter((id) => id !== menuId)
+        : [...prev, menuId]
+    );
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave(config);
+      await onSave(selectedMenuIds);
       onClose();
     } catch (error) {
       console.error('Error saving menu config:', error);
       alert('Failed to save menu configuration');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const getMenuTypeIcon = (type: string) => {
+    switch (type) {
+      case 'tabbar':
+        return <Smartphone className="w-5 h-5" />;
+      case 'sidebar_left':
+        return <SidebarIcon className="w-5 h-5" />;
+      case 'sidebar_right':
+        return <SidebarIcon className="w-5 h-5 transform scale-x-[-1]" />;
+      default:
+        return <MenuIcon className="w-5 h-5" />;
+    }
+  };
+
+  const getMenuTypeLabel = (type: string) => {
+    switch (type) {
+      case 'tabbar':
+        return 'Tab Bar';
+      case 'sidebar_left':
+        return 'Left Sidebar';
+      case 'sidebar_right':
+        return 'Right Sidebar';
+      default:
+        return type;
+    }
+  };
+
+  const getMenuTypeBadgeColor = (type: string) => {
+    switch (type) {
+      case 'tabbar':
+        return 'bg-blue-100 text-blue-800';
+      case 'sidebar_left':
+        return 'bg-purple-100 text-purple-800';
+      case 'sidebar_right':
+        return 'bg-pink-100 text-pink-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -83,8 +126,8 @@ export default function MenuConfigModal({ isOpen, onClose, screen, onSave }: Men
         {/* Header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Menu Configuration</h2>
-            <p className="text-sm text-gray-600 mt-1">Configure where "{screen?.name}" appears in the app</p>
+            <h2 className="text-xl font-bold text-gray-900">Display Menus on Screen</h2>
+            <p className="text-sm text-gray-600 mt-1">Choose which menus to show on "{screen?.name}"</p>
           </div>
           <button
             onClick={onClose}
@@ -95,166 +138,72 @@ export default function MenuConfigModal({ isOpen, onClose, screen, onSave }: Men
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Tabbar Section */}
-          <div className="border border-blue-200 rounded-lg p-5 bg-blue-50/50">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                <LayoutGrid className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 mb-2">Bottom Tab Bar</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Add this screen to the bottom navigation bar (2-5 screens recommended)
+        <div className="p-6">
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Loading menus...</div>
+          ) : availableMenus.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600 mb-4">No menus available. Create menus first in the Menus page.</p>
+              <a
+                href={`/app/${appId}/menus`}
+                className="text-blue-600 hover:underline"
+              >
+                Go to Menus →
+              </a>
+            </div>
+          ) : (
+            <div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>💡 Two ways to use menus:</strong>
                 </p>
+                <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4 list-disc">
+                  <li><strong>Display menus ON this screen:</strong> Select menus below to show navigation on this screen</li>
+                  <li><strong>Add this screen TO a menu:</strong> Go to Menus page → Manage Items to add this screen as a menu item</li>
+                </ul>
+              </div>
+              
+              <p className="text-sm text-gray-600 mb-4">
+                Select which menus should display on the "{screen?.name}" screen.
+                A screen can show multiple menus (e.g., both a tab bar and sidebar).
+              </p>
 
-                <div className="space-y-4">
-                  <label className="flex items-center gap-3 cursor-pointer">
+              <div className="space-y-3">
+                {availableMenus.map((menu) => (
+                  <label
+                    key={menu.id}
+                    className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
                     <input
                       type="checkbox"
-                      checked={config.show_in_tabbar}
-                      onChange={(e) =>
-                        setConfig({ ...config, show_in_tabbar: e.target.checked })
-                      }
+                      checked={selectedMenuIds.includes(menu.id)}
+                      onChange={() => handleToggleMenu(menu.id)}
                       className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                     />
-                    <span className="text-sm font-medium text-gray-900">
-                      Show in tab bar
-                    </span>
-                  </label>
-
-                  {config.show_in_tabbar && (
-                    <div className="ml-8 space-y-4 pt-2">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Tab Label <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={config.tabbar_label}
-                          onChange={(e) =>
-                            setConfig({ ...config, tabbar_label: e.target.value })
-                          }
-                          placeholder="e.g., Explore, Home, Profile"
-                          maxLength={15}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Keep it short (max 15 characters)
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Tab Icon <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={config.tabbar_icon}
-                          onChange={(e) =>
-                            setConfig({ ...config, tabbar_icon: e.target.value })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          {ICON_OPTIONS.map((icon) => (
-                            <option key={icon.value} value={icon.value}>
-                              {icon.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Display Order
-                        </label>
-                        <input
-                          type="number"
-                          value={config.tabbar_order || ''}
-                          onChange={(e) =>
-                            setConfig({
-                              ...config,
-                              tabbar_order: e.target.value ? parseInt(e.target.value) : null,
-                            })
-                          }
-                          placeholder="Leave empty for auto-order"
-                          min="0"
-                          max="10"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Lower numbers appear first. Leave empty to auto-assign.
-                        </p>
-                      </div>
-
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                        <p className="text-xs text-yellow-800">
-                          <strong>⚠️ Important:</strong> Tab bars work best with 2-5 screens.
-                          Too many tabs can make navigation confusing.
-                        </p>
-                      </div>
+                    <div className={`p-2 rounded-lg ${getMenuTypeBadgeColor(menu.menu_type)}`}>
+                      {getMenuTypeIcon(menu.menu_type)}
                     </div>
-                  )}
-                </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">{menu.name}</div>
+                      <div className="text-sm text-gray-500">
+                        {getMenuTypeLabel(menu.menu_type)} • {menu.item_count} items
+                      </div>
+                      {menu.description && (
+                        <div className="text-xs text-gray-500 mt-1">{menu.description}</div>
+                      )}
+                    </div>
+                  </label>
+                ))}
               </div>
-            </div>
-          </div>
 
-          {/* Sidebar Section */}
-          <div className="border border-purple-200 rounded-lg p-5 bg-purple-50/50">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                <MenuIcon className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 mb-2">Sidebar Menu</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Add this screen to the sidebar/menu list (unlimited screens)
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>💡 Tip:</strong> Menus are managed separately in the Menus page.
+                  You can add/remove screens from menus and configure their order and icons there.
                 </p>
-
-                <div className="space-y-4">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={config.show_in_sidebar}
-                      onChange={(e) =>
-                        setConfig({ ...config, show_in_sidebar: e.target.checked })
-                      }
-                      className="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
-                    />
-                    <span className="text-sm font-medium text-gray-900">
-                      Show in sidebar menu
-                    </span>
-                  </label>
-
-                  {config.show_in_sidebar && (
-                    <div className="ml-8 space-y-4 pt-2">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Display Order
-                        </label>
-                        <input
-                          type="number"
-                          value={config.sidebar_order || ''}
-                          onChange={(e) =>
-                            setConfig({
-                              ...config,
-                              sidebar_order: e.target.value ? parseInt(e.target.value) : null,
-                            })
-                          }
-                          placeholder="Leave empty for auto-order"
-                          min="0"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Lower numbers appear first. Leave empty to auto-assign.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -268,7 +217,7 @@ export default function MenuConfigModal({ isOpen, onClose, screen, onSave }: Men
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || (config.show_in_tabbar && !config.tabbar_label.trim())}
+            disabled={saving || loading}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
             {saving ? (

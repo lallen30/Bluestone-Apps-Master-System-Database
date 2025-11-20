@@ -11,11 +11,53 @@ const { authenticate } = require('../middleware/auth');
 router.get('/:appId/roles', authenticate, rolesController.getAppRoles);
 
 /**
+ * @route   POST /api/v1/apps/:appId/roles
+ * @desc    Create a new role
+ * @access  Private (Admin)
+ */
+router.post('/:appId/roles', authenticate, rolesController.createRole);
+
+/**
  * @route   GET /api/v1/apps/:appId/roles/:roleId
  * @desc    Get role details with permissions
  * @access  Private (Admin)
  */
 router.get('/:appId/roles/:roleId', authenticate, rolesController.getRoleDetails);
+
+/**
+ * @route   PUT /api/v1/apps/:appId/roles/:roleId
+ * @desc    Update a role
+ * @access  Private (Admin)
+ */
+router.put('/:appId/roles/:roleId', authenticate, rolesController.updateRole);
+
+/**
+ * @route   DELETE /api/v1/apps/:appId/roles/:roleId
+ * @desc    Delete a role
+ * @access  Private (Admin)
+ */
+router.delete('/:appId/roles/:roleId', authenticate, rolesController.deleteRole);
+
+/**
+ * @route   GET /api/v1/apps/:appId/roles/:roleId/screens
+ * @desc    Get screens assigned to a role
+ * @access  Private (Admin)
+ */
+router.get('/:appId/roles/:roleId/screens', authenticate, rolesController.getRoleScreens);
+
+/**
+ * @route   POST /api/v1/apps/:appId/roles/:roleId/screens
+ * @desc    Assign screen to role
+ * @access  Private (Admin)
+ */
+router.post('/:appId/roles/:roleId/screens', authenticate, rolesController.assignScreenToRole);
+
+/**
+ * @route   DELETE /api/v1/apps/:appId/roles/:roleId/screens/:screenId
+ * @desc    Remove screen from role
+ * @access  Private (Admin)
+ */
+router.delete('/:appId/roles/:roleId/screens/:screenId', authenticate, rolesController.removeScreenFromRole);
 
 /**
  * @route   GET /api/v1/apps/:appId/users/:userId/roles

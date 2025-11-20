@@ -265,7 +265,7 @@ export default function MasterScreens() {
                     <div className="text-sm text-gray-900">{screen.app_count || 0} apps</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{screen.element_count || 0} modules</div>
+                    <div className="text-sm text-gray-900">{screen.element_count || 0} elements</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">

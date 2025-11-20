@@ -22,7 +22,7 @@ const getAppScreenElements = async (req, res) => {
     
     console.log(`[getAppScreenElements] Auto-sync enabled: ${autoSyncEnabled}`);
 
-    // Get master elements for this screen
+    // Get master elements for this screen with saved content
     const masterElementsResult = await db.query(
       `SELECT 
         sei.id as element_instance_id,
@@ -37,12 +37,16 @@ const getAppScreenElements = async (req, res) => {
         se.name as element_name,
         se.element_type,
         se.category as element_category,
-        se.icon as element_icon
+        se.icon as element_icon,
+        content.content_value,
+        content.options as content_options
        FROM screen_element_instances sei
        JOIN screen_elements se ON sei.element_id = se.id
+       LEFT JOIN app_screen_content content ON content.element_instance_id = sei.id 
+              AND content.app_id = ? AND content.screen_id = ?
        WHERE sei.screen_id = ?
        ORDER BY sei.display_order`,
-      [screenId]
+      [appId, screenId, screenId]
     );
 
     console.log(`[getAppScreenElements] Query result type:`, Array.isArray(masterElementsResult) ? 'array' : typeof masterElementsResult);
@@ -146,6 +150,8 @@ const getAppScreenElements = async (req, res) => {
           is_required: override && override.is_required_override !== null ? override.is_required_override : element.master_is_required,
           display_order: override?.custom_display_order || element.master_display_order,
           config: override?.custom_config || {},
+          content_value: element.content_value, // Include saved content
+          content_options: element.content_options, // Include saved content options
           is_custom: false,
           has_override: !!override,
           is_hidden: (override?.is_hidden || shouldAutoHide) ? true : false

@@ -20,6 +20,7 @@ const mobileRoutes = require('./routes/mobileRoutes');
 const mobileAuthRoutes = require('./routes/mobileAuth');
 const mobileProfileRoutes = require('./routes/mobileProfile');
 const mobileSettingsRoutes = require('./routes/mobileSettings');
+const mobileUploadRoutes = require('./routes/mobileUpload');
 const appUsersRoutes = require('./routes/appUsers');
 const rolesRoutes = require('./routes/roles');
 const templateRoutes = require('./routes/templateRoutes');
@@ -30,6 +31,10 @@ const mobileScreenRoutes = require('./routes/mobileScreenRoutes');
 const submissionsRoutes = require('./routes/submissions');
 const screenRolesRoutes = require('./routes/screenRoles');
 const propertyListingsRoutes = require('./routes/propertyListings');
+const bookingsRoutes = require('./routes/bookings');
+const messagesRoutes = require('./routes/messages');
+const menuRoutes = require('./routes/menuRoutes');
+const modulesRoutes = require('./routes/modulesRoutes');
 
 // Initialize Express app
 const app = express();
@@ -100,6 +105,8 @@ app.get('/health', (req, res) => {
 app.use(`/api/${API_VERSION}/auth`, authRoutes);
 app.use(`/api/${API_VERSION}/users`, userRoutes);
 app.use(`/api/${API_VERSION}`, propertyListingsRoutes); // Property listings (MUST be before /apps routes)
+app.use(`/api/${API_VERSION}`, bookingsRoutes); // Property bookings
+app.use(`/api/${API_VERSION}`, messagesRoutes); // Messaging system
 app.use(`/api/${API_VERSION}/apps`, appUsersRoutes); // App users management
 app.use(`/api/${API_VERSION}/apps`, rolesRoutes); // Roles management
 app.use(`/api/${API_VERSION}/apps`, appRoutes);
@@ -112,6 +119,7 @@ app.use(`/api/${API_VERSION}/app-screens`, appScreenRoutes);
 app.use(`/api/${API_VERSION}/mobile/auth`, mobileAuthRoutes);
 app.use(`/api/${API_VERSION}/mobile/profile`, mobileProfileRoutes);
 app.use(`/api/${API_VERSION}/mobile/settings`, mobileSettingsRoutes);
+app.use(`/api/${API_VERSION}/mobile`, mobileUploadRoutes); // Mobile file uploads
 app.use(`/api/${API_VERSION}/mobile`, mobileScreenRoutes); // Screen API for mobile apps
 app.use(`/api/${API_VERSION}/mobile`, mobileRoutes);
 app.use(`/api/${API_VERSION}/templates`, templateRoutes);
@@ -120,6 +128,8 @@ app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
 app.use(`/api/${API_VERSION}`, appScreenElementsRoutes); // App screen element overrides
 app.use(`/api/${API_VERSION}`, submissionsRoutes); // Form submissions
 app.use(`/api/${API_VERSION}`, screenRolesRoutes); // Screen access & role management
+app.use(`/api/${API_VERSION}`, menuRoutes); // Menu management
+app.use(`/api/${API_VERSION}/modules`, modulesRoutes); // Modules management
 
 // Serve uploaded files statically
 app.use('/uploads', express.static('uploads'));

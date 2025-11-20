@@ -22,17 +22,40 @@ export interface ScreenElement {
   id: number;
   element_type: string;
   label: string;
-  field_name: string;
+  field_key: string;
+  field_name?: string; // Deprecated, use field_key
   placeholder?: string;
   is_required: boolean;
   display_order: number;
   options?: any;
+  content_value?: string; // Saved content from admin
+  default_value?: string;
+  config?: any; // Element configuration (dropdown options, upload settings, etc.)
 }
 
 export interface ScreenContent {
   screen: AppScreen;
   elements: ScreenElement[];
   data?: any;
+}
+
+export interface MenuItem {
+  id: number;
+  screen_id: number;
+  display_order: number;
+  label: string | null;
+  icon: string | null;
+  screen_name: string;
+  screen_category: string;
+}
+
+export interface Menu {
+  id: number;
+  name: string;
+  menu_type: 'tabbar' | 'sidebar_left' | 'sidebar_right';
+  icon: string;
+  description: string | null;
+  items: MenuItem[];
 }
 
 export const screensService = {
@@ -75,5 +98,13 @@ export const screensService = {
       { submission_data: data }
     );
     return response.data;
+  },
+
+  // Get menus for a specific screen
+  getScreenMenus: async (screenId: number): Promise<Menu[]> => {
+    const response = await apiClient.get(
+      `/mobile/apps/${API_CONFIG.APP_ID}/screens/${screenId}/menus`
+    );
+    return response.data.data || [];
   },
 };

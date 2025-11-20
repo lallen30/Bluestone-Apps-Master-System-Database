@@ -147,6 +147,12 @@ exports.getListings = async (req, res) => {
       guests,
       status,
       user_id, // Filter by host
+      check_in_date, // NEW: Date availability filter
+      check_out_date, // NEW: Date availability filter
+      amenities, // NEW: Comma-separated amenity IDs
+      instant_book, // NEW: Only instant book properties
+      sort_by = 'created_at', // NEW: Sorting
+      sort_order = 'DESC', // NEW: Sort direction
       page = 1,
       per_page = 20
     } = req.query;
@@ -156,7 +162,11 @@ exports.getListings = async (req, res) => {
         l.*,
         u.first_name as host_first_name,
         u.last_name as host_last_name,
-        u.email as host_email
+        u.email as host_email,
+        (SELECT GROUP_CONCAT(pa.name) 
+         FROM property_listing_amenities pla 
+         JOIN property_amenities pa ON pla.amenity_id = pa.id 
+         WHERE pla.listing_id = l.id) as amenities_list
       FROM property_listings l
       LEFT JOIN app_users u ON l.user_id = u.id
       WHERE l.app_id = ?
@@ -216,10 +226,52 @@ exports.getListings = async (req, res) => {
       params.push(user_id);
     }
 
+    // NEW: Instant book filter
+    if (instant_book === 'true' || instant_book === '1') {
+      query += ` AND l.is_instant_book = 1`;
+    }
+
+    // NEW: Date availability filter
+    if (check_in_date && check_out_date) {
+      // Exclude listings with conflicting bookings
+      query += ` AND l.id NOT IN (
+        SELECT DISTINCT listing_id 
+        FROM property_bookings 
+        WHERE status IN ('confirmed', 'pending')
+          AND (
+            (check_in_date <= ? AND check_out_date > ?) OR
+            (check_in_date < ? AND check_out_date >= ?) OR
+            (check_in_date >= ? AND check_out_date <= ?)
+          )
+      )`;
+      params.push(check_in_date, check_in_date, check_out_date, check_out_date, check_in_date, check_out_date);
+    }
+
+    // NEW: Amenities filter
+    if (amenities) {
+      const amenityIds = amenities.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
+      if (amenityIds.length > 0) {
+        const amenityPlaceholders = amenityIds.map(() => '?').join(',');
+        query += ` AND l.id IN (
+          SELECT listing_id 
+          FROM property_listing_amenities 
+          WHERE amenity_id IN (${amenityPlaceholders})
+          GROUP BY listing_id
+          HAVING COUNT(DISTINCT amenity_id) = ?
+        )`;
+        params.push(...amenityIds, amenityIds.length);
+      }
+    }
+
+    // NEW: Sorting
+    const validSortFields = ['created_at', 'price_per_night', 'bedrooms', 'guests_max', 'title'];
+    const sortField = validSortFields.includes(sort_by) ? sort_by : 'created_at';
+    const sortDirection = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
     // Pagination
     const limit = parseInt(per_page) || 20;
     const offset = (parseInt(page) - 1) * limit;
-    query += ` ORDER BY l.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+    query += ` ORDER BY l.${sortField} ${sortDirection} LIMIT ${limit} OFFSET ${offset}`;
 
     const listings = await db.query(query, params);
 

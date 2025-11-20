@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 
 // Screens
 import ListingDetailScreen from '../screens/ListingDetailScreen';
@@ -11,82 +9,61 @@ import DynamicScreen from '../screens/DynamicScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import BookingScreen from '../screens/BookingScreen';
+import MyBookingsScreen from '../screens/MyBookingsScreen';
+import BookingDetailScreen from '../screens/BookingDetailScreen';
+import ConversationsScreen from '../screens/ConversationsScreen';
+import ChatScreen from '../screens/ChatScreen';
 
 import { useAuth } from '../context/AuthContext';
-import { screensService, AppScreen } from '../api/screensService';
+import { screensService } from '../api/screensService';
 
 const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
 
-// Bottom Tab Navigator for authenticated users (fully dynamic)
-const TabNavigator = () => {
-  const [tabScreens, setTabScreens] = useState<AppScreen[]>([]);
+// Initial Screen Loader - finds first screen from first menu
+const InitialScreenLoader = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadTabScreens();
+    loadInitialScreen();
   }, []);
 
-  const loadTabScreens = async () => {
+  const loadInitialScreen = async () => {
     try {
-      const screens = await screensService.getTabbarScreens();
-      setTabScreens(screens);
+      // Get all published screens
+      const screens = await screensService.getAppScreens();
+      
+      if (screens.length > 0) {
+        // Navigate to the first screen
+        const firstScreen = screens[0];
+        navigation.replace('DynamicScreen', {
+          screenId: firstScreen.id,
+          screenName: firstScreen.name,
+        });
+      } else {
+        setLoading(false);
+      }
     } catch (error) {
-      console.error('Error loading tab screens:', error);
-    } finally {
+      console.error('Error loading initial screen:', error);
       setLoading(false);
     }
   };
 
-  if (loading) {
+  if (!loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
-
-  if (!tabScreens.length) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.emptyTitle}>No tabs configured</Text>
+        <Text style={styles.emptyTitle}>No screens available</Text>
         <Text style={styles.emptySubtitle}>
-          Please publish at least one screen and enable "Show in tab bar" in the admin portal.
+          Please publish at least one screen in the admin portal.
         </Text>
       </View>
     );
   }
 
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#8E8E93',
-        headerShown: false,
-      }}
-    >
-      {tabScreens.map((screen) => (
-        <Tab.Screen
-          key={screen.id}
-          name={`Screen_${screen.id}`}
-          component={DynamicScreen}
-          initialParams={{
-            screenId: screen.id,
-            screenName: screen.name,
-          }}
-          options={{
-            tabBarLabel: screen.tabbar_label || screen.name,
-            tabBarIcon: ({ color, size }) => (
-              <Icon
-                name={screen.tabbar_icon || 'article'}
-                color={color}
-                size={size}
-              />
-            ),
-          }}
-        />
-      ))}
-    </Tab.Navigator>
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#007AFF" />
+    </View>
   );
 };
 
@@ -115,8 +92,13 @@ const AppNavigator = () => {
         {isAuthenticated ? (
           <>
             <Stack.Screen
-              name="MainTabs"
-              component={TabNavigator}
+              name="InitialLoader"
+              component={InitialScreenLoader}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="DynamicScreen"
+              component={DynamicScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen
@@ -125,14 +107,36 @@ const AppNavigator = () => {
               options={{ title: 'Property Details' }}
             />
             <Stack.Screen
-              name="DynamicScreen"
-              component={DynamicScreen}
-              options={{ title: 'Screen' }}
-            />
-            <Stack.Screen
               name="Profile"
               component={ProfileScreen}
               options={{ title: 'Profile' }}
+            />
+            {/* Booking Screens */}
+            <Stack.Screen
+              name="Booking"
+              component={BookingScreen}
+              options={{ title: 'Book Property' }}
+            />
+            <Stack.Screen
+              name="MyBookings"
+              component={MyBookingsScreen}
+              options={{ title: 'My Bookings' }}
+            />
+            <Stack.Screen
+              name="BookingDetail"
+              component={BookingDetailScreen}
+              options={{ title: 'Booking Details' }}
+            />
+            {/* Messaging Screens */}
+            <Stack.Screen
+              name="Conversations"
+              component={ConversationsScreen}
+              options={{ title: 'Messages' }}
+            />
+            <Stack.Screen
+              name="Chat"
+              component={ChatScreen}
+              options={{ title: 'Chat' }}
             />
           </>
         ) : (

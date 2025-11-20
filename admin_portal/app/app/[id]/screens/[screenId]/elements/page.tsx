@@ -88,7 +88,7 @@ export default function ManageScreenElements() {
 
     // Only master admins can access this page
     if (isHydrated && user?.role_level !== 1) {
-      alert('Access denied. Only Master Admins can manage screen modules.');
+      alert('Access denied. Only Master Admins can manage screen elements.');
       router.push(`/app/${appId}/screens`);
       return;
     }
@@ -217,7 +217,7 @@ export default function ManageScreenElements() {
   const handleHideMasterElement = async (element: Element) => {
     if (element.is_custom || !element.element_instance_id) return;
 
-    if (!confirm(`Remove "${element.label}" from this app?  This Module can be brought back at any time.`)) return;
+    if (!confirm(`Remove "${element.label}" from this app?  This Element can be brought back at any time.`)) return;
 
     try {
       await appScreenElementsAPI.createOrUpdateOverride(appId, screenId, element.element_instance_id, {
@@ -354,9 +354,9 @@ export default function ManageScreenElements() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Manage Screen Modules</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Manage Screen Elements</h1>
               <p className="text-gray-600 mt-1">
-                Customize modules for this app without affecting other apps
+                Customize elements for this app without affecting other apps
               </p>
             </div>
           </div>
@@ -364,11 +364,11 @@ export default function ManageScreenElements() {
           {/* Stats */}
           <div className="grid grid-cols-4 gap-4 mt-6">
             <div className="bg-white rounded-lg shadow p-4">
-              <div className="text-sm text-gray-600">Active Modules</div>
+              <div className="text-sm text-gray-600">Active Elements</div>
               <div className="text-2xl font-bold text-purple-600">{counts.total}</div>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
-              <div className="text-sm text-gray-600">Master Modules</div>
+              <div className="text-sm text-gray-600">Master Elements</div>
               <div className="text-2xl font-bold text-gray-900">{counts.master}</div>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
@@ -376,7 +376,7 @@ export default function ManageScreenElements() {
               <div className="text-2xl font-bold text-blue-600">{counts.overridden}</div>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
-              <div className="text-sm text-gray-600">Custom Modules</div>
+              <div className="text-sm text-gray-600">Custom Elements</div>
               <div className="text-2xl font-bold text-green-600">{counts.custom}</div>
             </div>
           </div>
@@ -406,12 +406,12 @@ export default function ManageScreenElements() {
                 onChange={(e) => setShowHidden(e.target.checked)}
                 className="rounded border-gray-300"
               />
-              Show Removed Modules ({counts.hidden})
+              Show Removed Elements ({counts.hidden})
             </label>
           </div>
           <Button onClick={() => setIsAddModalOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Custom Module
+            Add Custom Element
           </Button>
         </div>
 
@@ -536,7 +536,7 @@ export default function ManageScreenElements() {
                           <button
                             onClick={() => handleRestoreElement(element)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
-                            title="Restore Module"
+                            title="Restore Element"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -668,7 +668,7 @@ export default function ManageScreenElements() {
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        title="Add Custom Module"
+        title="Add Custom Element"
       >
         <div className="space-y-4">
           <div className="bg-green-50 border border-green-200 rounded-lg p-3">
