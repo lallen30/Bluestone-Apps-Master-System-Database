@@ -140,6 +140,9 @@ exports.getScreenWithElements = async (req, res) => {
     const userId = requestUserId;
     const userRoleIds = req.user?.role_ids || [];
 
+    console.log(`[Screen ${screenId}] User ${userId} has role_ids:`, userRoleIds);
+    console.log(`[Screen ${screenId}] Full req.user:`, req.user);
+
     if (userId && userRoleIds.length > 0) {
       // Check if any role restrictions exist for this screen
       const roleRestrictionsResult = await db.query(
@@ -582,6 +585,78 @@ exports.submitScreenData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error processing submission',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get all menus for an app (for mobile app)
+ * Returns all active menus with their items
+ */
+exports.getAppMenus = async (req, res) => {
+  try {
+    const { appId } = req.params;
+
+    // Get all menus for the app
+    const menusQuery = `
+      SELECT 
+        m.id,
+        m.name,
+        m.menu_type,
+        m.description,
+        m.icon
+      FROM app_menus m
+      WHERE m.app_id = ? 
+        AND m.is_active = 1
+      ORDER BY m.menu_type
+    `;
+
+    const menusResult = await db.query(menusQuery, [appId]);
+    const menus = Array.isArray(menusResult) && Array.isArray(menusResult[0]) 
+      ? menusResult[0] 
+      : menusResult;
+
+    // For each menu, get its items
+    const menusWithItems = await Promise.all(
+      (menus || []).map(async (menu) => {
+        const itemsQuery = `
+          SELECT 
+            mi.id,
+            mi.screen_id,
+            mi.display_order,
+            mi.label,
+            mi.icon,
+            s.name as screen_name,
+            s.screen_key,
+            s.category as screen_category
+          FROM menu_items mi
+          JOIN app_screens s ON mi.screen_id = s.id
+          WHERE mi.menu_id = ? AND mi.is_active = 1
+          ORDER BY mi.display_order
+        `;
+
+        const itemsResult = await db.query(itemsQuery, [menu.id]);
+        const items = Array.isArray(itemsResult) && Array.isArray(itemsResult[0]) 
+          ? itemsResult[0] 
+          : itemsResult;
+
+        return {
+          ...menu,
+          items: items || []
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: menusWithItems
+    });
+  } catch (error) {
+    console.error('Error fetching app menus:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching app menus',
       error: error.message
     });
   }

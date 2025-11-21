@@ -20,9 +20,17 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { screensService, ScreenContent, ScreenElement, Menu } from '../api/screensService';
 import { uploadService } from '../api/uploadService';
-import { DynamicTabBar } from '../components/DynamicTabBar';
 import { DynamicSidebar } from '../components/DynamicSidebar';
 import HeaderBar from '../components/HeaderBar';
+import {
+  BookingFormElement,
+  BookingListElement,
+  BookingDetailElement,
+  ConversationListElement,
+  ChatInterfaceElement,
+  PropertySearchElement,
+  PropertyFormElement,
+} from '../components/elements';
 
 const DynamicScreen = ({ route, navigation }: any) => {
   const { screenId, screenName } = route.params;
@@ -657,6 +665,73 @@ const DynamicScreen = ({ route, navigation }: any) => {
           </View>
         );
 
+      case 'booking_form':
+        return (
+          <BookingFormElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+            route={route}
+          />
+        );
+
+      case 'booking_list':
+        return (
+          <BookingListElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+          />
+        );
+
+      case 'booking_detail':
+        return (
+          <BookingDetailElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+            route={route}
+          />
+        );
+
+      case 'conversation_list':
+        return (
+          <ConversationListElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+          />
+        );
+
+      case 'chat_interface':
+        return (
+          <ChatInterfaceElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+            route={route}
+          />
+        );
+
+      case 'property_search':
+        return (
+          <PropertySearchElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+          />
+        );
+
+      case 'property_form':
+        return (
+          <PropertyFormElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+            route={route}
+          />
+        );
+
       default:
         // For unknown element types, show as text if content_value exists
         if (value && element.element_type !== 'text_input') {
@@ -703,8 +778,7 @@ const DynamicScreen = ({ route, navigation }: any) => {
     ['text_input', 'text_field', 'email', 'email_input', 'phone', 'phone_input', 'textarea', 'text_area', 'number', 'number_input', 'url', 'url_input', 'date', 'date_picker', 'switch', 'checkbox'].includes(el.element_type)
   );
 
-  // Find menus by type
-  const tabbarMenu = menus.find((m) => m.menu_type === 'tabbar');
+  // Find menus by type (tabbar is now handled by AppNavigator)
   const leftSidebarMenu = menus.find((m) => m.menu_type === 'sidebar_left');
   const rightSidebarMenu = menus.find((m) => m.menu_type === 'sidebar_right');
 
@@ -759,14 +833,8 @@ const DynamicScreen = ({ route, navigation }: any) => {
           )}
         </ScrollView>
 
-        {/* Dynamic Tab Bar */}
-        {tabbarMenu && tabbarMenu.items.length > 0 && (
-          <DynamicTabBar
-            menu={tabbarMenu}
-            currentScreenId={screenId}
-            onNavigate={handleNavigate}
-          />
-        )}
+        {/* Note: Tab Bar is now handled by AppNavigator's TabNavigator */}
+        {/* DynamicTabBar removed to prevent duplicate tab bars */}
 
         {/* Left Sidebar */}
         {leftSidebarMenu && leftSidebarMenu.items.length > 0 && (

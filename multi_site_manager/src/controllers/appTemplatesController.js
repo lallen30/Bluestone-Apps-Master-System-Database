@@ -55,29 +55,70 @@ const getAppTemplateById = async (req, res) => {
 
     const template = templates[0];
 
-    // Get screens for this template
+    // Get screens for this template with element counts from master screens
     const screens = await db.query(
-      `SELECT * FROM app_template_screens 
-       WHERE template_id = ? 
-       ORDER BY display_order`,
+      `SELECT 
+        ats.*,
+        COALESCE(
+          (SELECT COUNT(*) 
+           FROM screen_element_instances sei 
+           WHERE sei.screen_id = ats.screen_id),
+          (SELECT COUNT(*) 
+           FROM app_template_screen_elements atse 
+           WHERE atse.template_screen_id = ats.id)
+        ) as element_count
+       FROM app_template_screens ats
+       WHERE ats.template_id = ? 
+       ORDER BY ats.display_order`,
       [id]
     );
 
-    // Get elements for each screen
+    // Get elements for each screen (from master screen if available, otherwise from template)
     for (let screen of screens) {
-      const elements = await db.query(
-        `SELECT 
-          atse.*,
-          se.name as element_name,
-          se.element_type,
-          se.category as element_category,
-          se.icon as element_icon
-         FROM app_template_screen_elements atse
-         JOIN screen_elements se ON atse.element_id = se.id
-         WHERE atse.template_screen_id = ?
-         ORDER BY atse.display_order`,
-        [screen.id]
-      );
+      let elements = [];
+      
+      // First try to get elements from master screen
+      if (screen.screen_id) {
+        elements = await db.query(
+          `SELECT 
+            sei.id,
+            sei.element_id,
+            sei.field_key,
+            sei.label,
+            sei.placeholder,
+            sei.default_value,
+            sei.is_required,
+            sei.display_order,
+            sei.config,
+            se.name as element_name,
+            se.element_type,
+            se.category as element_category,
+            se.icon as element_icon
+           FROM screen_element_instances sei
+           JOIN screen_elements se ON sei.element_id = se.id
+           WHERE sei.screen_id = ?
+           ORDER BY sei.display_order`,
+          [screen.screen_id]
+        );
+      }
+      
+      // Fallback to template screen elements if master has none
+      if (elements.length === 0) {
+        elements = await db.query(
+          `SELECT 
+            atse.*,
+            se.name as element_name,
+            se.element_type,
+            se.category as element_category,
+            se.icon as element_icon
+           FROM app_template_screen_elements atse
+           JOIN screen_elements se ON atse.element_id = se.id
+           WHERE atse.template_screen_id = ?
+           ORDER BY atse.display_order`,
+          [screen.id]
+        );
+      }
+      
       screen.elements = elements;
     }
 

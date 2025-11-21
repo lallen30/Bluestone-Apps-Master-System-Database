@@ -108,3 +108,14 @@ export const screensService = {
     return response.data.data || [];
   },
 };
+
+// Menus service
+export const menusService = {
+  // Get all menus for the app
+  getAppMenus: async (): Promise<any[]> => {
+    const response = await apiClient.get(
+      `/mobile/apps/${API_CONFIG.APP_ID}/menus`
+    );
+    return response.data.data || [];
+  },
+};

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
 
 // Screens
 import ListingDetailScreen from '../screens/ListingDetailScreen';
@@ -10,60 +12,105 @@ import ProfileScreen from '../screens/ProfileScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import BookingScreen from '../screens/BookingScreen';
-import MyBookingsScreen from '../screens/MyBookingsScreen';
 import BookingDetailScreen from '../screens/BookingDetailScreen';
-import ConversationsScreen from '../screens/ConversationsScreen';
 import ChatScreen from '../screens/ChatScreen';
 
 import { useAuth } from '../context/AuthContext';
-import { screensService } from '../api/screensService';
+import { screensService, menusService } from '../api/screensService';
 
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 
-// Initial Screen Loader - finds first screen from first menu
-const InitialScreenLoader = ({ navigation }: any) => {
+// Tab Bar Navigator with dynamic screens from menus
+const TabNavigator = () => {
+  const [tabScreens, setTabScreens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadInitialScreen();
+    loadTabBarScreens();
   }, []);
 
-  const loadInitialScreen = async () => {
+  const loadTabBarScreens = async () => {
     try {
-      // Get all published screens
-      const screens = await screensService.getAppScreens();
+      // Get menus for the app
+      const menus = await menusService.getAppMenus();
       
-      if (screens.length > 0) {
-        // Navigate to the first screen
-        const firstScreen = screens[0];
-        navigation.replace('DynamicScreen', {
-          screenId: firstScreen.id,
-          screenName: firstScreen.name,
-        });
+      // Find the tab bar menu
+      const tabBarMenu = menus.find((menu: any) => menu.menu_type === 'tabbar');
+      
+      if (tabBarMenu && tabBarMenu.items && tabBarMenu.items.length > 0) {
+        setTabScreens(tabBarMenu.items);
       } else {
-        setLoading(false);
+        // Fallback: use old tabbar_order system
+        const screens = await screensService.getTabbarScreens();
+        setTabScreens(screens.map((screen: any) => ({
+          screen_id: screen.id,
+          label: screen.tabbar_label || screen.name,
+          icon: screen.tabbar_icon || 'circle',
+          screen_name: screen.name,
+        })));
       }
     } catch (error) {
-      console.error('Error loading initial screen:', error);
+      console.error('Error loading tab bar screens:', error);
+    } finally {
       setLoading(false);
     }
   };
 
-  if (!loading) {
+  if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.emptyTitle}>No screens available</Text>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (tabScreens.length === 0) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.emptyTitle}>No tab bar configured</Text>
         <Text style={styles.emptySubtitle}>
-          Please publish at least one screen in the admin portal.
+          Please configure a tab bar menu in the admin portal.
         </Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#007AFF" />
-    </View>
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: '#007AFF',
+        tabBarInactiveTintColor: '#8E8E93',
+      }}
+    >
+      {tabScreens.map((item: any, index: number) => (
+        <Tab.Screen
+          key={item.screen_id || index}
+          name={`Tab_${item.screen_id}`}
+          options={{
+            tabBarLabel: item.label || item.screen_name,
+            tabBarIcon: ({ color, size }) => (
+              <Icon name={item.icon || 'circle'} size={size} color={color} />
+            ),
+          }}
+        >
+          {(props) => (
+            <DynamicScreen
+              {...props}
+              route={{
+                ...props.route,
+                params: {
+                  screenId: item.screen_id,
+                  screenName: item.screen_name || item.label,
+                },
+              }}
+            />
+          )}
+        </Tab.Screen>
+      ))}
+    </Tab.Navigator>
   );
 };
 
@@ -92,8 +139,8 @@ const AppNavigator = () => {
         {isAuthenticated ? (
           <>
             <Stack.Screen
-              name="InitialLoader"
-              component={InitialScreenLoader}
+              name="Home"
+              component={TabNavigator}
               options={{ headerShown: false }}
             />
             <Stack.Screen
@@ -111,27 +158,16 @@ const AppNavigator = () => {
               component={ProfileScreen}
               options={{ title: 'Profile' }}
             />
-            {/* Booking Screens */}
+            {/* Detail Screens - Not in Tab Bar */}
             <Stack.Screen
               name="Booking"
               component={BookingScreen}
               options={{ title: 'Book Property' }}
             />
             <Stack.Screen
-              name="MyBookings"
-              component={MyBookingsScreen}
-              options={{ title: 'My Bookings' }}
-            />
-            <Stack.Screen
               name="BookingDetail"
               component={BookingDetailScreen}
               options={{ title: 'Booking Details' }}
-            />
-            {/* Messaging Screens */}
-            <Stack.Screen
-              name="Conversations"
-              component={ConversationsScreen}
-              options={{ title: 'Messages' }}
             />
             <Stack.Screen
               name="Chat"
@@ -164,6 +200,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F2F2F7',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#8E8E93',
   },
   emptyTitle: {
     fontSize: 18,

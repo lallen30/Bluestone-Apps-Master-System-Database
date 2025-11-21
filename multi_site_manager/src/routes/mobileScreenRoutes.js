@@ -41,6 +41,16 @@ router.post('/apps/:appId/screens/:screenId/submit',
 );
 
 /**
+ * GET /api/v1/mobile/apps/:appId/menus
+ * Get all menus for an app with their items
+ * Returns all active menus (tabbar, sidebar_left, sidebar_right)
+ */
+router.get('/apps/:appId/menus',
+  authenticateMobileUser({ required: false }),
+  mobileScreensController.getAppMenus
+);
+
+/**
  * GET /api/v1/mobile/apps/:appId/screens/:screenId/menus
  * Get all menus assigned to a specific screen
  * Returns menus with their items that should display on this screen
