@@ -277,25 +277,21 @@ exports.assignScreenToApp = async (req, res) => {
     const { app_id, screen_id, display_order } = req.body;
     const assigned_by = req.user.id;
     
+    // Use INSERT ... ON DUPLICATE KEY UPDATE to handle both new assignments and updates
     const result = await db.query(
       `INSERT INTO app_screen_assignments (app_id, screen_id, display_order, assigned_by)
-       VALUES (?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE display_order = VALUES(display_order)`,
       [app_id, screen_id, display_order || 0, assigned_by]
     );
     
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: 'Screen assigned to app successfully',
-      data: { id: result.insertId }
+      message: 'Screen assigned/updated successfully',
+      data: { id: result.insertId || result.affectedRows }
     });
   } catch (error) {
     console.error('Error assigning screen to app:', error);
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({
-        success: false,
-        message: 'Screen already assigned to this app'
-      });
-    }
     res.status(500).json({
       success: false,
       message: 'Error assigning screen to app'
@@ -346,15 +342,18 @@ exports.getAppScreenContent = async (req, res) => {
       });
     }
     
-    // Get elements with content
+    // Get elements with content and form information
     const elements = await db.query(
       `SELECT sei.*, se.name as element_name, se.element_type, se.category,
               se.icon, se.has_options, se.is_content_field, se.is_editable_by_app_admin,
-              content.content_value, content.options as content_options
+              content.content_value, content.options as content_options,
+              sei.form_id, f.name as form_name, f.form_key, f.form_type,
+              (SELECT COUNT(*) FROM app_form_elements WHERE form_id = sei.form_id) as form_field_count
        FROM screen_element_instances sei
        JOIN screen_elements se ON sei.element_id = se.id
        LEFT JOIN app_screen_content content ON content.element_instance_id = sei.id 
               AND content.app_id = ? AND content.screen_id = ?
+       LEFT JOIN app_forms f ON sei.form_id = f.id
        WHERE sei.screen_id = ?
        ORDER BY sei.display_order`,
       [app_id, screen_id, screen_id]
@@ -391,10 +390,12 @@ exports.saveScreenContent = async (req, res) => {
       // Convert undefined to null for MySQL2
       const contentValue = item.content_value === undefined || item.content_value === '' ? null : item.content_value;
       const elementInstanceId = item.element_instance_id !== undefined ? item.element_instance_id : null;
+      const options = item.options ? JSON.stringify(item.options) : null;
       
       console.log('[saveScreenContent] Processing item:', { 
         element_instance_id: elementInstanceId, 
         content_value: contentValue,
+        options: item.options,
         app_id,
         screen_id,
         updated_by
@@ -402,12 +403,13 @@ exports.saveScreenContent = async (req, res) => {
       
       await db.query(
         `INSERT INTO app_screen_content 
-         (app_id, screen_id, element_instance_id, content_value, updated_by)
-         VALUES (?, ?, ?, ?, ?)
+         (app_id, screen_id, element_instance_id, content_value, options, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE 
          content_value = VALUES(content_value),
+         options = VALUES(options),
          updated_by = VALUES(updated_by)`,
-        [app_id, screen_id, elementInstanceId, contentValue, updated_by]
+        [app_id, screen_id, elementInstanceId, contentValue, options, updated_by]
       );
     }
     

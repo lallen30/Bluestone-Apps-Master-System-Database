@@ -39,11 +39,17 @@ const getAppScreenElements = async (req, res) => {
         se.category as element_category,
         se.icon as element_icon,
         content.content_value,
-        content.options as content_options
+        content.options as content_options,
+        sei.form_id,
+        f.name as form_name,
+        f.form_key,
+        f.form_type,
+        (SELECT COUNT(*) FROM app_form_elements WHERE form_id = sei.form_id) as form_field_count
        FROM screen_element_instances sei
        JOIN screen_elements se ON sei.element_id = se.id
        LEFT JOIN app_screen_content content ON content.element_instance_id = sei.id 
               AND content.app_id = ? AND content.screen_id = ?
+       LEFT JOIN app_forms f ON sei.form_id = f.id
        WHERE sei.screen_id = ?
        ORDER BY sei.display_order`,
       [appId, screenId, screenId]
@@ -132,8 +138,11 @@ const getAppScreenElements = async (req, res) => {
       .map(element => {
         const override = overrideMap[element.element_instance_id];
         
-        // If auto-sync is disabled and there's no override, this is a new element - hide it automatically
-        const shouldAutoHide = !autoSyncEnabled && !override;
+        // If auto-sync is disabled and there's no override AND no saved content, 
+        // this is likely a new element - hide it automatically
+        // BUT if there's saved content, it means the element was being used before auto-sync was disabled
+        const hasContent = element.content_value || element.content_options;
+        const shouldAutoHide = !autoSyncEnabled && !override && !hasContent;
         
         const formattedElement = {
           element_instance_id: element.element_instance_id,
@@ -152,6 +161,11 @@ const getAppScreenElements = async (req, res) => {
           config: override?.custom_config || {},
           content_value: element.content_value, // Include saved content
           content_options: element.content_options, // Include saved content options
+          form_id: element.form_id, // Include form data
+          form_name: element.form_name,
+          form_key: element.form_key,
+          form_type: element.form_type,
+          form_field_count: element.form_field_count,
           is_custom: false,
           has_override: !!override,
           is_hidden: (override?.is_hidden || shouldAutoHide) ? true : false
@@ -193,6 +207,12 @@ const getAppScreenElements = async (req, res) => {
       .sort((a, b) => a.display_order - b.display_order);
 
     console.log(`[getAppScreenElements] Returning ${allElements.length} total elements, ${hiddenElements.length} hidden`);
+    console.log(`[getAppScreenElements] First element form data:`, allElements[0] ? {
+      element_type: allElements[0].element_type,
+      form_id: allElements[0].form_id,
+      form_name: allElements[0].form_name,
+      form_field_count: allElements[0].form_field_count
+    } : 'No elements');
 
     res.json({
       success: true,

@@ -70,6 +70,7 @@ services:
     volumes:
       - ./multi_site_manager/src:/app/src
       - ./multi_site_manager/package.json:/app/package.json
+      - ./multi_site_manager/uploads:/app/uploads
       - /app/node_modules
     networks:
       - app_network

@@ -20,9 +20,9 @@ router.post('/login', mobileAuthController.login);
 /**
  * @route   POST /api/mobile/auth/logout
  * @desc    Logout mobile app user
- * @access  Private
+ * @access  Public (but uses token if provided)
  */
-router.post('/logout', authenticateMobileUser, mobileAuthController.logout);
+router.post('/logout', mobileAuthController.logout);
 
 /**
  * @route   POST /api/mobile/auth/verify-email

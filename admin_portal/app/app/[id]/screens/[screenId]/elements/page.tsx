@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appsAPI, appScreenElementsAPI, screenElementsAPI } from '@/lib/api';
+import { appsAPI, appScreenElementsAPI, appScreensAPI, screenElementsAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
 import { 
   ArrowLeft, Plus, Edit, Trash2, Eye, EyeOff, RotateCcw, 
@@ -43,6 +43,7 @@ export default function ManageScreenElements() {
   const [elements, setElements] = useState<Element[]>([]);
   const [allElements, setAllElements] = useState<Element[]>([]); // Store all elements including hidden
   const [availableElements, setAvailableElements] = useState<any[]>([]);
+  const [availableScreens, setAvailableScreens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [counts, setCounts] = useState({ master: 0, overridden: 0, custom: 0, total: 0, hidden: 0 });
   const [showHidden, setShowHidden] = useState(false);
@@ -54,17 +55,35 @@ export default function ManageScreenElements() {
   const [submitting, setSubmitting] = useState(false);
   
   // Form data for override/custom element
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    custom_label: string;
+    custom_placeholder: string;
+    custom_default_value: string;
+    is_required: boolean;
+    is_hidden: boolean;
+    display_order: number;
+    custom_config?: any;
+  }>({
     custom_label: '',
     custom_placeholder: '',
     custom_default_value: '',
     is_required: false,
     is_hidden: false,
     display_order: 0,
+    custom_config: {},
   });
   
   // Add custom element form
-  const [customElementForm, setCustomElementForm] = useState({
+  const [customElementForm, setCustomElementForm] = useState<{
+    element_id: string;
+    field_key: string;
+    label: string;
+    placeholder: string;
+    default_value: string;
+    is_required: boolean;
+    display_order: number;
+    custom_config: any;
+  }>({
     element_id: '',
     field_key: '',
     label: '',
@@ -72,6 +91,7 @@ export default function ManageScreenElements() {
     default_value: '',
     is_required: false,
     display_order: 999,
+    custom_config: {},
   });
 
   useEffect(() => {
@@ -118,6 +138,10 @@ export default function ManageScreenElements() {
       // Fetch available screen elements for adding custom elements
       const availableResponse = await screenElementsAPI.getAll();
       setAvailableElements(availableResponse.data || []);
+
+      // Fetch available screens for button navigation
+      const screensResponse = await appScreensAPI.getAppScreens(appId);
+      setAvailableScreens(screensResponse.data || []);
 
       setLoading(false);
     } catch (error) {
@@ -171,6 +195,7 @@ export default function ManageScreenElements() {
             is_required: formData.is_required,
             is_hidden: formData.is_hidden,
             custom_display_order: formData.display_order,
+            custom_config: formData.custom_config,
           }
         );
       }
@@ -307,6 +332,7 @@ export default function ManageScreenElements() {
         default_value: customElementForm.default_value,
         is_required: customElementForm.is_required,
         display_order: customElementForm.display_order,
+        config: customElementForm.custom_config, // Send custom_config as config
       });
 
       setIsAddModalOpen(false);
@@ -318,6 +344,7 @@ export default function ManageScreenElements() {
         default_value: '',
         is_required: false,
         display_order: 999,
+        custom_config: {},
       });
       fetchData();
     } catch (error: any) {
@@ -587,31 +614,217 @@ export default function ManageScreenElements() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Placeholder
-            </label>
-            <input
-              type="text"
-              value={formData.custom_placeholder}
-              onChange={(e) => setFormData({ ...formData, custom_placeholder: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Placeholder text"
-            />
-          </div>
+          {selectedElement?.element_type === 'link' ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Action Type
+                </label>
+                <select
+                  value={formData.custom_config?.actionType || 'url'}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    custom_config: { 
+                      ...formData.custom_config, 
+                      actionType: e.target.value,
+                      url: e.target.value === 'url' ? formData.custom_config?.url : undefined,
+                      screenId: e.target.value === 'screen' ? formData.custom_config?.screenId : undefined
+                    }
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="url">Open URL</option>
+                  <option value="screen">Navigate to Screen</option>
+                </select>
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Default Value
-            </label>
-            <input
-              type="text"
-              value={formData.custom_default_value}
-              onChange={(e) => setFormData({ ...formData, custom_default_value: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Default value"
-            />
-          </div>
+              {(!formData.custom_config?.actionType || formData.custom_config?.actionType === 'url') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.custom_config?.url || ''}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      custom_config: { ...formData.custom_config, url: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="https://example.com"
+                  />
+                </div>
+              )}
+
+              {formData.custom_config?.actionType === 'screen' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Target Screen
+                  </label>
+                  <select
+                    value={formData.custom_config?.screenId || ''}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      custom_config: { ...formData.custom_config, screenId: parseInt(e.target.value) || undefined }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Select a screen...</option>
+                    {availableScreens.map((scr: any) => (
+                      <option key={scr.id} value={scr.id}>
+                        {scr.name} (ID: {scr.id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          ) : selectedElement?.element_type === 'button' ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Action Type
+                </label>
+                <select
+                  value={formData.custom_config?.actionType || 'none'}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    custom_config: { 
+                      ...formData.custom_config, 
+                      actionType: e.target.value,
+                      url: e.target.value === 'url' ? formData.custom_config?.url : undefined,
+                      screenId: e.target.value === 'screen' ? formData.custom_config?.screenId : undefined,
+                      submitType: e.target.value === 'submit' ? formData.custom_config?.submitType || 'save' : undefined
+                    }
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="none">No Action</option>
+                  <option value="url">Open URL</option>
+                  <option value="screen">Navigate to Screen</option>
+                  <option value="submit">Submit Form</option>
+                </select>
+              </div>
+
+              {formData.custom_config?.actionType === 'url' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.custom_config?.url || ''}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      custom_config: { ...formData.custom_config, url: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="https://example.com"
+                  />
+                </div>
+              )}
+
+              {formData.custom_config?.actionType === 'screen' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Target Screen
+                  </label>
+                  <select
+                    value={formData.custom_config?.screenId || ''}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      custom_config: { ...formData.custom_config, screenId: parseInt(e.target.value) || undefined }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Select a screen...</option>
+                    {availableScreens.map((scr: any) => (
+                      <option key={scr.id} value={scr.id}>
+                        {scr.name} (ID: {scr.id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {formData.custom_config?.actionType === 'submit' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Submit Type
+                    </label>
+                    <select
+                      value={formData.custom_config?.submitType || 'save'}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        custom_config: { ...formData.custom_config, submitType: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="save">Save Data</option>
+                      <option value="login">Login</option>
+                      <option value="register">Register</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Choose what happens when the button is clicked</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Redirect After Success
+                    </label>
+                    <select
+                      value={formData.custom_config?.redirectScreenId || ''}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        custom_config: { ...formData.custom_config, redirectScreenId: parseInt(e.target.value) || null }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">{formData.custom_config?.submitType === 'login' ? 'Default (Home screen)' : 'Stay on current screen'}</option>
+                      {availableScreens.map((scr: any) => (
+                        <option key={scr.id} value={scr.id}>
+                          {scr.name} (ID: {scr.id})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formData.custom_config?.submitType === 'login' 
+                        ? 'Screen to navigate to after successful login (default: Home)' 
+                        : 'Screen to navigate to after successful submission'}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Placeholder
+                </label>
+                <input
+                  type="text"
+                  value={formData.custom_placeholder}
+                  onChange={(e) => setFormData({ ...formData, custom_placeholder: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Placeholder text"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Default Value
+                </label>
+                <input
+                  type="text"
+                  value={formData.custom_default_value}
+                  onChange={(e) => setFormData({ ...formData, custom_default_value: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Default value"
+                />
+              </div>
+            </>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -687,12 +900,39 @@ export default function ManageScreenElements() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Select element type...</option>
-              {availableElements.map((el) => (
-                <option key={el.id} value={el.id}>
-                  {el.name} ({el.type})
-                </option>
-              ))}
+              {availableElements
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((el) => (
+                  <option key={el.id} value={el.id}>
+                    {el.name}
+                  </option>
+                ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Label
+            </label>
+            <input
+              type="text"
+              value={customElementForm.label}
+              onChange={(e) => {
+                const label = e.target.value;
+                // Auto-generate field_key from label if field_key is empty or was auto-generated
+                const autoKey = label
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, '_')
+                  .replace(/^_+|_+$/g, '');
+                setCustomElementForm({ 
+                  ...customElementForm, 
+                  label,
+                  field_key: autoKey
+                });
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="e.g., Employee ID"
+            />
           </div>
 
           <div>
@@ -703,22 +943,10 @@ export default function ManageScreenElements() {
               type="text"
               value={customElementForm.field_key}
               onChange={(e) => setCustomElementForm({ ...customElementForm, field_key: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
               placeholder="e.g., employee_id"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Label
-            </label>
-            <input
-              type="text"
-              value={customElementForm.label}
-              onChange={(e) => setCustomElementForm({ ...customElementForm, label: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="e.g., Employee ID"
-            />
+            <p className="text-xs text-gray-500 mt-1">Auto-generated from label, but you can edit it</p>
           </div>
 
           <div>
@@ -758,6 +986,90 @@ export default function ManageScreenElements() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
+
+          {/* Action Type for Button and Link elements */}
+          {(() => {
+            const selectedElement = availableElements.find(el => el.id === parseInt(customElementForm.element_id));
+            const elementType = selectedElement?.element_type;
+            
+            if (elementType === 'button' || elementType === 'link') {
+              return (
+                <div className="space-y-3 border-t pt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Action Type
+                    </label>
+                    <select
+                      value={customElementForm.custom_config?.actionType || (elementType === 'button' ? 'none' : 'url')}
+                      onChange={(e) => setCustomElementForm({
+                        ...customElementForm,
+                        custom_config: {
+                          ...customElementForm.custom_config,
+                          actionType: e.target.value,
+                          url: e.target.value === 'url' ? customElementForm.custom_config?.url : undefined,
+                          screenId: e.target.value === 'screen' ? customElementForm.custom_config?.screenId : undefined
+                        }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      {elementType === 'button' && <option value="none">No Action</option>}
+                      <option value="url">Open URL</option>
+                      <option value="screen">Navigate to Screen</option>
+                    </select>
+                  </div>
+
+                  {customElementForm.custom_config?.actionType === 'url' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        URL
+                      </label>
+                      <input
+                        type="url"
+                        value={customElementForm.custom_config?.url || ''}
+                        onChange={(e) => setCustomElementForm({
+                          ...customElementForm,
+                          custom_config: {
+                            ...customElementForm.custom_config,
+                            url: e.target.value
+                          }
+                        })}
+                        placeholder="https://example.com"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  )}
+
+                  {customElementForm.custom_config?.actionType === 'screen' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Target Screen
+                      </label>
+                      <select
+                        value={customElementForm.custom_config?.screenId || ''}
+                        onChange={(e) => setCustomElementForm({
+                          ...customElementForm,
+                          custom_config: {
+                            ...customElementForm.custom_config,
+                            screenId: parseInt(e.target.value) || undefined
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="">Select a screen...</option>
+                        {availableScreens.map((scr: any) => (
+                          <option key={scr.id} value={scr.id}>
+                            {scr.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">Select the screen to navigate to</p>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           <label className="flex items-center gap-2">
             <input

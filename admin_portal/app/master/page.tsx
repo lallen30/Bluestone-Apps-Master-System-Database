@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, usersAPI, appScreensAPI, screenElementsAPI, modulesAPI } from '@/lib/api';
-import { Users, Globe, Activity, LogOut, Monitor, Layers, Sparkles, Package } from 'lucide-react';
+import { Users, Globe, Activity, LogOut, Monitor, Layers, Sparkles, Package, FileText } from 'lucide-react';
 
 export default function MasterDashboard() {
   const router = useRouter();
@@ -227,6 +227,21 @@ export default function MasterDashboard() {
               <div>
                 <h3 className="font-semibold text-gray-900">Modules</h3>
                 <p className="text-sm text-gray-500">Navigation & UI modules</p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => router.push('/master/forms')}
+            className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
+                <FileText className="w-5 h-5 text-cyan-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Forms</h3>
+                <p className="text-sm text-gray-500">Reusable form templates</p>
               </div>
             </div>
           </button>

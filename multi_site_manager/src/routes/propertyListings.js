@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const propertyListingsController = require('../controllers/propertyListingsController');
 const { authenticateMobileUser } = require('../middleware/mobileAuth');
+const { authenticateDual } = require('../middleware/dualAuth');
 
 // Public routes (no auth required)
 
@@ -53,22 +54,33 @@ router.put(
 /**
  * DELETE /api/v1/apps/:appId/listings/:listingId
  * Delete a listing
- * Requires authentication and ownership
+ * Requires authentication (admin or mobile user with ownership)
  */
 router.delete(
   '/apps/:appId/listings/:listingId',
-  authenticateMobileUser({ required: true }),
+  authenticateDual,
   propertyListingsController.deleteListing
 );
 
 /**
+ * PUT /api/v1/apps/:appId/listings/:listingId/status
+ * Update listing status (draft, active, inactive, suspended, etc.)
+ * Requires authentication (admin or mobile user with ownership)
+ */
+router.put(
+  '/apps/:appId/listings/:listingId/status',
+  authenticateDual,
+  propertyListingsController.updateListingStatus
+);
+
+/**
  * PUT /api/v1/apps/:appId/listings/:listingId/publish
- * Publish or unpublish a listing
- * Requires authentication and ownership
+ * Publish or unpublish a listing (backward compatibility)
+ * Requires authentication (admin or mobile user with ownership)
  */
 router.put(
   '/apps/:appId/listings/:listingId/publish',
-  authenticateMobileUser({ required: true }),
+  authenticateDual,
   propertyListingsController.publishListing
 );
 

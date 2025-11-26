@@ -8,7 +8,7 @@ import {
   Modal,
   TouchableWithoutFeedback,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Menu, MenuItem } from '../api/screensService';
 
 interface DynamicSidebarProps {
@@ -53,7 +53,7 @@ export const DynamicSidebar: React.FC<DynamicSidebarProps> = ({
               <View style={styles.header}>
                 <Text style={styles.headerTitle}>{menu.name}</Text>
                 <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                  <Icon name="close-outline" size={24} color="#000" />
+                  <Icon name="close" size={24} color="#000" />
                 </TouchableOpacity>
               </View>
 

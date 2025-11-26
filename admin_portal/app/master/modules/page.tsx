@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { modulesAPI } from '@/lib/api';
-import { Package, Plus, Edit, Trash2, ArrowLeft } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, ArrowLeft, Layers } from 'lucide-react';
 
 interface Module {
   id: number;
@@ -86,31 +86,36 @@ export default function ModulesPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => router.push('/master')}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="text-gray-600 hover:text-gray-900"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
+                <ArrowLeft className="w-6 h-6" />
               </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Modules</h1>
-                <p className="text-gray-600 mt-1">Reusable navigation and UI components</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                  <Layers className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Modules</h1>
+                  <p className="text-sm text-gray-500">Reusable navigation and UI components</p>
+                </div>
               </div>
             </div>
             <button
               onClick={() => alert('Create module feature coming soon!')}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
               Create Module
             </button>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

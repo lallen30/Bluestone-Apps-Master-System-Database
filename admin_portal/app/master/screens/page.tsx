@@ -165,16 +165,21 @@ export default function MasterScreens() {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => router.push('/master')}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="text-gray-600 hover:text-gray-900"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-6 h-6" />
               </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Screens Management</h1>
-                <p className="text-sm text-gray-500">{screens.length} total screens</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                  <Monitor className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Screens Management</h1>
+                  <p className="text-sm text-gray-500">{screens.length} total screens</p>
+                </div>
               </div>
             </div>
             <div className="flex gap-2">

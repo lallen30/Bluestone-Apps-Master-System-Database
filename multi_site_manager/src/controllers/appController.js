@@ -387,6 +387,48 @@ const getAppByDomain = async (req, res) => {
   }
 };
 
+// Set home screen for app
+const setHomeScreen = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { screen_id } = req.body;
+
+    // Verify the screen exists and is assigned to this app
+    const screen = await queryOne(
+      `SELECT s.id FROM app_screens s 
+       JOIN app_screen_assignments asa ON s.id = asa.screen_id 
+       WHERE s.id = ? AND asa.app_id = ?`,
+      [screen_id, id]
+    );
+
+    if (!screen) {
+      return res.status(404).json({
+        success: false,
+        message: 'Screen not found or does not belong to this app'
+      });
+    }
+
+    // Update the app's default home screen
+    await query(
+      'UPDATE apps SET default_home_screen_id = ? WHERE id = ?',
+      [screen_id, id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Home screen updated successfully',
+      data: { default_home_screen_id: screen_id }
+    });
+  } catch (error) {
+    console.error('Set home screen error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to set home screen',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllApps,
   getAppById,
@@ -395,5 +437,6 @@ module.exports = {
   deleteApp,
   getAppSettings,
   updateAppSettings,
-  getAppByDomain
+  getAppByDomain,
+  setHomeScreen
 };

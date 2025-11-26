@@ -7,7 +7,7 @@ import { appsAPI, permissionsAPI, appScreensAPI, menuAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
 import MenuConfigModal from '@/components/MenuConfigModal';
 import ModuleAssignmentModal from '@/components/ModuleAssignmentModal';
-import { Monitor, Sparkles, Edit, GripVertical, Settings, RefreshCw, RefreshCwOff, LayoutGrid, Package } from 'lucide-react';
+import { Monitor, Sparkles, Edit, GripVertical, Settings, RefreshCw, RefreshCwOff, LayoutGrid, Package, Home } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -35,9 +35,10 @@ interface SortableRowProps {
   onMenuConfig: (screen: any) => void;
   onModuleConfig: (screen: any) => void;
   isMasterAdmin: boolean;
+  isHomeScreen: boolean;
 }
 
-function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, onMenuConfig, onModuleConfig, isMasterAdmin }: SortableRowProps) {
+function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, onMenuConfig, onModuleConfig, isMasterAdmin, isHomeScreen }: SortableRowProps) {
   const {
     attributes,
     listeners,
@@ -54,7 +55,7 @@ function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggle
   };
 
   return (
-    <tr ref={setNodeRef} style={style} className="hover:bg-gray-50">
+    <tr ref={setNodeRef} style={style} className={`hover:bg-gray-50 ${isHomeScreen ? 'bg-green-50 border-l-4 border-green-500' : ''}`}>
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
           <button
@@ -64,11 +65,22 @@ function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggle
           >
             <GripVertical className="w-5 h-5" />
           </button>
-          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-            <Monitor className="w-5 h-5 text-primary" />
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isHomeScreen ? 'bg-green-100' : 'bg-primary/10'}`}>
+            {isHomeScreen ? (
+              <Home className="w-5 h-5 text-green-600" />
+            ) : (
+              <Monitor className="w-5 h-5 text-primary" />
+            )}
           </div>
           <div>
-            <div className="text-sm font-medium text-gray-900">{screen.name}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-900">{screen.name}</span>
+              {isHomeScreen && (
+                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                  Home Screen
+                </span>
+              )}
+            </div>
             <div className="text-sm text-gray-500">{screen.description || 'No description'}</div>
           </div>
         </div>
@@ -181,6 +193,7 @@ export default function AppScreens() {
     isOpen: false,
     screen: null,
   });
+  const [homeScreenId, setHomeScreenId] = useState<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -211,6 +224,7 @@ export default function AppScreens() {
       // Fetch app details
       const appResponse = await appsAPI.getById(appId);
       setApp(appResponse.data);
+      setHomeScreenId(appResponse.data?.default_home_screen_id || null);
 
       // Fetch assigned screens
       const screensResponse = await appScreensAPI.getAppScreens(appId);
@@ -327,6 +341,13 @@ export default function AppScreens() {
         }));
 
         await appScreensAPI.updateScreenOrder(appId, screenOrders);
+
+        // If dragged to position 0, set as home screen
+        if (newIndex === 0) {
+          const newHomeScreenId = newScreens[0].id;
+          await appsAPI.setHomeScreen(appId, newHomeScreenId);
+          setHomeScreenId(newHomeScreenId);
+        }
       } catch (error) {
         console.error('Error updating screen order:', error);
         // Revert on error
@@ -452,7 +473,7 @@ export default function AppScreens() {
                     items={screens.map((s) => s.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {screens.map((screen) => (
+                    {screens.map((screen, index) => (
                       <SortableRow
                         key={screen.id}
                         screen={screen}
@@ -463,6 +484,7 @@ export default function AppScreens() {
                         onMenuConfig={handleMenuConfig}
                         onModuleConfig={handleModuleConfig}
                         isMasterAdmin={user?.role_level === 1}
+                        isHomeScreen={homeScreenId ? screen.id === homeScreenId : index === 0}
                       />
                     ))}
                   </SortableContext>

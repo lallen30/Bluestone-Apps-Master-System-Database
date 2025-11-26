@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { messagesService, Conversation } from '../../api/messagesService';
 
 interface ScreenElement {
@@ -125,7 +125,7 @@ const ConversationListElement: React.FC<ConversationListElementProps> = ({ eleme
       >
         {show_avatars && (
           <View style={styles.avatar}>
-            <Icon name="person" size={32} color="#fff" />
+            <Icon name="account" size={32} color="#fff" />
           </View>
         )}
 
@@ -165,7 +165,7 @@ const ConversationListElement: React.FC<ConversationListElementProps> = ({ eleme
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Icon name="chat-bubble-outline" size={64} color="#C7C7CC" />
+      <Icon name="chat-outline" size={64} color="#C7C7CC" />
       <Text style={styles.emptyTitle}>No Messages</Text>
       <Text style={styles.emptySubtitle}>
         Start a conversation with a host by contacting them from a property listing

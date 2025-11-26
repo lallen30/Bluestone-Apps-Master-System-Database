@@ -9,7 +9,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { listingsService } from '../../api/listingsService';
 import { PropertyListing } from '../../types';
 
@@ -146,11 +146,11 @@ const PropertySearchElement: React.FC<PropertySearchElementProps> = ({ element, 
             </Text>
             <View style={styles.listDetails}>
               <View style={styles.detailItem}>
-                <Icon name="people" size={14} color="#8E8E93" />
+                <Icon name="account-group" size={14} color="#8E8E93" />
                 <Text style={styles.detailText}>{item.guests_max} guests</Text>
               </View>
               <View style={styles.detailItem}>
-                <Icon name="hotel" size={14} color="#8E8E93" />
+                <Icon name="bed" size={14} color="#8E8E93" />
                 <Text style={styles.detailText}>{item.bedrooms} beds</Text>
               </View>
             </View>
@@ -189,9 +189,9 @@ const PropertySearchElement: React.FC<PropertySearchElementProps> = ({ element, 
             {item.city}, {item.country}
           </Text>
           <View style={styles.gridDetails}>
-            <Icon name="people" size={14} color="#8E8E93" />
+            <Icon name="account-group" size={14} color="#8E8E93" />
             <Text style={styles.gridDetailText}>{item.guests_max}</Text>
-            <Icon name="hotel" size={14} color="#8E8E93" style={styles.detailIcon} />
+            <Icon name="bed" size={14} color="#8E8E93" style={styles.detailIcon} />
             <Text style={styles.gridDetailText}>{item.bedrooms}</Text>
           </View>
           <Text style={styles.gridPrice}>${pricePerNight.toFixed(2)}/night</Text>
@@ -202,7 +202,7 @@ const PropertySearchElement: React.FC<PropertySearchElementProps> = ({ element, 
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Icon name="search-off" size={64} color="#C7C7CC" />
+      <Icon name="magnify-close" size={64} color="#C7C7CC" />
       <Text style={styles.emptyTitle}>No Properties Found</Text>
       <Text style={styles.emptySubtitle}>
         Try adjusting your search or filters
@@ -218,7 +218,7 @@ const PropertySearchElement: React.FC<PropertySearchElementProps> = ({ element, 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Icon name="search" size={20} color="#8E8E93" />
+          <Icon name="magnify" size={20} color="#8E8E93" />
           <TextInput
             style={styles.searchInput}
             value={searchQuery}
@@ -238,7 +238,7 @@ const PropertySearchElement: React.FC<PropertySearchElementProps> = ({ element, 
           style={styles.filterButton}
           onPress={() => setShowFilters(!showFilters)}
         >
-          <Icon name="tune" size={24} color="#007AFF" />
+          <Icon name="tune-vertical" size={20} color="#007AFF" />
         </TouchableOpacity>
       </View>
 

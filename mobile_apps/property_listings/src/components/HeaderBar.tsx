@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Platform } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { Menu } from '../api/screensService';
 
@@ -44,8 +44,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   } = config;
 
   // Determine left icon based on type
-  const leftIconName = leftIconType === 'back' ? 'arrow-back' : (leftMenu?.icon || 'menu');
-  const rightIconName = rightMenu?.icon || 'more-vert';
+  const leftIconName = leftIconType === 'back' ? 'arrow-left' : (leftMenu?.icon || 'menu');
+  const rightIconName = rightMenu?.icon || 'dots-vertical';
 
   // Handle left icon press
   const handleLeftIconPress = () => {

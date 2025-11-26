@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Trash2, GripVertical, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, GripVertical, Save, EyeOff, Type, PanelLeft, PanelRight, Menu as MenuIcon } from 'lucide-react';
 import { menuAPI, appScreensAPI, appsAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
 import IconPicker from '@/components/IconPicker';
@@ -27,7 +27,11 @@ import { CSS } from '@dnd-kit/utilities';
 interface MenuItem {
   id: number;
   menu_id: number;
-  screen_id: number;
+  screen_id: number | null;
+  item_type: 'screen' | 'sidebar';
+  sidebar_menu_id: number | null;
+  sidebar_position: 'left' | 'right' | null;
+  sidebar_menu_name: string | null;
   display_order: number;
   label: string | null;
   icon: string | null;
@@ -85,25 +89,78 @@ function SortableItem({ item, onRemove, onUpdate }: SortableItemProps) {
         <GripVertical className="w-5 h-5 text-gray-400" />
       </div>
 
-      {/* Screen Info */}
+      {/* Item Type Badge */}
+      {item.item_type === 'sidebar' && (
+        <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+          item.sidebar_position === 'left' 
+            ? 'bg-purple-100 text-purple-700' 
+            : 'bg-orange-100 text-orange-700'
+        }`}>
+          {item.sidebar_position === 'left' ? (
+            <PanelLeft className="w-3 h-3" />
+          ) : (
+            <PanelRight className="w-3 h-3" />
+          )}
+          {item.sidebar_position === 'left' ? 'Left' : 'Right'}
+        </div>
+      )}
+
+      {/* Screen/Sidebar Info */}
       <div className="flex-1">
-        <div className="font-medium text-gray-900">{item.screen_name}</div>
-        <div className="text-sm text-gray-500">{item.screen_category}</div>
+        <div className="font-medium text-gray-900">
+          {item.item_type === 'sidebar' ? (
+            <span className="flex items-center gap-2">
+              <MenuIcon className="w-4 h-4 text-gray-500" />
+              {item.sidebar_menu_name || item.screen_name}
+            </span>
+          ) : (
+            item.screen_name
+          )}
+        </div>
+        <div className="text-sm text-gray-500">
+          {item.item_type === 'sidebar' 
+            ? `Opens ${item.sidebar_position} sidebar menu` 
+            : item.screen_category}
+        </div>
       </div>
 
       {/* Label Override */}
-      <div className="w-48">
-        <input
-          type="text"
-          value={item.label || ''}
-          onChange={(e) => onUpdate(item.id, { label: e.target.value })}
-          placeholder="Custom label"
-          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
+      <div className="w-56">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={item.label === '__NO_LABEL__' ? '' : (item.label || '')}
+            onChange={(e) => onUpdate(item.id, { label: e.target.value })}
+            placeholder="Custom label"
+            disabled={item.label === '__NO_LABEL__'}
+            className={`w-32 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+              item.label === '__NO_LABEL__' ? 'bg-gray-100 text-gray-400' : ''
+            }`}
+          />
+          <button
+            type="button"
+            onClick={() => onUpdate(item.id, { label: item.label === '__NO_LABEL__' ? '' : '__NO_LABEL__' })}
+            title={item.label === '__NO_LABEL__' ? 'Show label' : 'Hide label (icon only)'}
+            className={`flex-shrink-0 p-1.5 rounded-lg border ${
+              item.label === '__NO_LABEL__'
+                ? 'bg-blue-100 border-blue-300 text-blue-600'
+                : 'bg-white border-gray-300 text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            {item.label === '__NO_LABEL__' ? (
+              <EyeOff className="w-4 h-4" />
+            ) : (
+              <Type className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+        {item.label === '__NO_LABEL__' && (
+          <span className="text-xs text-blue-600 mt-1 block">Icon only</span>
+        )}
       </div>
 
       {/* Icon */}
-      <div className="w-48">
+      <div className="w-40">
         <IconPicker
           value={item.icon || ''}
           onChange={(iconName) => onUpdate(item.id, { icon: iconName })}
@@ -130,11 +187,21 @@ export default function MenuDetailPage() {
 
   const [menu, setMenu] = useState<Menu | null>(null);
   const [allScreens, setAllScreens] = useState<Screen[]>([]);
+  const [allMenus, setAllMenus] = useState<Menu[]>([]);
   const [appName, setAppName] = useState('');
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSidebarModal, setShowSidebarModal] = useState(false);
   const [selectedScreenIds, setSelectedScreenIds] = useState<number[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
+  
+  // Sidebar item form state
+  const [sidebarForm, setSidebarForm] = useState({
+    sidebar_menu_id: 0,
+    sidebar_position: 'left' as 'left' | 'right',
+    label: '',
+    icon: '',
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -150,18 +217,22 @@ export default function MenuDetailPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [menuResponse, screensResponse, appResponse] = await Promise.all([
+      const [menuResponse, screensResponse, appResponse, menusResponse] = await Promise.all([
         menuAPI.getMenu(menuId),
         appScreensAPI.getAppScreens(appId),
         appsAPI.getById(appId),
+        menuAPI.getAppMenus(appId),
       ]);
 
       setMenu(menuResponse.data);
       setAppName(appResponse.data?.name || 'App');
       setAllScreens(screensResponse.data);
+      setAllMenus(menusResponse.data || []);
       
-      // Pre-select screens that are already in the menu
-      const menuScreenIds = menuResponse.data.items.map((item: MenuItem) => item.screen_id);
+      // Pre-select screens that are already in the menu (only screen items, not sidebar items)
+      const menuScreenIds = menuResponse.data.items
+        .filter((item: MenuItem) => item.item_type === 'screen' && item.screen_id)
+        .map((item: MenuItem) => item.screen_id as number);
       setSelectedScreenIds(menuScreenIds);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -285,6 +356,40 @@ export default function MenuDetailPage() {
     }
   };
 
+  const handleAddSidebarItem = async () => {
+    if (!sidebarForm.sidebar_menu_id) {
+      alert('Please select a menu');
+      return;
+    }
+
+    try {
+      await menuAPI.addSidebarItem(menuId, {
+        sidebar_menu_id: sidebarForm.sidebar_menu_id,
+        sidebar_position: sidebarForm.sidebar_position,
+        display_order: menu?.items.length || 0,
+        label: sidebarForm.label || undefined,
+        icon: sidebarForm.icon || undefined,
+      });
+
+      setShowSidebarModal(false);
+      setSidebarForm({
+        sidebar_menu_id: 0,
+        sidebar_position: 'left',
+        label: '',
+        icon: '',
+      });
+      fetchData();
+    } catch (error: any) {
+      console.error('Error adding sidebar item:', error);
+      alert(error.response?.data?.message || 'Failed to add sidebar item');
+    }
+  };
+
+  // Get sidebar menus (exclude current menu)
+  const sidebarMenus = allMenus.filter(
+    (m) => m.id !== menuId && (m.menu_type === 'sidebar_left' || m.menu_type === 'sidebar_right')
+  );
+
   if (loading) {
     return (
       <AppLayout appId={appId.toString()} appName={appName}>
@@ -327,6 +432,35 @@ export default function MenuDetailPage() {
             </div>
 
             <div className="flex gap-3">
+              {menu.items.length > 0 && (
+                <button
+                  onClick={() => {
+                    const allHidden = menu.items.every((item: MenuItem) => item.label === '__NO_LABEL__');
+                    setMenu((prevMenu) => {
+                      if (!prevMenu) return prevMenu;
+                      const newItems = prevMenu.items.map((item) => ({
+                        ...item,
+                        label: allHidden ? '' : '__NO_LABEL__',
+                      }));
+                      setHasChanges(true);
+                      return { ...prevMenu, items: newItems };
+                    });
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 border border-gray-300"
+                >
+                  {menu.items.every((item: MenuItem) => item.label === '__NO_LABEL__') ? (
+                    <>
+                      <Type className="w-4 h-4" />
+                      Show All Labels
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="w-4 h-4" />
+                      Hide All Labels
+                    </>
+                  )}
+                </button>
+              )}
               {hasChanges && (
                 <button
                   onClick={handleSaveChanges}
@@ -336,6 +470,13 @@ export default function MenuDetailPage() {
                   Save Changes
                 </button>
               )}
+              <button
+                onClick={() => setShowSidebarModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                <PanelLeft className="w-5 h-5" />
+                Add Sidebar
+              </button>
               <button
                 onClick={() => setShowAddModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -429,7 +570,9 @@ export default function MenuDetailPage() {
                     setShowAddModal(false);
                     // Reset to current menu items
                     if (menu) {
-                      const menuScreenIds = menu.items.map((item) => item.screen_id);
+                      const menuScreenIds = menu.items
+                        .filter((item) => item.item_type === 'screen' && item.screen_id)
+                        .map((item) => item.screen_id as number);
                       setSelectedScreenIds(menuScreenIds);
                     }
                   }}
@@ -443,6 +586,129 @@ export default function MenuDetailPage() {
                 >
                   Save Changes
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Sidebar Modal */}
+        {showSidebarModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Add Sidebar Menu Item</h2>
+              
+              {sidebarMenus.length === 0 ? (
+                <div className="text-center py-8">
+                  <MenuIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-600 mb-4">No sidebar menus available.</p>
+                  <p className="text-sm text-gray-500">Create a sidebar menu first to add it here.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Sidebar Position */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sidebar Position
+                    </label>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setSidebarForm({ ...sidebarForm, sidebar_position: 'left' })}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 ${
+                          sidebarForm.sidebar_position === 'left'
+                            ? 'border-purple-500 bg-purple-50 text-purple-700'
+                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        <PanelLeft className="w-5 h-5" />
+                        Left Sidebar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSidebarForm({ ...sidebarForm, sidebar_position: 'right' })}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 ${
+                          sidebarForm.sidebar_position === 'right'
+                            ? 'border-orange-500 bg-orange-50 text-orange-700'
+                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        <PanelRight className="w-5 h-5" />
+                        Right Sidebar
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Select Menu */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Menu
+                    </label>
+                    <select
+                      value={sidebarForm.sidebar_menu_id}
+                      onChange={(e) => setSidebarForm({ ...sidebarForm, sidebar_menu_id: parseInt(e.target.value) })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value={0}>Select a menu...</option>
+                      {sidebarMenus.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.menu_type === 'sidebar_left' ? 'Left' : 'Right'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Label */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Label (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={sidebarForm.label}
+                      onChange={(e) => setSidebarForm({ ...sidebarForm, label: e.target.value })}
+                      placeholder="e.g., Menu, Settings"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Icon */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Icon
+                    </label>
+                    <IconPicker
+                      value={sidebarForm.icon}
+                      onChange={(iconName) => setSidebarForm({ ...sidebarForm, icon: iconName })}
+                      placeholder="Select icon"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-6 mt-4 border-t">
+                <button
+                  onClick={() => {
+                    setShowSidebarModal(false);
+                    setSidebarForm({
+                      sidebar_menu_id: 0,
+                      sidebar_position: 'left',
+                      label: '',
+                      icon: '',
+                    });
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                {sidebarMenus.length > 0 && (
+                  <button
+                    onClick={handleAddSidebarItem}
+                    disabled={!sidebarForm.sidebar_menu_id}
+                    className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Add Sidebar Item
+                  </button>
+                )}
               </div>
             </div>
           </div>

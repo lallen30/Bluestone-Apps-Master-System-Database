@@ -203,7 +203,7 @@ exports.getScreenWithElements = async (req, res) => {
 
     // Get screen details
     const screenResult = await db.query(
-      `SELECT id, name, description, category, icon
+      `SELECT id, name, screen_key, description, category, icon
        FROM app_screens
        WHERE id = ? AND is_active = 1`,
       [screenId]
@@ -240,11 +240,16 @@ exports.getScreenWithElements = async (req, res) => {
         se.category as element_category,
         se.icon as element_icon,
         content.content_value,
-        content.options as content_options
+        content.options as content_options,
+        sei.form_id,
+        f.name as form_name,
+        f.form_key,
+        f.form_type
        FROM screen_element_instances sei
        JOIN screen_elements se ON sei.element_id = se.id
        LEFT JOIN app_screen_content content ON content.element_instance_id = sei.id 
               AND content.app_id = ? AND content.screen_id = ?
+       LEFT JOIN app_forms f ON sei.form_id = f.id
        WHERE sei.screen_id = ?
        ORDER BY sei.display_order`,
       [appId, screenId, screenId]
@@ -371,6 +376,10 @@ exports.getScreenWithElements = async (req, res) => {
           config: parsedConfig,
           content_value: element.content_value, // Include saved content
           content_options: element.content_options, // Include saved content options
+          form_id: element.form_id, // Include form ID for property_form elements
+          form_name: element.form_name,
+          form_key: element.form_key,
+          form_type: element.form_type,
           is_custom: false
         };
       })
@@ -444,35 +453,62 @@ exports.getScreenWithElements = async (req, res) => {
       }
     }));
 
-    // Load latest submission data for this user (for profile screens)
+    // Load data for this user
     let submissionData = null;
     const currentUserId = req.user?.id;
-    console.log(`[Screen ${screenId}] Loading submission for user ${currentUserId}`);
+    console.log(`[Screen ${screenId}] Loading data for user ${currentUserId}`);
     
     if (currentUserId) {
-      const submissionResult = await db.query(
-        `SELECT submission_data 
-         FROM screen_submissions 
-         WHERE app_id = ? AND screen_id = ? AND user_id = ?
-         ORDER BY created_at DESC 
-         LIMIT 1`,
-        [appId, screenId, currentUserId]
+      // Check if this is a profile screen by screen_key
+      const isProfileScreen = screen.screen_key && (
+        screen.screen_key.includes('profile') || 
+        screen.name.toLowerCase().includes('profile')
       );
       
-      const submissions = Array.isArray(submissionResult) && Array.isArray(submissionResult[0]) 
-        ? submissionResult[0] 
-        : submissionResult;
-      
-      console.log(`[Screen ${screenId}] Found ${submissions?.length || 0} submissions`);
-      
-      if (submissions && submissions.length > 0 && submissions[0].submission_data) {
-        try {
-          submissionData = typeof submissions[0].submission_data === 'string' 
-            ? JSON.parse(submissions[0].submission_data)
-            : submissions[0].submission_data;
-          console.log(`[Screen ${screenId}] Loaded submission data:`, Object.keys(submissionData));
-        } catch (e) {
-          console.error('Failed to parse submission data:', e);
+      if (isProfileScreen) {
+        // Load user profile data from app_users table
+        console.log(`[Screen ${screenId}] Detected profile screen, loading user data`);
+        const userResult = await db.query(
+          `SELECT first_name, last_name, email, phone, bio, avatar_url, date_of_birth, gender
+           FROM app_users 
+           WHERE id = ? AND app_id = ?`,
+          [currentUserId, appId]
+        );
+        
+        const users = Array.isArray(userResult) && Array.isArray(userResult[0]) 
+          ? userResult[0] 
+          : userResult;
+        
+        if (users && users.length > 0) {
+          submissionData = users[0];
+          console.log(`[Screen ${screenId}] Loaded user profile data:`, Object.keys(submissionData));
+        }
+      } else {
+        // Load latest submission data for non-profile screens
+        const submissionResult = await db.query(
+          `SELECT submission_data 
+           FROM screen_submissions 
+           WHERE app_id = ? AND screen_id = ? AND user_id = ?
+           ORDER BY created_at DESC 
+           LIMIT 1`,
+          [appId, screenId, currentUserId]
+        );
+        
+        const submissions = Array.isArray(submissionResult) && Array.isArray(submissionResult[0]) 
+          ? submissionResult[0] 
+          : submissionResult;
+        
+        console.log(`[Screen ${screenId}] Found ${submissions?.length || 0} submissions`);
+        
+        if (submissions && submissions.length > 0 && submissions[0].submission_data) {
+          try {
+            submissionData = typeof submissions[0].submission_data === 'string' 
+              ? JSON.parse(submissions[0].submission_data)
+              : submissions[0].submission_data;
+            console.log(`[Screen ${screenId}] Loaded submission data:`, Object.keys(submissionData));
+          } catch (e) {
+            console.error('Failed to parse submission data:', e);
+          }
         }
       }
     } else {
@@ -489,6 +525,15 @@ exports.getScreenWithElements = async (req, res) => {
       }
       return element;
     });
+
+    console.log(`[Screen ${screenId}] Returning ${elementsWithData.length} elements`);
+    if (elementsWithData.length > 0) {
+      console.log(`[Screen ${screenId}] First element:`, {
+        element_type: elementsWithData[0].element_type,
+        form_id: elementsWithData[0].form_id,
+        label: elementsWithData[0].label
+      });
+    }
 
     res.json({
       success: true,
@@ -534,52 +579,117 @@ exports.submitScreenData = async (req, res) => {
       });
     }
 
-    // Check if screen is published
-    const assignmentResult = await db.query(
-      `SELECT is_published 
-       FROM app_screen_assignments 
-       WHERE app_id = ? AND screen_id = ? AND is_active = 1`,
+    // Check if screen is published and get screen details
+    const screenResult = await db.query(
+      `SELECT asa.is_published, s.screen_key, s.name
+       FROM app_screen_assignments asa
+       JOIN app_screens s ON asa.screen_id = s.id
+       WHERE asa.app_id = ? AND asa.screen_id = ? AND asa.is_active = 1`,
       [appId, screenId]
     );
 
-    const assignment = Array.isArray(assignmentResult) && Array.isArray(assignmentResult[0]) 
-      ? assignmentResult[0] 
-      : assignmentResult;
+    const screenData = Array.isArray(screenResult) && Array.isArray(screenResult[0]) 
+      ? screenResult[0] 
+      : screenResult;
 
-    if (!assignment || assignment.length === 0 || !assignment[0].is_published) {
+    if (!screenData || screenData.length === 0 || !screenData[0].is_published) {
       return res.status(403).json({
         success: false,
         message: 'Screen is not available for submissions'
       });
     }
 
-    // Insert submission
-    const insertResult = await db.query(
-      `INSERT INTO screen_submissions 
-       (app_id, screen_id, user_id, submission_data, device_info, ip_address)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        appId,
-        screenId,
-        userId,
-        JSON.stringify(submission_data),
-        device_info || null,
-        ipAddress
-      ]
+    const screen = screenData[0];
+
+    // Check if this is a profile screen
+    const isProfileScreen = screen.screen_key && (
+      screen.screen_key.includes('profile') || 
+      screen.name.toLowerCase().includes('profile')
     );
 
-    const result = Array.isArray(insertResult) && Array.isArray(insertResult[0]) 
-      ? insertResult[0] 
-      : insertResult;
-
-    res.status(201).json({
-      success: true,
-      message: 'Submission received successfully',
-      data: {
-        submission_id: result.insertId,
-        submitted_at: new Date().toISOString()
+    if (isProfileScreen && userId) {
+      // Update user profile in app_users table
+      console.log(`[Submit Screen ${screenId}] Updating user profile for user ${userId}`);
+      
+      const updates = [];
+      const values = [];
+      
+      // Map submission fields to app_users columns
+      if (submission_data.first_name !== undefined) {
+        updates.push('first_name = ?');
+        values.push(submission_data.first_name);
       }
-    });
+      if (submission_data.last_name !== undefined) {
+        updates.push('last_name = ?');
+        values.push(submission_data.last_name);
+      }
+      if (submission_data.phone !== undefined) {
+        updates.push('phone = ?');
+        values.push(submission_data.phone);
+      }
+      if (submission_data.bio !== undefined) {
+        updates.push('bio = ?');
+        values.push(submission_data.bio);
+      }
+      if (submission_data.date_of_birth !== undefined) {
+        updates.push('date_of_birth = ?');
+        values.push(submission_data.date_of_birth || null);
+      }
+      if (submission_data.gender !== undefined) {
+        updates.push('gender = ?');
+        values.push(submission_data.gender || null);
+      }
+      
+      if (updates.length > 0) {
+        values.push(userId);
+        values.push(appId);
+        
+        await db.query(
+          `UPDATE app_users 
+           SET ${updates.join(', ')}
+           WHERE id = ? AND app_id = ?`,
+          values
+        );
+        
+        console.log(`[Submit Screen ${screenId}] Profile updated successfully`);
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: {
+          updated_at: new Date().toISOString()
+        }
+      });
+    } else {
+      // Insert submission for non-profile screens
+      const insertResult = await db.query(
+        `INSERT INTO screen_submissions 
+         (app_id, screen_id, user_id, submission_data, device_info, ip_address)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          appId,
+          screenId,
+          userId,
+          JSON.stringify(submission_data),
+          device_info || null,
+          ipAddress
+        ]
+      );
+
+      const result = Array.isArray(insertResult) && Array.isArray(insertResult[0]) 
+        ? insertResult[0] 
+        : insertResult;
+
+      res.status(201).json({
+        success: true,
+        message: 'Submission received successfully',
+        data: {
+          submission_id: result.insertId,
+          submitted_at: new Date().toISOString()
+        }
+      });
+    }
   } catch (error) {
     console.error('Error submitting screen data:', error);
     res.status(500).json({
@@ -627,11 +737,14 @@ exports.getAppMenus = async (req, res) => {
             mi.display_order,
             mi.label,
             mi.icon,
+            mi.item_type,
+            mi.sidebar_menu_id,
+            mi.sidebar_position,
             s.name as screen_name,
             s.screen_key,
             s.category as screen_category
           FROM menu_items mi
-          JOIN app_screens s ON mi.screen_id = s.id
+          LEFT JOIN app_screens s ON mi.screen_id = s.id
           WHERE mi.menu_id = ? AND mi.is_active = 1
           ORDER BY mi.display_order
         `;
@@ -700,10 +813,13 @@ exports.getScreenMenus = async (req, res) => {
             mi.display_order,
             mi.label,
             mi.icon,
+            mi.item_type,
+            mi.sidebar_menu_id,
+            mi.sidebar_position,
             s.name as screen_name,
             s.category as screen_category
           FROM menu_items mi
-          JOIN app_screens s ON mi.screen_id = s.id
+          LEFT JOIN app_screens s ON mi.screen_id = s.id
           WHERE mi.menu_id = ? AND mi.is_active = 1
           ORDER BY mi.display_order
         `;
@@ -729,6 +845,114 @@ exports.getScreenMenus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching screen menus',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get form elements for mobile app (with app-specific overrides)
+ */
+exports.getFormElements = async (req, res) => {
+  try {
+    const { appId, formId } = req.params;
+    
+    console.log(`[Mobile getFormElements] App ${appId}, Form ${formId}`);
+    
+    // Get form elements with overrides
+    const elements = await db.query(
+      `SELECT 
+        afe.id,
+        afe.form_id,
+        afe.element_id,
+        se.element_type,
+        se.name as element_name,
+        afe.field_key,
+        afe.label,
+        afe.placeholder,
+        afe.default_value,
+        afe.help_text,
+        afe.is_required,
+        afe.display_order,
+        afe.validation_rules,
+        afe.config,
+        afo.id as override_id,
+        afo.custom_label,
+        afo.custom_placeholder,
+        afo.custom_default_value,
+        afo.custom_help_text,
+        afo.is_required_override,
+        afo.is_hidden,
+        afo.custom_display_order,
+        afo.custom_validation_rules,
+        afo.custom_config,
+        CASE WHEN afo.id IS NOT NULL THEN 1 ELSE 0 END as has_override
+       FROM app_form_elements afe
+       JOIN screen_elements se ON afe.element_id = se.id
+       LEFT JOIN app_form_element_overrides afo 
+         ON afe.id = afo.form_element_id 
+         AND afo.app_id = ? 
+         AND afo.form_id = ?
+       WHERE afe.form_id = ?
+       ORDER BY COALESCE(afo.custom_display_order, afe.display_order)`,
+      [appId, formId, formId]
+    );
+    
+    const formElements = Array.isArray(elements) && Array.isArray(elements[0]) 
+      ? elements[0] 
+      : elements;
+    
+    console.log(`[Mobile getFormElements] Found ${formElements?.length || 0} elements`);
+    
+    res.json({
+      success: true,
+      elements: formElements || []
+    });
+  } catch (error) {
+    console.error('[Mobile getFormElements] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get form elements',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get the default home screen for an app
+ */
+exports.getHomeScreen = async (req, res) => {
+  try {
+    const { appId } = req.params;
+
+    const result = await db.query(
+      `SELECT default_home_screen_id FROM apps WHERE id = ?`,
+      [appId]
+    );
+
+    const apps = Array.isArray(result) && Array.isArray(result[0]) 
+      ? result[0] 
+      : result;
+
+    if (!apps || apps.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'App not found'
+      });
+    }
+
+    const homeScreenId = apps[0].default_home_screen_id;
+
+    // If no home screen set, return null (mobile app will use default behavior)
+    res.json({
+      success: true,
+      home_screen_id: homeScreenId || null
+    });
+  } catch (error) {
+    console.error('[Mobile getHomeScreen] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get home screen',
       error: error.message
     });
   }

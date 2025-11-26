@@ -13,13 +13,18 @@ import {
   useWindowDimensions,
   Image,
   Platform,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import RenderHTML from 'react-native-render-html';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
-import { screensService, ScreenContent, ScreenElement, Menu } from '../api/screensService';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { screensService, menusService, ScreenContent, ScreenElement, Menu } from '../api/screensService';
 import { uploadService } from '../api/uploadService';
+import { authService } from '../api/authService';
+import { useAuth } from '../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DynamicSidebar } from '../components/DynamicSidebar';
 import HeaderBar from '../components/HeaderBar';
 import {
@@ -33,8 +38,9 @@ import {
 } from '../components/elements';
 
 const DynamicScreen = ({ route, navigation }: any) => {
-  const { screenId, screenName } = route.params;
+  const { screenId, screenName, hideTabBar } = route.params;
   const { width } = useWindowDimensions();
+  const { login: authLogin, logout: authLogout } = useAuth();
   const [content, setContent] = useState<ScreenContent | null>(null);
   const [menus, setMenus] = useState<Menu[]>([]);
   const [modules, setModules] = useState<any[]>([]);
@@ -46,11 +52,22 @@ const DynamicScreen = ({ route, navigation }: any) => {
   const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState<string | null>(null);
   const [tempDate, setTempDate] = useState<Date>(new Date());
+  const [passwordVisible, setPasswordVisible] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
-    navigation.setOptions({ title: screenName });
+    navigation.setOptions({ 
+      title: screenName,
+      headerBackTitle: 'Back'
+    });
     fetchScreenContent();
   }, [screenId]);
+
+  // Auto-trigger logout alert when logout screen loads
+  useEffect(() => {
+    if (content?.screen?.screen_key === 'logout' || content?.screen?.name?.toLowerCase().includes('logout')) {
+      handleLogout();
+    }
+  }, [content]);
 
   const fetchScreenContent = async () => {
     try {
@@ -89,11 +106,68 @@ const DynamicScreen = ({ route, navigation }: any) => {
     await fetchScreenContent();
   };
 
-  const handleNavigate = (targetScreenId: number, targetScreenName: string) => {
+  const handleNavigate = async (targetScreenId: number, targetScreenName: string) => {
+    // If navigating to the same screen, do nothing
+    if (targetScreenId === screenId) {
+      return;
+    }
+    
+    // Check if we're on the Home screen (DynamicScreen as home)
+    const routeName = navigation.getState()?.routes?.[navigation.getState()?.index || 0]?.name;
+    const isHomeScreen = routeName === 'Home';
+    
+    // For tab bar items when we're on the home DynamicScreen,
+    // just navigate to the new DynamicScreen (replacing current)
+    if (isHomeScreen && tabBarMenu) {
+      const isTabScreen = tabBarMenu.items?.some((item: any) => item.screen_id === targetScreenId);
+      if (isTabScreen) {
+        // Navigate to DynamicScreen with the new screen ID
+        // Use replace to avoid stacking screens
+        navigation.navigate('DynamicScreen', {
+          screenId: targetScreenId,
+          screenName: targetScreenName,
+        });
+        return;
+      }
+    }
+    
+    // For non-tab screens or when not on home, push normally
     navigation.push('DynamicScreen', {
       screenId: targetScreenId,
       screenName: targetScreenName,
     });
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => {
+            // Go back to previous screen
+            navigation.goBack();
+          }
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Use AuthContext logout - this clears state and triggers navigator switch
+              await authLogout();
+              // AuthContext handles navigation automatically by updating isAuthenticated to false
+              // The navigator will switch from authenticated to unauthenticated stack (Login)
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleSave = async () => {
@@ -169,6 +243,124 @@ const DynamicScreen = ({ route, navigation }: any) => {
     }
   };
 
+  // Navigate to a screen after successful action
+  const navigateToScreen = async (redirectScreenId: number) => {
+    try {
+      const targetScreen = await screensService.getScreenContent(redirectScreenId);
+      navigation.reset({
+        index: 0,
+        routes: [{
+          name: 'DynamicScreen',
+          params: {
+            screenId: redirectScreenId,
+            screenName: targetScreen.screen.name || 'Screen'
+          }
+        }],
+      });
+    } catch (error) {
+      console.error('Error navigating to redirect screen:', error);
+    }
+  };
+
+  // Handle form submission based on submitType
+  const handleSubmit = async (submitType: string, redirectScreenId?: number) => {
+    setSaving(true);
+    let success = false;
+    
+    try {
+      switch (submitType) {
+        case 'login':
+          // Handle login
+          const email = formData.email;
+          const password = formData.password;
+          
+          if (!email || !password) {
+            Alert.alert('Error', 'Please enter email and password');
+            setSaving(false);
+            return;
+          }
+          
+          try {
+            // Store redirect screen ID before login (if set)
+            if (redirectScreenId) {
+              await AsyncStorage.setItem('login_redirect_screen', JSON.stringify({
+                screenId: redirectScreenId
+              }));
+            }
+            
+            // Use AuthContext login - this updates state and triggers navigator switch
+            await authLogin(email, password);
+            success = true;
+            // AuthContext handles navigation automatically by updating isAuthenticated
+            // The navigator will switch from unauthenticated to authenticated stack
+          } catch (loginError: any) {
+            Alert.alert('Error', loginError.message || 'Login failed');
+          }
+          break;
+          
+        case 'register':
+          // Handle registration
+          const regEmail = formData.email;
+          const regPassword = formData.password;
+          const regName = formData.name || formData.full_name || formData.first_name;
+          
+          if (!regEmail || !regPassword) {
+            Alert.alert('Error', 'Please fill in all required fields');
+            setSaving(false);
+            return;
+          }
+          
+          const registerResponse = await authService.register({
+            email: regEmail,
+            password: regPassword,
+            first_name: formData.first_name || regName?.split(' ')[0] || '',
+            last_name: formData.last_name || regName?.split(' ').slice(1).join(' ') || '',
+          });
+          
+          if (registerResponse.success) {
+            success = true;
+            Alert.alert('Success', 'Registration successful! Please check your email to verify your account.', [
+              {
+                text: 'OK',
+                onPress: () => {
+                  if (redirectScreenId) {
+                    navigateToScreen(redirectScreenId);
+                  }
+                }
+              }
+            ]);
+          } else {
+            Alert.alert('Error', registerResponse.message || 'Registration failed');
+          }
+          break;
+          
+        case 'save':
+        default:
+          // Default save behavior - save screen content
+          await screensService.saveScreenContent(screenId, formData);
+          success = true;
+          Alert.alert('Success', 'Data saved successfully', [
+            {
+              text: 'OK',
+              onPress: () => {
+                if (redirectScreenId) {
+                  navigateToScreen(redirectScreenId);
+                } else {
+                  fetchScreenContent();
+                }
+              }
+            }
+          ]);
+          break;
+      }
+    } catch (error: any) {
+      console.error('Submit error:', error);
+      Alert.alert('Error', error.response?.data?.message || error.message || 'Submission failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const renderElement = (element: ScreenElement) => {
     const fieldKey = element.field_key || element.field_name || '';
     // Use ?? instead of || to allow empty strings (when user deletes content)
@@ -228,21 +420,30 @@ const DynamicScreen = ({ route, navigation }: any) => {
 
       case 'password':
       case 'password_input':
+        const isPasswordVisible = passwordVisible[fieldKey] || false;
         return (
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>
               {displayLabel}
               {Boolean(element.is_required) && <Text style={styles.required}> *</Text>}
             </Text>
-            <TextInput
-              style={styles.input}
-              value={value}
-              onChangeText={updateValue}
-              placeholder={element.placeholder || `Enter ${displayLabel.toLowerCase()}`}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                value={value}
+                onChangeText={updateValue}
+                placeholder={element.placeholder || `Enter ${displayLabel.toLowerCase()}`}
+                secureTextEntry={!isPasswordVisible}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                style={styles.passwordToggle}
+                onPress={() => setPasswordVisible({ ...passwordVisible, [fieldKey]: !isPasswordVisible })}
+              >
+                <Icon name={isPasswordVisible ? 'eye-off' : 'eye'} size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
           </View>
         );
 
@@ -479,12 +680,34 @@ const DynamicScreen = ({ route, navigation }: any) => {
         return <View style={styles.divider} />;
 
       case 'link':
+        const linkActionType = element.content_options?.actionType || element.config?.actionType || element.custom_config?.actionType || 'url';
+        const linkUrl = element.content_options?.url || element.config?.url || element.custom_config?.url || '';
+        const linkScreenId = element.content_options?.screenId || element.config?.screenId || element.custom_config?.screenId;
+        const linkText = element.content_value || displayLabel;
         return (
           <TouchableOpacity
             style={styles.linkContainer}
-            onPress={() => Alert.alert('Link', `${displayLabel} clicked`)}
+            onPress={async () => {
+              if (linkActionType === 'url' && linkUrl) {
+                try {
+                  const supported = await Linking.canOpenURL(linkUrl);
+                  if (supported) {
+                    await Linking.openURL(linkUrl);
+                  } else {
+                    Alert.alert('Error', `Cannot open URL: ${linkUrl}`);
+                  }
+                } catch (error) {
+                  Alert.alert('Error', 'Failed to open link');
+                }
+              } else if (linkActionType === 'screen' && linkScreenId) {
+                // Navigate to the specified screen
+                navigation.navigate('DynamicScreen', { screenId: linkScreenId });
+              } else {
+                Alert.alert('Link', 'No URL or screen configured for this link');
+              }
+            }}
           >
-            <Text style={styles.linkText}>{displayLabel}</Text>
+            <Text style={styles.linkText}>{linkText}</Text>
           </TouchableOpacity>
         );
 
@@ -732,6 +955,81 @@ const DynamicScreen = ({ route, navigation }: any) => {
           />
         );
 
+      case 'button':
+        const buttonText = element.content_value || displayLabel;
+        
+        // Parse config if it's a string
+        let buttonConfig = element.config;
+        if (typeof buttonConfig === 'string') {
+          try {
+            buttonConfig = JSON.parse(buttonConfig);
+          } catch (e) {
+            console.error('Failed to parse button config:', e);
+            buttonConfig = {};
+          }
+        }
+        
+        const buttonActionType = element.content_options?.actionType || buttonConfig?.actionType || element.custom_config?.actionType || 'none';
+        const buttonUrl = element.content_options?.url || buttonConfig?.url || element.custom_config?.url;
+        const buttonScreenId = element.content_options?.screenId || buttonConfig?.screenId || element.custom_config?.screenId;
+        const submitType = element.content_options?.submitType || buttonConfig?.submitType || element.custom_config?.submitType;
+        const redirectScreenId = element.content_options?.redirectScreenId || buttonConfig?.redirectScreenId || element.custom_config?.redirectScreenId;
+
+        console.log('[Button Debug]', {
+          buttonText,
+          buttonActionType,
+          submitType,
+          redirectScreenId,
+          buttonUrl,
+          buttonScreenId,
+          config: buttonConfig,
+          rawConfig: element.config,
+          configType: typeof element.config
+        });
+
+        return (
+          <TouchableOpacity
+            style={styles.buttonContainer}
+            onPress={async () => {
+              if (buttonActionType === 'url' && buttonUrl) {
+                try {
+                  const supported = await Linking.canOpenURL(buttonUrl);
+                  if (supported) {
+                    await Linking.openURL(buttonUrl);
+                  } else {
+                    Alert.alert('Error', `Cannot open URL: ${buttonUrl}`);
+                  }
+                } catch (error) {
+                  Alert.alert('Error', 'Failed to open link');
+                }
+              } else if (buttonActionType === 'screen' && buttonScreenId) {
+                // Navigate to the specified screen
+                try {
+                  const targetScreen = await screensService.getScreenContent(buttonScreenId);
+                  navigation.push('DynamicScreen', { 
+                    screenId: buttonScreenId,
+                    screenName: targetScreen.screen.name || 'Screen'
+                  });
+                } catch (error) {
+                  console.error('Error navigating to screen:', error);
+                  Alert.alert('Error', 'Failed to navigate to screen');
+                }
+              } else if (buttonActionType === 'submit') {
+                // Handle form submission based on submitType and redirect
+                await handleSubmit(submitType, redirectScreenId);
+              } else {
+                Alert.alert('Button', `${buttonText} clicked`);
+              }
+            }}
+          >
+            <Text style={styles.buttonText}>{buttonText}</Text>
+          </TouchableOpacity>
+        );
+
+      case 'logout_button':
+        // Don't render the button - logout is handled automatically when screen loads
+        return null;
+
       default:
         // For unknown element types, show as text if content_value exists
         if (value && element.element_type !== 'text_input') {
@@ -777,10 +1075,16 @@ const DynamicScreen = ({ route, navigation }: any) => {
   const hasFormElements = content.elements.some((el) =>
     ['text_input', 'text_field', 'email', 'email_input', 'phone', 'phone_input', 'textarea', 'text_area', 'number', 'number_input', 'url', 'url_input', 'date', 'date_picker', 'switch', 'checkbox'].includes(el.element_type)
   );
+  
+  const hasButtonElement = content.elements.some((el) => el.element_type === 'button');
+  
+  // Only show Save button if there are form elements but no button element
+  const shouldShowSaveButton = hasFormElements && !hasButtonElement;
 
-  // Find menus by type (tabbar is now handled by AppNavigator)
+  // Find menus by type
   const leftSidebarMenu = menus.find((m) => m.menu_type === 'sidebar_left');
   const rightSidebarMenu = menus.find((m) => m.menu_type === 'sidebar_right');
+  const tabBarMenu = menus.find((m) => m.menu_type === 'tabbar');
 
   // Find header bar module
   const headerBarModule = modules.find((m) => m.module_type === 'header_bar');
@@ -818,7 +1122,7 @@ const DynamicScreen = ({ route, navigation }: any) => {
               </View>
             ))}
 
-          {hasFormElements && (
+          {shouldShowSaveButton && (
             <TouchableOpacity
               style={[styles.saveButton, saving && styles.saveButtonDisabled]}
               onPress={handleSave}
@@ -833,8 +1137,46 @@ const DynamicScreen = ({ route, navigation }: any) => {
           )}
         </ScrollView>
 
-        {/* Note: Tab Bar is now handled by AppNavigator's TabNavigator */}
-        {/* DynamicTabBar removed to prevent duplicate tab bars */}
+        {/* Custom Tab Bar - shown if this screen has a tabbar menu assigned and not inside TabNavigator */}
+        {!hideTabBar && tabBarMenu && tabBarMenu.items && tabBarMenu.items.length > 0 && (
+          <View style={styles.tabBar}>
+            {tabBarMenu.items.map((item: any, index: number) => {
+              // For sidebar items, they're never "active" in the traditional sense
+              const isSidebarItem = item.item_type === 'sidebar';
+              const isActive = !isSidebarItem && item.screen_id === screenId;
+              
+              return (
+                <TouchableOpacity
+                  key={isSidebarItem ? `sidebar-${item.id || index}` : item.screen_id}
+                  style={styles.tabItem}
+                  onPress={() => {
+                    if (isSidebarItem) {
+                      // Open the appropriate sidebar
+                      if (item.sidebar_position === 'left') {
+                        setLeftSidebarVisible(true);
+                      } else {
+                        setRightSidebarVisible(true);
+                      }
+                    } else if (!isActive) {
+                      handleNavigate(item.screen_id, item.screen_name || item.label);
+                    }
+                  }}
+                >
+                  <Icon
+                    name={item.icon || (isSidebarItem ? 'menu' : 'circle')}
+                    size={24}
+                    color={isActive ? '#007AFF' : '#8E8E93'}
+                  />
+                  {item.label !== '__NO_LABEL__' && (
+                    <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                      {item.label || item.screen_name}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         {/* Left Sidebar */}
         {leftSidebarMenu && leftSidebarMenu.items.length > 0 && (
@@ -897,6 +1239,21 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     color: '#000000',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
+    color: '#000000',
+  },
+  passwordToggle: {
+    padding: 12,
   },
   textarea: {
     height: 120,
@@ -1050,6 +1407,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#007AFF',
     textDecorationLine: 'underline',
+  },
+  buttonContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5EA',
+    paddingBottom: 20, // Safe area padding
+    paddingTop: 8,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  tabLabel: {
+    fontSize: 10,
+    color: '#8E8E93',
+    marginTop: 4,
+  },
+  tabLabelActive: {
+    color: '#007AFF',
   },
 });
 

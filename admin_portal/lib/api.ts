@@ -100,6 +100,11 @@ export const appsAPI = {
     const response = await api.put(`/apps/${id}/settings`, settings);
     return response.data;
   },
+
+  setHomeScreen: async (id: number, screenId: number) => {
+    const response = await api.put(`/apps/${id}/home-screen`, { screen_id: screenId });
+    return response.data;
+  },
 };
 
 // Users API
@@ -747,7 +752,13 @@ export const propertyListingsAPI = {
     return response.data;
   },
   
-  // Publish/unpublish a listing
+  // Update listing status
+  updateListingStatus: async (appId: number, listingId: number, status: string) => {
+    const response = await api.put(`/apps/${appId}/listings/${listingId}/status`, { status });
+    return response.data;
+  },
+  
+  // Publish/unpublish a listing (backward compatibility)
   publishListing: async (appId: number, listingId: number, isPublished: boolean) => {
     const response = await api.put(`/apps/${appId}/listings/${listingId}/publish`, { is_published: isPublished });
     return response.data;
@@ -787,8 +798,31 @@ export const menuAPI = {
   },
 
   // Add a screen to a menu
-  addMenuItem: async (menuId: number, data: { screen_id: number; display_order?: number; label?: string; icon?: string }) => {
+  addMenuItem: async (menuId: number, data: { 
+    screen_id?: number; 
+    item_type?: 'screen' | 'sidebar';
+    sidebar_menu_id?: number;
+    sidebar_position?: 'left' | 'right';
+    display_order?: number; 
+    label?: string; 
+    icon?: string 
+  }) => {
     const response = await api.post(`/menus/${menuId}/items`, data);
+    return response.data;
+  },
+
+  // Add a sidebar item to a menu
+  addSidebarItem: async (menuId: number, data: { 
+    sidebar_menu_id: number;
+    sidebar_position: 'left' | 'right';
+    display_order?: number; 
+    label?: string; 
+    icon?: string 
+  }) => {
+    const response = await api.post(`/menus/${menuId}/items`, {
+      ...data,
+      item_type: 'sidebar'
+    });
     return response.data;
   },
 
@@ -849,6 +883,85 @@ export const modulesAPI = {
   // Remove a module from a screen
   removeFromScreen: async (screenId: number, moduleId: number) => {
     const response = await api.delete(`/modules/screens/${screenId}/modules/${moduleId}`);
+    return response.data;
+  },
+};
+
+// Forms API
+export const formsAPI = {
+  // Get all forms
+  getAll: async () => {
+    const response = await api.get('/forms');
+    return response.data;
+  },
+
+  // Get form by ID with elements
+  getById: async (formId: number) => {
+    const response = await api.get(`/forms/${formId}`);
+    return response.data;
+  },
+
+  // Create new form
+  create: async (formData: any) => {
+    const response = await api.post('/forms', formData);
+    return response.data;
+  },
+
+  // Update form
+  update: async (formId: number, formData: any) => {
+    const response = await api.put(`/forms/${formId}`, formData);
+    return response.data;
+  },
+
+  // Delete form
+  delete: async (formId: number) => {
+    const response = await api.delete(`/forms/${formId}`);
+    return response.data;
+  },
+
+  // Add element to form
+  addElement: async (formId: number, elementData: any) => {
+    const response = await api.post(`/forms/${formId}/elements`, elementData);
+    return response.data;
+  },
+
+  // Update form element
+  updateElement: async (formId: number, elementId: number, elementData: any) => {
+    const response = await api.put(`/forms/${formId}/elements/${elementId}`, elementData);
+    return response.data;
+  },
+
+  // Delete form element
+  deleteElement: async (formId: number, elementId: number) => {
+    const response = await api.delete(`/forms/${formId}/elements/${elementId}`);
+    return response.data;
+  },
+
+  // Get available elements for forms
+  getAvailableElements: async (category?: string) => {
+    const params = category ? { category } : {};
+    const response = await api.get('/elements/available-for-forms', { params });
+    return response.data;
+  },
+
+  // App-specific form element overrides
+  getAppFormElements: async (appId: number, formId: number) => {
+    const response = await api.get(`/apps/${appId}/forms/${formId}/elements`);
+    return response.data;
+  },
+
+  createOrUpdateOverride: async (appId: number, formId: number, elementId: number, overrideData: any) => {
+    const response = await api.post(`/apps/${appId}/forms/${formId}/elements/${elementId}/override`, overrideData);
+    return response.data;
+  },
+
+  deleteOverride: async (appId: number, formId: number, elementId: number) => {
+    const response = await api.delete(`/apps/${appId}/forms/${formId}/elements/${elementId}/override`);
+    return response.data;
+  },
+
+  toggleVisibility: async (appId: number, formId: number, elementId: number) => {
+    const response = await api.patch(`/apps/${appId}/forms/${formId}/elements/${elementId}/visibility`);
     return response.data;
   },
 };

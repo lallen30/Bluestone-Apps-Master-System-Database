@@ -276,14 +276,22 @@ async function logout(req, res) {
         [token_hash]
       );
       
-      // Log activity
-      await db.query(
-        `INSERT INTO user_activity_log (user_id, app_id, action, ip_address, user_agent)
-         VALUES (?, ?, 'logout', ?, ?)`,
-        [req.user.id, req.user.app_id, req.ip, req.get('user-agent')]
-      );
+      // Log activity if user is authenticated
+      if (req.user && req.user.id) {
+        try {
+          await db.query(
+            `INSERT INTO user_activity_log (user_id, app_id, action, ip_address, user_agent)
+             VALUES (?, ?, 'logout', ?, ?)`,
+            [req.user.id, req.user.app_id, req.ip, req.get('user-agent')]
+          );
+        } catch (logError) {
+          console.error('Error logging activity:', logError);
+          // Don't fail logout if activity log fails
+        }
+      }
     }
     
+    // Always return success - logout should never fail
     res.json({
       success: true,
       message: 'Logout successful'
@@ -291,9 +299,10 @@ async function logout(req, res) {
     
   } catch (error) {
     console.error('Logout error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Logout failed'
+    // Even on error, return success since we want the client to clear tokens
+    res.json({
+      success: true,
+      message: 'Logout successful'
     });
   }
 }

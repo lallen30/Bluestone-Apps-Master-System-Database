@@ -110,6 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Clear storage and state regardless of API call success
       await AsyncStorage.removeItem('auth_token');
       await AsyncStorage.removeItem('user_data');
+      await AsyncStorage.removeItem('login_redirect_screen'); // Clear any pending redirect
       setToken(null);
       setUser(null);
     }

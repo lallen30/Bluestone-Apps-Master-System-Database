@@ -11,11 +11,16 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { listingsService } from '../../api/listingsService';
+import { formsService, FormElement } from '../../api/formsService';
 import { useAuth } from '../../context/AuthContext';
 
 interface ScreenElement {
   id: number;
   element_type: string;
+  form_id?: number;
+  form_name?: string;
+  form_key?: string;
+  form_type?: string;
   config?: any;
   default_config?: any;
 }
@@ -26,7 +31,7 @@ interface PropertyFormElementProps {
   route: any;
 }
 
-const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ element, navigation, route }) => {
+export const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ element, navigation, route }) => {
   const { user } = useAuth();
   
   // Extract config
@@ -41,25 +46,14 @@ const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ element, navi
   const listingId = route.params?.listingId;
   const isEditMode = mode === 'edit' && listingId;
 
-  const [loading, setLoading] = useState(isEditMode);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [formElements, setFormElements] = useState<FormElement[]>([]);
+  const [formData, setFormData] = useState<{ [key: string]: any }>({});
 
-  // Form fields
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [propertyType, setPropertyType] = useState('apartment');
-  const [pricePerNight, setPricePerNight] = useState('');
-  const [cleaningFee, setCleaningFee] = useState('');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [country, setCountry] = useState('');
-  const [zipCode, setZipCode] = useState('');
-  const [bedrooms, setBedrooms] = useState('1');
-  const [bathrooms, setBathrooms] = useState('1');
-  const [guestsMax, setGuestsMax] = useState('2');
-  const [minNights, setMinNights] = useState('1');
-  const [maxNights, setMaxNights] = useState('365');
+  useEffect(() => {
+    fetchFormFields();
+  }, [element.form_id]);
 
   useEffect(() => {
     if (isEditMode) {
@@ -67,78 +61,71 @@ const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ element, navi
     }
   }, [listingId]);
 
-  const fetchListing = async () => {
+  const fetchFormFields = async () => {
+    if (!element.form_id) {
+      Alert.alert('Error', 'No form linked to this element');
+      setLoading(false);
+      return;
+    }
+
     try {
-      setLoading(true);
-      const response = await listingsService.getListingById(listingId);
-      const listing = response.data;
+      const elements = await formsService.getFormElements(element.form_id);
       
-      // Populate form fields
-      setTitle(listing.title || '');
-      setDescription(listing.description || '');
-      setPropertyType(listing.property_type || 'apartment');
-      setPricePerNight(listing.price_per_night?.toString() || '');
-      setCleaningFee(listing.cleaning_fee?.toString() || '');
-      setAddress(listing.address || '');
-      setCity(listing.city || '');
-      setState(listing.state || '');
-      setCountry(listing.country || '');
-      setZipCode(listing.zip_code || '');
-      setBedrooms(listing.bedrooms?.toString() || '1');
-      setBathrooms(listing.bathrooms?.toString() || '1');
-      setGuestsMax(listing.guests_max?.toString() || '2');
-      setMinNights(listing.min_nights?.toString() || '1');
-      setMaxNights(listing.max_nights?.toString() || '365');
+      // Filter out hidden elements
+      const visibleElements = elements.filter(el => !el.is_hidden);
+      setFormElements(visibleElements);
+      
+      // Initialize form data with default values
+      const initialData: { [key: string]: any } = {};
+      visibleElements.forEach(el => {
+        const effectiveDefault = el.custom_default_value || el.default_value || '';
+        initialData[el.field_key] = effectiveDefault;
+      });
+      setFormData(initialData);
     } catch (error) {
-      console.error('Error fetching listing:', error);
-      Alert.alert('Error', 'Unable to load property details');
-      navigation.goBack();
+      console.error('Error fetching form fields:', error);
+      Alert.alert('Error', 'Unable to load form fields');
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchListing = async () => {
+    try {
+      const response = await listingsService.getListingById(listingId);
+      const listing = response.data as any;
+      
+      // Populate form data from listing
+      const updatedData = { ...formData };
+      Object.keys(listing).forEach(key => {
+        if (updatedData.hasOwnProperty(key)) {
+          updatedData[key] = listing[key]?.toString() || '';
+        }
+      });
+      setFormData(updatedData);
+    } catch (error) {
+      console.error('Error fetching listing:', error);
+      Alert.alert('Error', 'Unable to load property details');
+      navigation.goBack();
+    }
+  };
+
   const validateForm = () => {
-    if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a property title');
-      return false;
+    // Check required fields
+    for (const element of formElements) {
+      const isRequired = element.is_required_override !== undefined 
+        ? element.is_required_override 
+        : element.is_required;
+      
+      if (isRequired) {
+        const value = formData[element.field_key];
+        if (!value || (typeof value === 'string' && !value.trim())) {
+          const label = element.custom_label || element.label;
+          Alert.alert('Error', `Please enter ${label}`);
+          return false;
+        }
+      }
     }
-
-    if (!description.trim()) {
-      Alert.alert('Error', 'Please enter a description');
-      return false;
-    }
-
-    const price = parseFloat(pricePerNight);
-    if (isNaN(price) || price <= 0) {
-      Alert.alert('Error', 'Please enter a valid price per night');
-      return false;
-    }
-
-    if (!address.trim() || !city.trim() || !country.trim()) {
-      Alert.alert('Error', 'Please enter complete address information');
-      return false;
-    }
-
-    const bedroomsNum = parseInt(bedrooms);
-    const bathroomsNum = parseInt(bathrooms);
-    const guestsNum = parseInt(guestsMax);
-
-    if (isNaN(bedroomsNum) || bedroomsNum < 0) {
-      Alert.alert('Error', 'Please enter a valid number of bedrooms');
-      return false;
-    }
-
-    if (isNaN(bathroomsNum) || bathroomsNum < 0) {
-      Alert.alert('Error', 'Please enter a valid number of bathrooms');
-      return false;
-    }
-
-    if (isNaN(guestsNum) || guestsNum < 1) {
-      Alert.alert('Error', 'Please enter a valid maximum number of guests');
-      return false;
-    }
-
     return true;
   };
 
@@ -150,24 +137,9 @@ const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ element, navi
     try {
       setSubmitting(true);
 
-      const listingData = {
-        title: title.trim(),
-        description: description.trim(),
-        property_type: propertyType,
-        price_per_night: parseFloat(pricePerNight),
-        cleaning_fee: cleaningFee ? parseFloat(cleaningFee) : 0,
-        address: address.trim(),
-        city: city.trim(),
-        state: state.trim(),
-        country: country.trim(),
-        zip_code: zipCode.trim(),
-        bedrooms: parseInt(bedrooms),
-        bathrooms: parseInt(bathrooms),
-        guests_max: parseInt(guestsMax),
-        min_nights: parseInt(minNights),
-        max_nights: parseInt(maxNights),
-        status: 'draft', // Start as draft
-      };
+      // Convert form data to listing data
+      const listingData: any = { ...formData };
+      listingData.status = 'draft'; // Start as draft
 
       if (isEditMode) {
         await listingsService.updateListing(listingId, listingData);
@@ -175,7 +147,7 @@ const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ element, navi
           { text: 'OK', onPress: () => navigation.navigate(success_navigation) }
         ]);
       } else {
-        const response = await listingsService.createListing(listingData);
+        await listingsService.createListing(listingData);
         Alert.alert('Success', 'Property created successfully!', [
           { text: 'OK', onPress: () => navigation.navigate(success_navigation) }
         ]);
@@ -188,188 +160,119 @@ const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ element, navi
     }
   };
 
+  const renderFormField = (element: FormElement) => {
+    const label = element.custom_label || element.label;
+    const placeholder = element.custom_placeholder || element.placeholder || '';
+    const isRequired = element.is_required_override !== undefined 
+      ? element.is_required_override 
+      : element.is_required;
+    const value = formData[element.field_key] || '';
+
+    const handleChange = (newValue: any) => {
+      setFormData({ ...formData, [element.field_key]: newValue });
+    };
+
+    // Render based on element type
+    switch (element.element_type) {
+      case 'text_area':
+        return (
+          <View key={element.id} style={{ marginBottom: 16 }}>
+            <Text style={styles.label}>{label} {isRequired && '*'}</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={value}
+              onChangeText={handleChange}
+              placeholder={placeholder}
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+        );
+
+      case 'dropdown':
+        const options = element.config?.options || [];
+        console.log('[PropertyFormElement] Dropdown field:', element.field_key);
+        console.log('[PropertyFormElement] Options:', options);
+        console.log('[PropertyFormElement] Config:', element.config);
+        
+        if (!options || options.length === 0) {
+          return (
+            <View key={element.id} style={{ marginBottom: 16 }}>
+              <Text style={styles.label}>{label} {isRequired && '*'}</Text>
+              <View style={[styles.input, { justifyContent: 'center', backgroundColor: '#ffcccc' }]}>
+                <Text style={{ color: '#999' }}>No options configured</Text>
+              </View>
+            </View>
+          );
+        }
+        
+        return (
+          <View key={element.id} style={{ marginBottom: 16 }}>
+            <Text style={styles.label}>{label} {isRequired && '*'}</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={value || ''}
+                onValueChange={(itemValue) => {
+                  console.log('Picker changed:', itemValue);
+                  handleChange(itemValue);
+                }}
+              >
+                <Picker.Item 
+                  label={placeholder || `Select ${label}`} 
+                  value="" 
+                  color="#999"
+                />
+                {options.map((opt: any) => (
+                  <Picker.Item 
+                    key={opt.value} 
+                    label={opt.label} 
+                    value={opt.value} 
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+        );
+
+      default: // text_field, number, email, etc.
+        return (
+          <View key={element.id} style={{ marginBottom: 16 }}>
+            <Text style={styles.label}>{label} {isRequired && '*'}</Text>
+            <TextInput
+              style={styles.input}
+              value={value}
+              onChangeText={handleChange}
+              placeholder={placeholder}
+              placeholderTextColor="#999"
+              keyboardType={element.element_type === 'number' ? 'decimal-pad' : 'default'}
+            />
+          </View>
+        );
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading property...</Text>
+        <Text style={styles.loadingText}>Loading form...</Text>
+      </View>
+    );
+  }
+
+  if (formElements.length === 0) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>No form fields found</Text>
+        <Text style={{ marginTop: 10, color: '#999' }}>form_id: {element.form_id}</Text>
       </View>
     );
   }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Basic Information</Text>
-        
-        <Text style={styles.label}>Property Title *</Text>
-        <TextInput
-          style={styles.input}
-          value={title}
-          onChangeText={setTitle}
-          placeholder="e.g., Cozy Downtown Apartment"
-          placeholderTextColor="#999"
-        />
-
-        <Text style={styles.label}>Description *</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Describe your property..."
-          placeholderTextColor="#999"
-          multiline
-          numberOfLines={4}
-        />
-
-        <Text style={styles.label}>Property Type *</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={propertyType}
-            onValueChange={setPropertyType}
-            style={styles.picker}
-          >
-            <Picker.Item label="Apartment" value="apartment" />
-            <Picker.Item label="House" value="house" />
-            <Picker.Item label="Condo" value="condo" />
-            <Picker.Item label="Villa" value="villa" />
-            <Picker.Item label="Studio" value="studio" />
-            <Picker.Item label="Loft" value="loft" />
-            <Picker.Item label="Other" value="other" />
-          </Picker>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pricing</Text>
-        
-        <Text style={styles.label}>Price per Night ($) *</Text>
-        <TextInput
-          style={styles.input}
-          value={pricePerNight}
-          onChangeText={setPricePerNight}
-          placeholder="0.00"
-          placeholderTextColor="#999"
-          keyboardType="decimal-pad"
-        />
-
-        <Text style={styles.label}>Cleaning Fee ($)</Text>
-        <TextInput
-          style={styles.input}
-          value={cleaningFee}
-          onChangeText={setCleaningFee}
-          placeholder="0.00"
-          placeholderTextColor="#999"
-          keyboardType="decimal-pad"
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Location</Text>
-        
-        <Text style={styles.label}>Street Address *</Text>
-        <TextInput
-          style={styles.input}
-          value={address}
-          onChangeText={setAddress}
-          placeholder="123 Main St"
-          placeholderTextColor="#999"
-        />
-
-        <Text style={styles.label}>City *</Text>
-        <TextInput
-          style={styles.input}
-          value={city}
-          onChangeText={setCity}
-          placeholder="New York"
-          placeholderTextColor="#999"
-        />
-
-        <Text style={styles.label}>State/Province</Text>
-        <TextInput
-          style={styles.input}
-          value={state}
-          onChangeText={setState}
-          placeholder="NY"
-          placeholderTextColor="#999"
-        />
-
-        <Text style={styles.label}>Country *</Text>
-        <TextInput
-          style={styles.input}
-          value={country}
-          onChangeText={setCountry}
-          placeholder="United States"
-          placeholderTextColor="#999"
-        />
-
-        <Text style={styles.label}>Zip/Postal Code</Text>
-        <TextInput
-          style={styles.input}
-          value={zipCode}
-          onChangeText={setZipCode}
-          placeholder="10001"
-          placeholderTextColor="#999"
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Property Details</Text>
-        
-        <Text style={styles.label}>Bedrooms *</Text>
-        <TextInput
-          style={styles.input}
-          value={bedrooms}
-          onChangeText={setBedrooms}
-          placeholder="1"
-          placeholderTextColor="#999"
-          keyboardType="number-pad"
-        />
-
-        <Text style={styles.label}>Bathrooms *</Text>
-        <TextInput
-          style={styles.input}
-          value={bathrooms}
-          onChangeText={setBathrooms}
-          placeholder="1"
-          placeholderTextColor="#999"
-          keyboardType="number-pad"
-        />
-
-        <Text style={styles.label}>Maximum Guests *</Text>
-        <TextInput
-          style={styles.input}
-          value={guestsMax}
-          onChangeText={setGuestsMax}
-          placeholder="2"
-          placeholderTextColor="#999"
-          keyboardType="number-pad"
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Booking Rules</Text>
-        
-        <Text style={styles.label}>Minimum Nights</Text>
-        <TextInput
-          style={styles.input}
-          value={minNights}
-          onChangeText={setMinNights}
-          placeholder="1"
-          placeholderTextColor="#999"
-          keyboardType="number-pad"
-        />
-
-        <Text style={styles.label}>Maximum Nights</Text>
-        <TextInput
-          style={styles.input}
-          value={maxNights}
-          onChangeText={setMaxNights}
-          placeholder="365"
-          placeholderTextColor="#999"
-          keyboardType="number-pad"
-        />
-      </View>
+      {formElements.map(renderFormField)}
 
       <TouchableOpacity
         style={[styles.submitButton, submitting && styles.submitButtonDisabled]}

@@ -1,6 +1,21 @@
 import apiClient from './client';
-import { ENDPOINTS } from './config';
+import { ENDPOINTS, API_CONFIG } from './config';
 import { PropertyListing, PaginatedResponse, ListingsFilter, ApiResponse, Amenity } from '../types';
+
+// Helper function to convert relative image URLs to absolute URLs
+const transformImageUrl = (url: string | undefined): string | undefined => {
+  if (!url) return undefined;
+  if (url.startsWith('http')) return url; // Already absolute
+  return `${API_CONFIG.SERVER_URL}${url}`; // Prepend server URL
+};
+
+// Helper function to transform listing image URLs
+const transformListing = (listing: PropertyListing): PropertyListing => {
+  return {
+    ...listing,
+    primary_image: transformImageUrl(listing.primary_image),
+  };
+};
 
 export const listingsService = {
   // Get all listings with optional filters
@@ -9,7 +24,15 @@ export const listingsService = {
       ENDPOINTS.LISTINGS.GET_ALL,
       { params: filters }
     );
-    return response.data;
+    // Transform image URLs to absolute URLs
+    const data = response.data;
+    return {
+      ...data,
+      data: {
+        ...data.data,
+        listings: data.data.listings.map(transformListing),
+      },
+    };
   },
 
   // Get single listing by ID
@@ -17,7 +40,12 @@ export const listingsService = {
     const response = await apiClient.get<ApiResponse<PropertyListing>>(
       ENDPOINTS.LISTINGS.GET_BY_ID(id)
     );
-    return response.data;
+    // Transform image URLs to absolute URLs
+    const data = response.data;
+    return {
+      ...data,
+      data: transformListing(data.data),
+    };
   },
 
   // Create new listing
@@ -46,7 +74,16 @@ export const listingsService = {
     return response.data;
   },
 
-  // Publish/Unpublish listing
+  // Update listing status
+  updateListingStatus: async (id: number, status: string): Promise<ApiResponse<PropertyListing>> => {
+    const response = await apiClient.put<ApiResponse<PropertyListing>>(
+      ENDPOINTS.LISTINGS.STATUS(id),
+      { status }
+    );
+    return response.data;
+  },
+
+  // Publish/Unpublish listing (backward compatibility)
   publishListing: async (id: number, isPublished: boolean): Promise<ApiResponse<PropertyListing>> => {
     const response = await apiClient.put<ApiResponse<PropertyListing>>(
       ENDPOINTS.LISTINGS.PUBLISH(id),

@@ -90,20 +90,56 @@ export default function PropertyListingsPage() {
     }
   };
 
-  const handleTogglePublish = async (listing: PropertyListing) => {
+  const handleStatusClick = async (listing: PropertyListing) => {
     try {
-      await propertyListingsAPI.publishListing(parseInt(appId), listing.id, !listing.is_published);
+      // Cycle through statuses: draft → pending_review → active → inactive → draft
+      // (suspended can only be set by admins through a separate action)
+      let newStatus: string;
+      switch (listing.status) {
+        case 'draft':
+          newStatus = 'pending_review';
+          break;
+        case 'pending_review':
+          newStatus = 'active';
+          break;
+        case 'active':
+          newStatus = 'inactive';
+          break;
+        case 'inactive':
+          newStatus = 'draft';
+          break;
+        case 'suspended':
+          newStatus = 'draft'; // Allow unsuspending
+          break;
+        default:
+          newStatus = 'active';
+      }
+      
+      await propertyListingsAPI.updateListingStatus(parseInt(appId), listing.id, newStatus);
       fetchData();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Update failed');
     }
   };
 
+  const handleSuspend = async (listing: PropertyListing) => {
+    if (!confirm('Are you sure you want to suspend this listing?')) return;
+    try {
+      await propertyListingsAPI.updateListingStatus(parseInt(appId), listing.id, 'suspended');
+      fetchData();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Suspend failed');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'text-green-600 bg-green-50';
-      case 'draft': return 'text-gray-600 bg-gray-50';
-      default: return 'text-red-600 bg-red-50';
+      case 'active': return 'text-green-600 bg-green-50 hover:bg-green-100';
+      case 'draft': return 'text-gray-600 bg-gray-50 hover:bg-gray-100';
+      case 'pending_review': return 'text-yellow-600 bg-yellow-50 hover:bg-yellow-100';
+      case 'inactive': return 'text-orange-600 bg-orange-50 hover:bg-orange-100';
+      case 'suspended': return 'text-red-600 bg-red-50 hover:bg-red-100';
+      default: return 'text-gray-600 bg-gray-50 hover:bg-gray-100';
     }
   };
 
@@ -241,25 +277,28 @@ export default function PropertyListingsPage() {
                       {listing.host_first_name} {listing.host_last_name}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(listing.status)}`}>
+                      <button
+                        onClick={() => handleStatusClick(listing)}
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full cursor-pointer transition-colors ${getStatusColor(listing.status)}`}
+                        title="Click to cycle status"
+                      >
                         {listing.status}
-                      </span>
-                      {listing.is_published && (
-                        <span className="ml-1 inline-flex px-2 py-1 text-xs font-semibold rounded-full text-blue-600 bg-blue-50">
-                          Published
-                        </span>
-                      )}
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => handleTogglePublish(listing)}
-                        className="text-blue-600 hover:text-blue-900 mr-3"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
+                      {listing.status !== 'suspended' && (
+                        <button
+                          onClick={() => handleSuspend(listing)}
+                          className="text-red-600 hover:text-red-900 mr-3"
+                          title="Suspend listing"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDelete(listing.id)}
                         className="text-red-600 hover:text-red-900"
+                        title="Delete listing"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

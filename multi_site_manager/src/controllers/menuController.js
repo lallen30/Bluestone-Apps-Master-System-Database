@@ -76,20 +76,25 @@ exports.getMenu = async (req, res) => {
 
     const menu = menus[0];
 
-    // Get menu items
+    // Get menu items (including both screen items and sidebar items)
     const itemsQuery = `
       SELECT 
         mi.id,
         mi.menu_id,
         mi.screen_id,
+        mi.item_type,
+        mi.sidebar_menu_id,
+        mi.sidebar_position,
         mi.display_order,
         mi.label,
         mi.icon,
         mi.is_active,
-        s.name as screen_name,
-        s.category as screen_category
+        COALESCE(s.name, sm.name) as screen_name,
+        COALESCE(s.category, CONCAT('Sidebar: ', sm.menu_type)) as screen_category,
+        sm.name as sidebar_menu_name
       FROM menu_items mi
-      JOIN app_screens s ON mi.screen_id = s.id
+      LEFT JOIN app_screens s ON mi.screen_id = s.id AND mi.item_type = 'screen'
+      LEFT JOIN app_menus sm ON mi.sidebar_menu_id = sm.id AND mi.item_type = 'sidebar'
       WHERE mi.menu_id = ?
       ORDER BY mi.display_order, mi.id
     `;
@@ -244,28 +249,49 @@ exports.deleteMenu = async (req, res) => {
 };
 
 /**
- * Add a screen to a menu
+ * Add a screen or sidebar to a menu
  */
 exports.addMenuItem = async (req, res) => {
   try {
     const { menuId } = req.params;
-    const { screen_id, display_order, label, icon } = req.body;
+    const { screen_id, item_type, sidebar_menu_id, sidebar_position, display_order, label, icon } = req.body;
 
-    if (!screen_id) {
+    // Validate based on item type
+    const type = item_type || 'screen';
+    
+    if (type === 'screen' && !screen_id) {
       return res.status(400).json({
         success: false,
-        message: 'Screen ID is required'
+        message: 'Screen ID is required for screen items'
       });
+    }
+    
+    if (type === 'sidebar') {
+      if (!sidebar_menu_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Sidebar menu ID is required for sidebar items'
+        });
+      }
+      if (!sidebar_position || !['left', 'right'].includes(sidebar_position)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Sidebar position must be "left" or "right"'
+        });
+      }
     }
 
     const query = `
-      INSERT INTO menu_items (menu_id, screen_id, display_order, label, icon)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO menu_items (menu_id, screen_id, item_type, sidebar_menu_id, sidebar_position, display_order, label, icon)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const result = await db.query(query, [
       menuId,
-      screen_id,
+      type === 'screen' ? screen_id : null,
+      type,
+      type === 'sidebar' ? sidebar_menu_id : null,
+      type === 'sidebar' ? sidebar_position : null,
       display_order || 0,
       label || null,
       icon || null
@@ -279,7 +305,10 @@ exports.addMenuItem = async (req, res) => {
       data: {
         id: insertResult.insertId,
         menu_id: parseInt(menuId),
-        screen_id,
+        screen_id: type === 'screen' ? screen_id : null,
+        item_type: type,
+        sidebar_menu_id: type === 'sidebar' ? sidebar_menu_id : null,
+        sidebar_position: type === 'sidebar' ? sidebar_position : null,
         display_order: display_order || 0,
         label,
         icon
@@ -292,7 +321,7 @@ exports.addMenuItem = async (req, res) => {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({
         success: false,
-        message: 'This screen is already in this menu'
+        message: 'This item is already in this menu'
       });
     }
 

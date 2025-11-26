@@ -60,4 +60,23 @@ router.get('/apps/:appId/screens/:screenId/menus',
   mobileScreensController.getScreenMenus
 );
 
+/**
+ * GET /api/v1/mobile/apps/:appId/forms/:formId/elements
+ * Get form elements with app-specific overrides for mobile app
+ * Optional auth: Returns all non-hidden elements
+ */
+router.get('/apps/:appId/forms/:formId/elements',
+  authenticateMobileUser({ required: false }),
+  mobileScreensController.getFormElements
+);
+
+/**
+ * GET /api/v1/mobile/apps/:appId/home-screen
+ * Get the default home screen ID for an app
+ */
+router.get('/apps/:appId/home-screen',
+  authenticateMobileUser({ required: false }),
+  mobileScreensController.getHomeScreen
+);
+
 module.exports = router;

@@ -35,6 +35,8 @@ const bookingsRoutes = require('./routes/bookings');
 const messagesRoutes = require('./routes/messages');
 const menuRoutes = require('./routes/menuRoutes');
 const modulesRoutes = require('./routes/modulesRoutes');
+const appFormsRoutes = require('./routes/appForms');
+const appFormElementsRoutes = require('./routes/appFormElements');
 
 // Initialize Express app
 const app = express();
@@ -130,6 +132,8 @@ app.use(`/api/${API_VERSION}`, submissionsRoutes); // Form submissions
 app.use(`/api/${API_VERSION}`, screenRolesRoutes); // Screen access & role management
 app.use(`/api/${API_VERSION}`, menuRoutes); // Menu management
 app.use(`/api/${API_VERSION}/modules`, modulesRoutes); // Modules management
+app.use(`/api/${API_VERSION}`, appFormsRoutes); // Forms management
+app.use(`/api/${API_VERSION}`, appFormElementsRoutes); // Form element overrides
 
 // Serve uploaded files statically
 app.use('/uploads', express.static('uploads'));

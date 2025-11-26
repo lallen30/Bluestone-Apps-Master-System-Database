@@ -166,7 +166,11 @@ exports.getListings = async (req, res) => {
         (SELECT GROUP_CONCAT(pa.name) 
          FROM property_listing_amenities pla 
          JOIN property_amenities pa ON pla.amenity_id = pa.id 
-         WHERE pla.listing_id = l.id) as amenities_list
+         WHERE pla.listing_id = l.id) as amenities_list,
+        (SELECT image_url 
+         FROM property_images 
+         WHERE listing_id = l.id AND is_primary = 1 
+         LIMIT 1) as primary_image
       FROM property_listings l
       LEFT JOIN app_users u ON l.user_id = u.id
       WHERE l.app_id = ?
@@ -459,6 +463,7 @@ exports.deleteListing = async (req, res) => {
   try {
     const { appId, listingId } = req.params;
     const userId = req.user?.id;
+    const isAdmin = req.authType === 'admin';
 
     // Check if listing exists and belongs to user
     const existing = await db.query(
@@ -473,8 +478,8 @@ exports.deleteListing = async (req, res) => {
       });
     }
 
-    // Verify ownership (unless admin)
-    if (existing[0].user_id !== userId && req.user?.role_level !== 1) {
+    // Verify ownership (admins can delete any listing)
+    if (!isAdmin && existing[0].user_id !== userId) {
       return res.status(403).json({
         success: false,
         message: 'You do not have permission to delete this listing'
@@ -501,20 +506,44 @@ exports.deleteListing = async (req, res) => {
 };
 
 /**
- * Publish/unpublish a listing
- * PUT /api/v1/apps/:appId/listings/:listingId/publish
+ * Update listing status (publish/unpublish/suspend)
+ * PUT /api/v1/apps/:appId/listings/:listingId/status
  */
-exports.publishListing = async (req, res) => {
+exports.updateListingStatus = async (req, res) => {
   try {
     const { appId, listingId } = req.params;
-    const { is_published } = req.body;
+    const { status } = req.body;
     const userId = req.user?.id;
+    const isAdmin = req.authType === 'admin';
 
-    // Check ownership
-    const existing = await db.query(
-      `SELECT * FROM property_listings WHERE id = ? AND app_id = ? AND user_id = ?`,
-      [listingId, appId, userId]
-    );
+    // Validate status
+    const validStatuses = ['draft', 'pending_review', 'active', 'inactive', 'suspended'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    // Only admins can set 'suspended' status
+    if (status === 'suspended' && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admins can suspend listings'
+      });
+    }
+
+    // Check ownership (admins can update any listing)
+    let query, params;
+    if (isAdmin) {
+      query = `SELECT * FROM property_listings WHERE id = ? AND app_id = ?`;
+      params = [listingId, appId];
+    } else {
+      query = `SELECT * FROM property_listings WHERE id = ? AND app_id = ? AND user_id = ?`;
+      params = [listingId, appId, userId];
+    }
+
+    const existing = await db.query(query, params);
 
     if (!existing || existing.length === 0) {
       return res.status(404).json({
@@ -523,19 +552,50 @@ exports.publishListing = async (req, res) => {
       });
     }
 
-    const newStatus = is_published ? 'active' : 'draft';
+    // Update published_at timestamp when changing to/from active
+    const wasActive = existing[0].status === 'active';
+    const isNowActive = status === 'active';
+    
+    let updateQuery = `UPDATE property_listings SET status = ?`;
+    let updateParams = [status];
+    
+    if (!wasActive && isNowActive) {
+      // First time publishing
+      updateQuery += `, published_at = NOW()`;
+    } else if (wasActive && !isNowActive) {
+      // Unpublishing
+      updateQuery += `, published_at = NULL`;
+    }
+    
+    updateQuery += ` WHERE id = ? AND app_id = ?`;
+    updateParams.push(listingId, appId);
 
-    await db.query(
-      `UPDATE property_listings 
-       SET is_published = ?, status = ?, published_at = ${is_published ? 'NOW()' : 'NULL'}
-       WHERE id = ? AND app_id = ?`,
-      [is_published, newStatus, listingId, appId]
-    );
+    await db.query(updateQuery, updateParams);
 
     res.json({
       success: true,
-      message: `Listing ${is_published ? 'published' : 'unpublished'} successfully`
+      message: `Listing status updated to '${status}' successfully`,
+      data: { status }
     });
+  } catch (error) {
+    console.error('Update listing status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update listing status',
+      error: error.message
+    });
+  }
+};
+
+// Keep old publishListing for backward compatibility
+exports.publishListing = async (req, res) => {
+  try {
+    const { is_published } = req.body;
+    const newStatus = is_published ? 'active' : 'draft';
+    
+    // Forward to new status endpoint
+    req.body.status = newStatus;
+    return exports.updateListingStatus(req, res);
   } catch (error) {
     console.error('Publish listing error:', error);
     res.status(500).json({

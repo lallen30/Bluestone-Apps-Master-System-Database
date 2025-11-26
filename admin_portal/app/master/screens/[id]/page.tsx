@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appScreensAPI, screenElementsAPI } from '@/lib/api';
+import { appScreensAPI, screenElementsAPI, formsAPI } from '@/lib/api';
 import { ArrowLeft, Save, Plus, X, GripVertical, Settings, Trash2, ChevronDown, User, Home, Settings as SettingsIcon, ShoppingCart, MessageSquare, Bell, Calendar, FileText, Image, MapPin, Search, LayoutDashboard, Heart, Star, Edit, Mail, Phone, Lock, LogOut, Menu, Filter, Download, Upload, Share2, Bookmark, Flag, Tag, Zap, TrendingUp, BarChart, PieChart, Activity, Briefcase, CreditCard, DollarSign, Gift, Package, Truck, Clock, CheckCircle, XCircle, AlertCircle, Info, HelpCircle, Shield, Key, Users, UserPlus, UserCheck, Globe, Wifi, Smartphone, Tablet, Monitor, Laptop, Printer, Camera, Video, Music, Headphones, Mic, Volume2, Play, Pause, SkipForward, SkipBack, Repeat, Shuffle, Building, Building2, Store, Warehouse } from 'lucide-react';
 
 interface ScreenElement {
@@ -31,6 +31,11 @@ interface ElementInstance {
   display_order: number;
   config: any;
   validation_rules: any;
+  form_id?: number;
+  form_name?: string;
+  form_key?: string;
+  form_type?: string;
+  form_field_count?: number;
 }
 
 export default function EditScreen() {
@@ -58,6 +63,14 @@ export default function EditScreen() {
   
   // Element editing
   const [editingElement, setEditingElement] = useState<ElementInstance | null>(null);
+  
+  // Forms
+  const [availableForms, setAvailableForms] = useState<any[]>([]);
+  const [showFormPicker, setShowFormPicker] = useState(false);
+  const [linkingFormToElement, setLinkingFormToElement] = useState<ElementInstance | null>(null);
+  
+  // Screens (for logout redirect)
+  const [availableScreens, setAvailableScreens] = useState<any[]>([]);
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -115,7 +128,12 @@ export default function EditScreen() {
         is_readonly: el.is_readonly,
         display_order: el.display_order,
         config: el.config ? (typeof el.config === 'string' ? (el.config === '[object Object]' ? {} : JSON.parse(el.config)) : el.config) : {},
-        validation_rules: el.validation_rules ? (typeof el.validation_rules === 'string' ? JSON.parse(el.validation_rules) : el.validation_rules) : {}
+        validation_rules: el.validation_rules ? (typeof el.validation_rules === 'string' ? JSON.parse(el.validation_rules) : el.validation_rules) : {},
+        form_id: el.form_id,
+        form_name: el.form_name,
+        form_key: el.form_key,
+        form_type: el.form_type,
+        form_field_count: el.form_field_count
       }));
       
       setSelectedElements(instances);
@@ -124,6 +142,17 @@ export default function EditScreen() {
       const elementsResponse = await screenElementsAPI.getAll();
       const elementsData = Array.isArray(elementsResponse.data) ? elementsResponse.data : [];
       setAvailableElements(elementsData);
+      
+      // Fetch available screens (for logout redirect dropdown)
+      const screensResponse = await appScreensAPI.getAll();
+      const screensData = Array.isArray(screensResponse.data) ? screensResponse.data : [];
+      setAvailableScreens(screensData);
+      
+      // Fetch available forms
+      const formsResponse = await formsAPI.getAll();
+      if (formsResponse.success) {
+        setAvailableForms(formsResponse.data || []);
+      }
       
       setLoading(false);
     } catch (error) {
@@ -137,7 +166,48 @@ export default function EditScreen() {
     return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
   };
 
+  const autoLinkForm = (element: ScreenElement, screenName: string): number | undefined => {
+    // Auto-link forms based on screen name and element type
+    if (element.element_type !== 'property_form') {
+      return undefined;
+    }
+
+    // Find matching form based on screen name patterns
+    const screenNameLower = screenName.toLowerCase();
+    
+    // Try to find a matching form
+    for (const form of availableForms) {
+      const formNameLower = form.name.toLowerCase();
+      const formKeyLower = form.form_key.toLowerCase();
+      
+      // Match patterns like "Create Listing" -> "Property Listing Form"
+      // or "Edit Profile" -> "User Profile Form"
+      if (
+        screenNameLower.includes('listing') && (formNameLower.includes('listing') || formKeyLower.includes('listing')) ||
+        screenNameLower.includes('property') && (formNameLower.includes('property') || formKeyLower.includes('property')) ||
+        screenNameLower.includes('profile') && (formNameLower.includes('profile') || formKeyLower.includes('profile')) ||
+        screenNameLower.includes('contact') && (formNameLower.includes('contact') || formKeyLower.includes('contact')) ||
+        screenNameLower.includes('booking') && (formNameLower.includes('booking') || formKeyLower.includes('booking'))
+      ) {
+        console.log(`🔗 Auto-linking form "${form.name}" to screen "${screenName}"`);
+        return form.id;
+      }
+    }
+    
+    // If no match found and there's only one form, use it
+    if (availableForms.length === 1) {
+      console.log(`🔗 Auto-linking only available form "${availableForms[0].name}" to screen "${screenName}"`);
+      return availableForms[0].id;
+    }
+    
+    return undefined;
+  };
+
   const addElement = (element: ScreenElement) => {
+    // Auto-link form if this is a property_form element
+    const autoLinkedFormId = autoLinkForm(element, screenName);
+    const linkedForm = autoLinkedFormId ? availableForms.find(f => f.id === autoLinkedFormId) : null;
+    
     const newInstance: ElementInstance = {
       temp_id: `temp_${Date.now()}_${Math.random()}`,
       element_id: element.id,
@@ -150,11 +220,25 @@ export default function EditScreen() {
       is_readonly: false,
       display_order: selectedElements.length,
       config: {},
-      validation_rules: {}
+      validation_rules: {},
+      form_id: autoLinkedFormId,
+      form_name: linkedForm?.name,
+      form_key: linkedForm?.form_key,
+      form_type: linkedForm?.form_type,
+      form_field_count: linkedForm?.element_count
     };
     
     setSelectedElements([...selectedElements, newInstance]);
     setShowElementLibrary(false);
+    
+    // Show notification if auto-linked
+    if (autoLinkedFormId && linkedForm) {
+      console.log(`✅ Automatically linked "${linkedForm.name}" to ${element.name} element`);
+      // Show a brief alert to inform the user
+      setTimeout(() => {
+        alert(`✅ Form Auto-Linked!\n\n"${linkedForm.name}" has been automatically linked to this ${element.name} element.\n\nYou can change this later if needed.`);
+      }, 100);
+    }
   };
 
   const removeElement = async (tempId: string) => {
@@ -665,6 +749,40 @@ export default function EditScreen() {
                               <span className="ml-2">{Boolean(element.is_required) ? 'Yes' : 'No'}</span>
                             </div>
                           </div>
+                          
+                          {/* Show form information if linked */}
+                          {element.form_id ? (
+                            <div className="mt-2 p-2 bg-cyan-50 border border-cyan-200 rounded">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="w-4 h-4 text-cyan-600" />
+                                  <div>
+                                    <div className="text-sm font-medium text-cyan-900">{element.form_name}</div>
+                                    <div className="text-xs text-cyan-600">{element.form_field_count} fields • {element.form_type}</div>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => router.push(`/master/forms/${element.form_id}`)}
+                                  className="text-xs text-cyan-600 hover:text-cyan-800"
+                                >
+                                  View Form →
+                                </button>
+                              </div>
+                            </div>
+                          ) : element.element.element_type === 'property_form' ? (
+                            <div className="mt-2">
+                              <button
+                                onClick={() => {
+                                  setLinkingFormToElement(element);
+                                  setShowFormPicker(true);
+                                }}
+                                className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
+                              >
+                                <Plus className="w-3 h-3" />
+                                Link Form
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -784,6 +902,200 @@ export default function EditScreen() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
                   />
                 </div>
+
+                {editingElement.element.element_type === 'link' && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
+                      <select
+                        value={editingElement.config?.actionType || 'url'}
+                        onChange={(e) => {
+                          updateElement(editingElement.temp_id, { 
+                            config: { 
+                              ...editingElement.config, 
+                              actionType: e.target.value,
+                              url: e.target.value === 'url' ? editingElement.config?.url : undefined,
+                              screenId: e.target.value === 'screen' ? editingElement.config?.screenId : undefined
+                            }
+                          });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="url">Open URL</option>
+                        <option value="screen">Navigate to Screen</option>
+                      </select>
+                    </div>
+
+                    {(!editingElement.config?.actionType || editingElement.config?.actionType === 'url') && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                        <input
+                          type="url"
+                          defaultValue={editingElement.config?.url || ''}
+                          onBlur={(e) => {
+                            updateElement(editingElement.temp_id, { 
+                              config: { ...editingElement.config, url: e.target.value }
+                            });
+                          }}
+                          placeholder="https://example.com"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                    )}
+
+                    {editingElement.config?.actionType === 'screen' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Target Screen</label>
+                        <input
+                          type="number"
+                          placeholder="Screen ID"
+                          defaultValue={editingElement.config?.screenId || ''}
+                          onBlur={(e) => {
+                            updateElement(editingElement.temp_id, { 
+                              config: { ...editingElement.config, screenId: parseInt(e.target.value) || undefined }
+                            });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Enter the screen ID to navigate to</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {editingElement.element.element_type === 'button' && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
+                      <select
+                        value={editingElement.config?.actionType || 'none'}
+                        onChange={(e) => {
+                          updateElement(editingElement.temp_id, { 
+                            config: { 
+                              ...editingElement.config, 
+                              actionType: e.target.value,
+                              url: e.target.value === 'url' ? editingElement.config?.url : undefined,
+                              screenId: e.target.value === 'screen' ? editingElement.config?.screenId : undefined,
+                              submitType: e.target.value === 'submit' ? editingElement.config?.submitType || 'save' : undefined
+                            }
+                          });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="none">No Action</option>
+                        <option value="url">Open URL</option>
+                        <option value="screen">Navigate to Screen</option>
+                        <option value="submit">Submit Form</option>
+                      </select>
+                    </div>
+
+                    {editingElement.config?.actionType === 'url' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                        <input
+                          type="url"
+                          defaultValue={editingElement.config?.url || ''}
+                          onBlur={(e) => {
+                            updateElement(editingElement.temp_id, { 
+                              config: { ...editingElement.config, url: e.target.value }
+                            });
+                          }}
+                          placeholder="https://example.com"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                    )}
+
+                    {editingElement.config?.actionType === 'screen' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Target Screen</label>
+                        <input
+                          type="number"
+                          placeholder="Screen ID"
+                          defaultValue={editingElement.config?.screenId || ''}
+                          onBlur={(e) => {
+                            updateElement(editingElement.temp_id, { 
+                              config: { ...editingElement.config, screenId: parseInt(e.target.value) || undefined }
+                            });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Enter the screen ID to navigate to</p>
+                      </div>
+                    )}
+
+                    {editingElement.config?.actionType === 'submit' && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Submit Type</label>
+                          <select
+                            value={editingElement.config?.submitType || 'save'}
+                            onChange={(e) => {
+                              updateElement(editingElement.temp_id, { 
+                                config: { ...editingElement.config, submitType: e.target.value }
+                              });
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          >
+                            <option value="save">Save Data</option>
+                            <option value="login">Login</option>
+                            <option value="register">Register</option>
+                          </select>
+                          <p className="text-xs text-gray-500 mt-1">Choose what happens when the button is clicked</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Redirect After Success</label>
+                          <select
+                            value={editingElement.config?.redirectScreenId || ''}
+                            onChange={(e) => {
+                              updateElement(editingElement.temp_id, { 
+                                config: { ...editingElement.config, redirectScreenId: parseInt(e.target.value) || null }
+                              });
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          >
+                            <option value="">{editingElement.config?.submitType === 'login' ? 'Default (Home screen)' : 'Stay on current screen'}</option>
+                            {availableScreens.map((screen: any) => (
+                              <option key={screen.id} value={screen.id}>
+                                {screen.name} (ID: {screen.id})
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {editingElement.config?.submitType === 'login' 
+                              ? 'Screen to navigate to after successful login (default: Home)' 
+                              : 'Screen to navigate to after successful submission'}
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {editingElement.element.element_type === 'logout_button' && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Redirect After Logout</label>
+                      <select
+                        value={editingElement.config?.redirectScreenId || ''}
+                        onChange={(e) => {
+                          updateElement(editingElement.temp_id, { 
+                            config: { ...editingElement.config, redirectScreenId: parseInt(e.target.value) || null }
+                          });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="">Select a screen...</option>
+                        {availableScreens.map((screen: any) => (
+                          <option key={screen.id} value={screen.id}>
+                            {screen.name} (ID: {screen.id})
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">Select the screen to redirect to after logout (typically the Login screen)</p>
+                    </div>
+                  </div>
+                )}
 
                 {Boolean(editingElement.element.is_input_field) && (
                   <>
@@ -908,6 +1220,84 @@ export default function EditScreen() {
               >
                 Save Changes
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Form Picker Modal */}
+      {showFormPicker && linkingFormToElement && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Link Form to Element</h2>
+                <button
+                  onClick={() => {
+                    setShowFormPicker(false);
+                    setLinkingFormToElement(null);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 mt-2">
+                Select a form to link to the "{linkingFormToElement.label}" element
+              </p>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-200px)]">
+              {availableForms.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-4">No forms available</p>
+                  <button
+                    onClick={() => router.push('/master/forms/new')}
+                    className="text-primary hover:underline"
+                  >
+                    Create a form first →
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {availableForms.map(form => (
+                    <button
+                      key={form.id}
+                      onClick={() => {
+                        // Update the element with form_id
+                        updateElement(linkingFormToElement.temp_id, { 
+                          form_id: form.id,
+                          form_name: form.name,
+                          form_key: form.form_key,
+                          form_type: form.form_type,
+                          form_field_count: form.element_count
+                        });
+                        setShowFormPicker(false);
+                        setLinkingFormToElement(null);
+                      }}
+                      className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-cyan-500 hover:bg-cyan-50 transition-all text-left"
+                    >
+                      <div className="flex items-start gap-3">
+                        <FileText className="w-5 h-5 text-cyan-600 mt-0.5" />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">{form.name}</div>
+                          <div className="text-sm text-gray-500 mt-1">{form.form_key}</div>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-gray-600">
+                            <span className="px-2 py-1 bg-gray-100 rounded">{form.form_type}</span>
+                            <span>{form.element_count || 0} fields</span>
+                            {form.is_active ? (
+                              <span className="text-green-600">● Active</span>
+                            ) : (
+                              <span className="text-gray-400">○ Inactive</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

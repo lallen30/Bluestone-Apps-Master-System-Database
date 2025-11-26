@@ -46,4 +46,12 @@ router.put('/:id/settings',
   appController.updateAppSettings
 );
 
+// Set home screen for app
+router.put('/:id/home-screen',
+  validateId,
+  hasAppAccess,
+  hasPermission('can_manage_settings'),
+  appController.setHomeScreen
+);
+
 module.exports = router;

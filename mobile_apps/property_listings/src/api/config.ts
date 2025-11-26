@@ -1,6 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
   BASE_URL: 'http://localhost:3000/api/v1',
+  SERVER_URL: 'http://localhost:3000', // Base server URL for images
   APP_ID: 28, // AirPnP App ID
   TIMEOUT: 30000,
 };
@@ -21,6 +22,7 @@ export const ENDPOINTS = {
     CREATE: `/apps/${API_CONFIG.APP_ID}/listings`,
     UPDATE: (id: number) => `/apps/${API_CONFIG.APP_ID}/listings/${id}`,
     DELETE: (id: number) => `/apps/${API_CONFIG.APP_ID}/listings/${id}`,
+    STATUS: (id: number) => `/apps/${API_CONFIG.APP_ID}/listings/${id}/status`,
     PUBLISH: (id: number) => `/apps/${API_CONFIG.APP_ID}/listings/${id}/publish`,
   },
   // Amenities

@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, appScreensAPI, appScreenElementsAPI, uploadAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { ArrowLeft, Save, Monitor, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Save, Monitor, Upload, X, Image as ImageIcon, Settings } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import 'react-quill/dist/quill.snow.css';
 
@@ -22,6 +22,8 @@ export default function EditScreenContent() {
   const [screen, setScreen] = useState<any>(null);
   const [elements, setElements] = useState<any[]>([]);
   const [contentValues, setContentValues] = useState<{[key: string]: any}>({});
+  const [contentOptions, setContentOptions] = useState<{[key: string]: any}>({});
+  const [availableScreens, setAvailableScreens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -51,12 +53,17 @@ export default function EditScreenContent() {
       // Fetch screen with content
       const screenResponse = await appScreensAPI.getAppScreenContent(parseInt(appId), parseInt(screenId));
       setScreen(screenResponse.data);
+
+      // Fetch available screens for button navigation
+      const screensResponse = await appScreensAPI.getAppScreens(parseInt(appId));
+      setAvailableScreens(screensResponse.data || []);
       
       // Fetch elements with app-specific overrides and custom elements
       const elementsResponse = await appScreenElementsAPI.getAppScreenElements(parseInt(appId), parseInt(screenId));
       const elementsData = elementsResponse.elements || [];
       
       console.log('🔵 NEW CODE: Got elements, count:', elementsData.length);
+      console.log('🔵 NEW CODE: Elements data:', JSON.stringify(elementsData, null, 2));
       
       // Parse config if it's a string - WRAPPED IN TRY-CATCH
       const parsedElements = elementsData.map((el: any, index: number) => {
@@ -95,10 +102,13 @@ export default function EditScreenContent() {
       
       // Initialize content values - use element_instance_id as key
       const initialValues: {[key: string]: any} = {};
+      const initialOptions: {[key: string]: any} = {};
       parsedElements.forEach((el: any) => {
         initialValues[el.element_instance_id] = el.content_value || el.default_value || '';
+        initialOptions[el.element_instance_id] = el.content_options || {};
       });
       setContentValues(initialValues);
+      setContentOptions(initialOptions);
       
       console.log('🔵 NEW CODE: fetchData completed successfully');
       
@@ -123,7 +133,8 @@ export default function EditScreenContent() {
       // Prepare content data - use element_instance_id from API response
       const contentData = elements.map(element => ({
         element_instance_id: element.element_instance_id,
-        content_value: contentValues[element.element_instance_id] || null
+        content_value: contentValues[element.element_instance_id] || null,
+        options: contentOptions[element.element_instance_id] || null
       }));
 
       await appScreensAPI.saveScreenContent(parseInt(appId), parseInt(screenId), contentData);
@@ -171,14 +182,23 @@ export default function EditScreenContent() {
               <p className="text-gray-600 mt-1">{screen.description || 'Edit screen content'}</p>
             </div>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-4 h-4" />
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push(`/app/${appId}/screens/${screenId}/elements`)}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              <Settings className="w-4 h-4" />
+              Customize Elements
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
         </div>
 
         {/* Content Editor */}
@@ -498,14 +518,91 @@ export default function EditScreenContent() {
                     )}
                     {element.element_type === 'button' && (
                       <div className="space-y-2">
-                        <input
-                          type="text"
-                          placeholder="Button text"
-                          value={contentValues[element.element_instance_id] || element.label || ''}
-                          onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                          disabled={element.is_readonly}
-                        />
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Button Text</label>
+                          <input
+                            type="text"
+                            placeholder="Button text"
+                            value={contentValues[element.element_instance_id] || element.label || ''}
+                            onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                            disabled={element.is_readonly}
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
+                          <select
+                            value={contentOptions[element.element_instance_id]?.actionType || element.config?.actionType || 'none'}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [element.element_instance_id]: {
+                                  ...prev[element.element_instance_id],
+                                  actionType: e.target.value,
+                                  url: e.target.value === 'url' ? prev[element.element_instance_id]?.url : undefined,
+                                  screenId: e.target.value === 'screen' ? prev[element.element_instance_id]?.screenId : undefined
+                                }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                            disabled={element.is_readonly}
+                          >
+                            <option value="none">No Action</option>
+                            <option value="url">Open URL</option>
+                            <option value="screen">Navigate to Screen</option>
+                          </select>
+                        </div>
+
+                        {(contentOptions[element.element_instance_id]?.actionType || element.config?.actionType) === 'url' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                            <input
+                              type="url"
+                              placeholder="https://example.com"
+                              value={contentOptions[element.element_instance_id]?.url || element.config?.url || ''}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [element.element_instance_id]: {
+                                    ...prev[element.element_instance_id],
+                                    url: e.target.value
+                                  }
+                                }));
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                              disabled={element.is_readonly}
+                            />
+                          </div>
+                        )}
+
+                        {(contentOptions[element.element_instance_id]?.actionType || element.config?.actionType) === 'screen' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Target Screen</label>
+                            <select
+                              value={contentOptions[element.element_instance_id]?.screenId || element.config?.screenId || ''}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [element.element_instance_id]: {
+                                    ...prev[element.element_instance_id],
+                                    screenId: parseInt(e.target.value) || undefined
+                                  }
+                                }));
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                              disabled={element.is_readonly}
+                            >
+                              <option value="">Select a screen...</option>
+                              {availableScreens.map((scr: any) => (
+                                <option key={scr.id} value={scr.id}>
+                                  {scr.name} (ID: {scr.id})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
                         <div className="mt-2">
                           <button
                             type="button"
@@ -520,23 +617,162 @@ export default function EditScreenContent() {
                     )}
                     {element.element_type === 'link' && (
                       <div className="space-y-2">
-                        <input
-                          type="text"
-                          placeholder="Link text"
-                          value={contentValues[element.element_instance_id] || element.label || ''}
-                          onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                          disabled={element.is_readonly}
-                        />
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Link Text</label>
+                          <input
+                            type="text"
+                            placeholder="Link text"
+                            value={contentValues[element.element_instance_id] || element.label || ''}
+                            onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                            disabled={element.is_readonly}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
+                          <select
+                            value={contentOptions[element.element_instance_id]?.actionType || element.config?.actionType || 'url'}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [element.element_instance_id]: {
+                                  ...prev[element.element_instance_id],
+                                  actionType: e.target.value,
+                                  url: e.target.value === 'url' ? prev[element.element_instance_id]?.url : undefined,
+                                  screenId: e.target.value === 'screen' ? prev[element.element_instance_id]?.screenId : undefined
+                                }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                            disabled={element.is_readonly}
+                          >
+                            <option value="url">Open URL</option>
+                            <option value="screen">Navigate to Screen</option>
+                          </select>
+                        </div>
+
+                        {(!contentOptions[element.element_instance_id]?.actionType || contentOptions[element.element_instance_id]?.actionType === 'url' || (!contentOptions[element.element_instance_id] && (!element.config?.actionType || element.config?.actionType === 'url'))) && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                            <input
+                              type="url"
+                              placeholder="https://example.com"
+                              value={contentOptions[element.element_instance_id]?.url || element.config?.url || ''}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [element.element_instance_id]: {
+                                    ...prev[element.element_instance_id],
+                                    url: e.target.value
+                                  }
+                                }));
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                              disabled={element.is_readonly}
+                            />
+                          </div>
+                        )}
+
+                        {(contentOptions[element.element_instance_id]?.actionType || element.config?.actionType) === 'screen' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Target Screen</label>
+                            <select
+                              value={contentOptions[element.element_instance_id]?.screenId || element.config?.screenId || ''}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [element.element_instance_id]: {
+                                    ...prev[element.element_instance_id],
+                                    screenId: parseInt(e.target.value) || undefined
+                                  }
+                                }));
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                              disabled={element.is_readonly}
+                            >
+                              <option value="">Select a screen...</option>
+                              {availableScreens.map((scr: any) => (
+                                <option key={scr.id} value={scr.id}>
+                                  {scr.name} (ID: {scr.id})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
                         <div className="mt-2">
-                          <a href="#" className="text-primary hover:underline" onClick={(e) => e.preventDefault()}>
+                          <a 
+                            href="#" 
+                            className="text-primary hover:underline" 
+                            onClick={(e) => e.preventDefault()}
+                          >
                             {contentValues[element.element_instance_id] || element.label || 'Link'}
                           </a>
                           <p className="text-xs text-gray-500 mt-1">Preview (link is disabled in editor)</p>
                         </div>
                       </div>
                     )}
-                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button', 'email_input', 'phone_input', 'url_input', 'number_input', 'date_picker', 'image_display', 'image_upload', 'button', 'link'].includes(element.element_type) && (
+                    {element.element_type === 'property_form' && (
+                      <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4">
+                        {element.form_id ? (
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="text-sm font-medium text-cyan-900">
+                                Linked Form: {element.form_name}
+                              </div>
+                              <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                                Auto-linked ✓
+                              </span>
+                            </div>
+                            <div className="text-xs text-cyan-700 mb-3">
+                              {element.form_field_count || 0} fields • {element.form_type || 'form'}
+                            </div>
+                            <div className="bg-white border border-cyan-200 rounded p-3 mb-3">
+                              <p className="text-xs text-gray-600 mb-2">
+                                <strong>📋 About Form Elements:</strong> This element displays an entire form with {element.form_field_count || 0} fields.
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                <strong>To edit the form fields:</strong> Click "Edit Form Fields" below to add, remove, or modify the fields in this form (title, description, price, etc.)
+                              </p>
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                              <button
+                                onClick={() => router.push(`/app/${appId}/forms/${element.form_id}`)}
+                                className="text-xs px-3 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700"
+                              >
+                                📝 View Form Fields →
+                              </button>
+                              <button
+                                onClick={() => router.push(`/master/forms/${element.form_id}`)}
+                                className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                              >
+                                ✏️ Edit Master Form →
+                              </button>
+                              <button
+                                onClick={() => router.push(`/master/screens/${screenId}`)}
+                                className="text-xs px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
+                              >
+                                🔄 Change Form →
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-sm text-cyan-800 mb-2">
+                              This element is a form container but no form is linked yet. Forms are automatically linked when you add a property_form element to a screen, but you can manually link one if needed.
+                            </p>
+                            <button
+                              onClick={() => router.push(`/master/screens/${screenId}`)}
+                              className="text-xs px-3 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700"
+                            >
+                              Link a Form Manually →
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button', 'email_input', 'phone_input', 'url_input', 'number_input', 'date_picker', 'image_display', 'image_upload', 'button', 'link', 'property_form'].includes(element.element_type) && (
                       <div className="text-sm text-gray-500 italic">
                         {element.element_type} - Content editing coming soon
                       </div>

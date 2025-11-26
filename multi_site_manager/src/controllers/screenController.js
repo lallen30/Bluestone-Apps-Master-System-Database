@@ -59,6 +59,42 @@ const getScreenById = async (req, res) => {
       });
     }
 
+    // Fetch element instances with form references
+    const elements = await query(
+      `SELECT 
+        sei.id,
+        sei.element_id,
+        sei.field_key,
+        sei.label,
+        sei.placeholder,
+        sei.default_value,
+        sei.is_required,
+        sei.is_readonly,
+        sei.display_order,
+        sei.config,
+        sei.validation_rules,
+        sei.form_id,
+        se.name as element_name,
+        se.element_type,
+        se.category,
+        se.icon,
+        se.has_options,
+        se.is_content_field,
+        se.is_input_field,
+        f.name as form_name,
+        f.form_key,
+        f.form_type,
+        (SELECT COUNT(*) FROM app_form_elements WHERE form_id = sei.form_id) as form_field_count
+       FROM screen_element_instances sei
+       JOIN screen_elements se ON sei.element_id = se.id
+       LEFT JOIN app_forms f ON sei.form_id = f.id
+       WHERE sei.screen_id = ?
+       ORDER BY sei.display_order`,
+      [id]
+    );
+
+    screen.elements = elements;
+
     res.json({
       success: true,
       data: screen

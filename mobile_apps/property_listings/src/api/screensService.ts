@@ -4,6 +4,7 @@ import { API_CONFIG } from './config';
 export interface AppScreen {
   id: number;
   name: string;
+  screen_key?: string;
   description: string;
   category?: string;
   icon?: string;
@@ -29,8 +30,14 @@ export interface ScreenElement {
   display_order: number;
   options?: any;
   content_value?: string; // Saved content from admin
+  content_options?: any; // Additional options like URL for links
   default_value?: string;
   config?: any; // Element configuration (dropdown options, upload settings, etc.)
+  custom_config?: any; // Custom element configuration (for app-specific custom elements)
+  form_id?: number; // For property_form elements
+  form_name?: string;
+  form_key?: string;
+  form_type?: string;
 }
 
 export interface ScreenContent {
@@ -117,5 +124,16 @@ export const menusService = {
       `/mobile/apps/${API_CONFIG.APP_ID}/menus`
     );
     return response.data.data || [];
+  },
+};
+
+// App service
+export const appService = {
+  // Get the default home screen ID for the app
+  getHomeScreen: async (): Promise<number | null> => {
+    const response = await apiClient.get(
+      `/mobile/apps/${API_CONFIG.APP_ID}/home-screen`
+    );
+    return response.data.home_screen_id || null;
   },
 };

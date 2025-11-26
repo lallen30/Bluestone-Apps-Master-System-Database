@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { bookingsService, Booking } from '../../api/bookingsService';
 
 interface ScreenElement {
@@ -142,7 +142,7 @@ const BookingListElement: React.FC<BookingListElementProps> = ({ element, naviga
               <Text style={styles.dateLabel}>Check-in</Text>
               <Text style={styles.dateValue}>{checkIn.toLocaleDateString()}</Text>
             </View>
-            <Icon name="arrow-forward" size={20} color="#8E8E93" style={styles.arrowIcon} />
+            <Icon name="arrow-right" size={20} color="#8E8E93" style={styles.arrowIcon} />
             <View style={styles.dateColumn}>
               <Text style={styles.dateLabel}>Check-out</Text>
               <Text style={styles.dateValue}>{checkOut.toLocaleDateString()}</Text>
@@ -152,15 +152,15 @@ const BookingListElement: React.FC<BookingListElementProps> = ({ element, naviga
           {card_layout === 'detailed' && (
             <View style={styles.detailsRow}>
               <View style={styles.detailItem}>
-                <Icon name="people" size={16} color="#8E8E93" />
+                <Icon name="account-group" size={16} color="#8E8E93" />
                 <Text style={styles.detailText}>{item.guests_count} guests</Text>
               </View>
               <View style={styles.detailItem}>
-                <Icon name="nights-stay" size={16} color="#8E8E93" />
+                <Icon name="weather-night" size={16} color="#8E8E93" />
                 <Text style={styles.detailText}>{item.nights} nights</Text>
               </View>
               <View style={styles.detailItem}>
-                <Icon name="attach-money" size={16} color="#8E8E93" />
+                <Icon name="currency-usd" size={16} color="#8E8E93" />
                 <Text style={styles.detailText}>${item.total_price.toFixed(2)}</Text>
               </View>
             </View>
@@ -186,7 +186,7 @@ const BookingListElement: React.FC<BookingListElementProps> = ({ element, naviga
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Icon name="event-busy" size={64} color="#C7C7CC" />
+      <Icon name="calendar-remove" size={64} color="#C7C7CC" />
       <Text style={styles.emptyTitle}>No Bookings</Text>
       <Text style={styles.emptySubtitle}>
         {filter === 'all'
