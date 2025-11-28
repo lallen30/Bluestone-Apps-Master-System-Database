@@ -2,9 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, Menu as MenuIcon, Smartphone, SidebarIcon } from 'lucide-react';
-import { menuAPI, appsAPI } from '@/lib/api';
+import { Plus, Edit, Trash2, Menu as MenuIcon, Smartphone, SidebarIcon, Users, Shield, Settings, Copy } from 'lucide-react';
+import { menuAPI, appsAPI, rolesAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
+
+interface Role {
+  id: number;
+  name: string;
+  description: string | null;
+}
 
 interface Menu {
   id: number;
@@ -17,6 +23,7 @@ interface Menu {
   item_count: number;
   created_at: string;
   updated_at: string;
+  roles?: { id: number; name: string }[];
 }
 
 export default function MenusPage() {
@@ -25,11 +32,18 @@ export default function MenusPage() {
   const appId = parseInt(params.id as string);
 
   const [menus, setMenus] = useState<Menu[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [appName, setAppName] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showRolesModal, setShowRolesModal] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [editingMenu, setEditingMenu] = useState<Menu | null>(null);
+  const [duplicatingMenu, setDuplicatingMenu] = useState<Menu | null>(null);
+  const [duplicateName, setDuplicateName] = useState('');
+  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
+  const [savingRoles, setSavingRoles] = useState(false);
   const [newMenu, setNewMenu] = useState({
     name: '',
     menu_type: 'tabbar' as 'tabbar' | 'sidebar_left' | 'sidebar_right',
@@ -45,6 +59,7 @@ export default function MenusPage() {
   useEffect(() => {
     fetchAppDetails();
     fetchMenus();
+    fetchRoles();
   }, [appId]);
 
   const fetchAppDetails = async () => {
@@ -59,12 +74,28 @@ export default function MenusPage() {
   const fetchMenus = async () => {
     try {
       setLoading(true);
-      const response = await menuAPI.getAppMenus(appId);
+      const response = await menuAPI.getAppMenusWithRoles(appId);
       setMenus(response.data || []);
     } catch (error) {
       console.error('Error fetching menus:', error);
+      // Fallback to regular menus API if roles endpoint fails
+      try {
+        const fallbackResponse = await menuAPI.getAppMenus(appId);
+        setMenus(fallbackResponse.data || []);
+      } catch (fallbackError) {
+        console.error('Error fetching menus (fallback):', fallbackError);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const response = await rolesAPI.getAppRoles(appId);
+      setRoles(response.data || []);
+    } catch (error) {
+      console.error('Error fetching roles:', error);
     }
   };
 
@@ -124,6 +155,62 @@ export default function MenusPage() {
     } catch (error: any) {
       console.error('Error deleting menu:', error);
       alert(error.response?.data?.message || 'Failed to delete menu');
+    }
+  };
+
+  const handleManageRoles = (menu: Menu) => {
+    setEditingMenu(menu);
+    setSelectedRoleIds(menu.roles?.map(r => r.id) || []);
+    setShowRolesModal(true);
+  };
+
+  const handleSaveRoles = async () => {
+    if (!editingMenu) return;
+
+    try {
+      setSavingRoles(true);
+      await menuAPI.updateMenuRoleAccess(editingMenu.id, selectedRoleIds, appId);
+      setShowRolesModal(false);
+      setEditingMenu(null);
+      setSelectedRoleIds([]);
+      fetchMenus();
+    } catch (error: any) {
+      console.error('Error saving menu roles:', error);
+      alert(error.response?.data?.message || 'Failed to save menu roles');
+    } finally {
+      setSavingRoles(false);
+    }
+  };
+
+  const toggleRole = (roleId: number) => {
+    setSelectedRoleIds(prev => 
+      prev.includes(roleId) 
+        ? prev.filter(id => id !== roleId)
+        : [...prev, roleId]
+    );
+  };
+
+  const handleDuplicateMenu = (menu: Menu) => {
+    setDuplicatingMenu(menu);
+    setDuplicateName(`${menu.name} (Copy)`);
+    setShowDuplicateModal(true);
+  };
+
+  const handleConfirmDuplicate = async () => {
+    if (!duplicatingMenu || !duplicateName.trim()) {
+      alert('Please enter a name for the duplicate menu');
+      return;
+    }
+
+    try {
+      await menuAPI.duplicateMenu(duplicatingMenu.id, duplicateName.trim());
+      setShowDuplicateModal(false);
+      setDuplicatingMenu(null);
+      setDuplicateName('');
+      fetchMenus();
+    } catch (error: any) {
+      console.error('Error duplicating menu:', error);
+      alert(error.response?.data?.message || 'Failed to duplicate menu');
     }
   };
 
@@ -240,21 +327,52 @@ export default function MenusPage() {
               )}
 
               {/* Stats */}
-              <div className="flex items-center gap-4 mb-4 text-sm text-gray-600">
+              <div className="flex items-center gap-4 mb-3 text-sm text-gray-600">
                 <span>{menu.item_count} items</span>
                 <span className={menu.is_active ? 'text-green-600' : 'text-gray-400'}>
                   {menu.is_active ? 'Active' : 'Inactive'}
                 </span>
               </div>
 
+              {/* Roles */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="w-4 h-4 text-gray-400" />
+                  <span className="text-xs font-medium text-gray-500 uppercase">Visible to Roles</span>
+                </div>
+                {menu.roles && menu.roles.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {menu.roles.map(role => (
+                      <span
+                        key={role.id}
+                        className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full"
+                      >
+                        {role.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                    All roles (no restrictions)
+                  </span>
+                )}
+              </div>
+
               {/* Actions */}
               <div className="flex gap-2">
                 <button
                   onClick={() => router.push(`/app/${appId}/menus/${menu.id}`)}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
+                  className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
+                  title="Manage menu items"
                 >
-                  <Edit className="w-4 h-4" />
-                  Manage Items
+                  <Settings className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleManageRoles(menu)}
+                  className="px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100"
+                  title="Manage role access"
+                >
+                  <Users className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleEditMenu(menu)}
@@ -264,8 +382,16 @@ export default function MenusPage() {
                   <Edit className="w-4 h-4" />
                 </button>
                 <button
+                  onClick={() => handleDuplicateMenu(menu)}
+                  className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
+                  title="Duplicate menu"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+                <button
                   onClick={() => handleDeleteMenu(menu.id, menu.name)}
                   className="px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
+                  title="Delete menu"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -467,6 +593,149 @@ export default function MenusPage() {
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Update Menu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Roles Modal */}
+      {showRolesModal && editingMenu && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Shield className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Manage Role Access</h2>
+                <p className="text-sm text-gray-500">{editingMenu.name}</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">
+              Select which roles can see this menu. If no roles are selected, the menu will be visible to all users.
+            </p>
+
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {roles.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No roles defined for this app. Create roles in the Roles section first.
+                </p>
+              ) : (
+                roles.map(role => (
+                  <label
+                    key={role.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      selectedRoleIds.includes(role.id)
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedRoleIds.includes(role.id)}
+                      onChange={() => toggleRole(role.id)}
+                      className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">{role.name}</div>
+                      {role.description && (
+                        <div className="text-xs text-gray-500">{role.description}</div>
+                      )}
+                    </div>
+                  </label>
+                ))
+              )}
+            </div>
+
+            {selectedRoleIds.length > 0 && (
+              <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                <p className="text-sm text-green-700">
+                  <strong>{selectedRoleIds.length}</strong> role{selectedRoleIds.length !== 1 ? 's' : ''} selected
+                </p>
+              </div>
+            )}
+
+            {selectedRoleIds.length === 0 && roles.length > 0 && (
+              <div className="mt-4 p-3 bg-amber-50 rounded-lg">
+                <p className="text-sm text-amber-700">
+                  No roles selected - menu will be visible to all users
+                </p>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowRolesModal(false);
+                  setEditingMenu(null);
+                  setSelectedRoleIds([]);
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                disabled={savingRoles}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveRoles}
+                disabled={savingRoles}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                {savingRoles ? 'Saving...' : 'Save Roles'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Menu Modal */}
+      {showDuplicateModal && duplicatingMenu && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Copy className="w-5 h-5 text-blue-600" />
+              Duplicate Menu
+            </h2>
+
+            <p className="text-sm text-gray-600 mb-4">
+              Create a copy of <strong>"{duplicatingMenu.name}"</strong> with all its menu items.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  New Menu Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={duplicateName}
+                  onChange={(e) => setDuplicateName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter name for the duplicate"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowDuplicateModal(false);
+                  setDuplicatingMenu(null);
+                  setDuplicateName('');
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDuplicate}
+                disabled={!duplicateName.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Duplicate
               </button>
             </div>
           </div>

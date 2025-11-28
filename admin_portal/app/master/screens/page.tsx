@@ -5,6 +5,24 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appScreensAPI, templatesAPI } from '@/lib/api';
 import { ArrowLeft, Monitor, Plus, Search, Edit, Trash2, Copy, Sparkles } from 'lucide-react';
+import Icon from '@mdi/react';
+import * as mdiIcons from '@mdi/js';
+
+// Convert icon name to mdi path key (e.g., 'home' -> 'mdiHome')
+const toMdiKey = (iconName: string): string => {
+  if (!iconName) return '';
+  return 'mdi' + iconName
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+};
+
+// Get MDI path by icon name
+const getMdiPath = (iconName: string): string | null => {
+  if (!iconName) return null;
+  const key = toMdiKey(iconName);
+  return (mdiIcons as any)[key] || null;
+};
 
 export default function MasterScreens() {
   const router = useRouter();
@@ -249,7 +267,11 @@ export default function MasterScreens() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Monitor className="w-5 h-5 text-primary" />
+                        {screen.icon && getMdiPath(screen.icon) ? (
+                          <Icon path={getMdiPath(screen.icon)!} size={0.9} className="text-primary" />
+                        ) : (
+                          <Monitor className="w-5 h-5 text-primary" />
+                        )}
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">{screen.name}</div>

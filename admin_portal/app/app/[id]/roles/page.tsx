@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appsAPI, rolesAPI, appScreensAPI } from '@/lib/api';
+import { appsAPI, rolesAPI, appScreensAPI, menuAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { Shield, Users, Plus, Edit, Trash2, X, Save, Monitor } from 'lucide-react';
+import { Shield, Users, Plus, Edit, Trash2, X, Save, Monitor, Menu as MenuIcon, Home } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
 interface Role {
@@ -27,6 +27,22 @@ interface Screen {
   can_access: boolean | null;
 }
 
+interface RoleMenu {
+  id: number;
+  name: string;
+  menu_type: string;
+}
+
+interface RoleHomeScreen {
+  role_id: number;
+  role_name: string;
+  role_display_name: string;
+  screen_id: number | null;
+  screen_name: string | null;
+  screen_key: string | null;
+  screen_icon: string | null;
+}
+
 export default function RolesPage() {
   const router = useRouter();
   const params = useParams();
@@ -37,7 +53,12 @@ export default function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [roleScreens, setRoleScreens] = useState<Screen[]>([]);
+  const [roleMenus, setRoleMenus] = useState<RoleMenu[]>([]);
+  const [roleHomeScreens, setRoleHomeScreens] = useState<RoleHomeScreen[]>([]);
+  const [allScreens, setAllScreens] = useState<Screen[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isHomeScreenModalOpen, setIsHomeScreenModalOpen] = useState(false);
+  const [selectedHomeScreenId, setSelectedHomeScreenId] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isScreensModalOpen, setIsScreensModalOpen] = useState(false);
@@ -67,11 +88,17 @@ export default function RolesPage() {
 
   const fetchData = async () => {
     try {
-      const appResponse = await appsAPI.getById(parseInt(appId));
+      const [appResponse, rolesResponse, homeScreensResponse, screensResponse] = await Promise.all([
+        appsAPI.getById(parseInt(appId)),
+        rolesAPI.getAppRoles(parseInt(appId)),
+        rolesAPI.getAllRoleHomeScreens(parseInt(appId)),
+        appScreensAPI.getAppScreens(parseInt(appId))
+      ]);
+      
       setApp(appResponse.data);
-
-      const rolesResponse = await rolesAPI.getAppRoles(parseInt(appId));
       setRoles(rolesResponse.data || []);
+      setRoleHomeScreens(homeScreensResponse.data || []);
+      setAllScreens(screensResponse.data || []);
 
       setLoading(false);
     } catch (error) {
@@ -83,10 +110,14 @@ export default function RolesPage() {
   const handleRoleClick = async (role: Role) => {
     setSelectedRole(role);
     try {
-      const screensResponse = await rolesAPI.getRoleScreens(parseInt(appId), role.id);
+      const [screensResponse, menusResponse] = await Promise.all([
+        rolesAPI.getRoleScreens(parseInt(appId), role.id),
+        menuAPI.getMenusByRole(parseInt(appId), role.id)
+      ]);
       setRoleScreens(screensResponse.data || []);
+      setRoleMenus(menusResponse.data || []);
     } catch (error) {
-      console.error('Error fetching role screens:', error);
+      console.error('Error fetching role data:', error);
     }
   };
 
@@ -194,6 +225,34 @@ export default function RolesPage() {
     }
   };
 
+  const handleManageHomeScreen = (role: Role) => {
+    setSelectedRole(role);
+    const currentHomeScreen = roleHomeScreens.find(rhs => rhs.role_id === role.id);
+    setSelectedHomeScreenId(currentHomeScreen?.screen_id || null);
+    setIsHomeScreenModalOpen(true);
+  };
+
+  const handleSaveHomeScreen = async () => {
+    if (!selectedRole) return;
+    
+    setSubmitting(true);
+    try {
+      await rolesAPI.setRoleHomeScreen(parseInt(appId), selectedRole.id, selectedHomeScreenId);
+      setIsHomeScreenModalOpen(false);
+      fetchData();
+      alert('Home screen updated successfully');
+    } catch (error: any) {
+      console.error('Error setting home screen:', error);
+      alert(error.response?.data?.message || 'Failed to set home screen');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getRoleHomeScreen = (roleId: number) => {
+    return roleHomeScreens.find(rhs => rhs.role_id === roleId);
+  };
+
   if (loading) {
     return (
       <AppLayout appId={appId} appName={app?.name || 'Loading...'}>
@@ -267,8 +326,24 @@ export default function RolesPage() {
                             {role.user_count} users
                           </span>
                         </div>
+                        {/* Home Screen Badge */}
+                        {getRoleHomeScreen(role.id)?.screen_name && (
+                          <div className="mt-2">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+                              <Home className="w-3 h-3" />
+                              Home: {getRoleHomeScreen(role.id)?.screen_name}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 ml-4">
+                        <button
+                          onClick={() => handleManageHomeScreen(role)}
+                          className="text-green-600 hover:text-green-900"
+                          title="Set home screen"
+                        >
+                          <Home className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleManageScreens(role)}
                           className="text-purple-600 hover:text-purple-900"
@@ -302,15 +377,49 @@ export default function RolesPage() {
           <div className="bg-white rounded-lg shadow">
             {selectedRole ? (
               <>
+                {/* Menu Access Summary */}
+                <div className="p-6 border-b bg-gray-50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MenuIcon className="w-5 h-5 text-gray-600" />
+                    <h3 className="font-semibold text-gray-900">Menu Access</h3>
+                  </div>
+                  {roleMenus.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {roleMenus.map(menu => (
+                        <span
+                          key={menu.id}
+                          className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full"
+                        >
+                          {menu.name}
+                          <span className="text-green-500 ml-1">
+                            ({menu.menu_type === 'tabbar' ? 'Tab Bar' : menu.menu_type === 'sidebar_left' ? 'Left Sidebar' : 'Right Sidebar'})
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-amber-600">
+                      No menus assigned - this role can see all menus (no restrictions)
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-2">
+                    Manage menu access from the <a href={`/app/${appId}/menus`} className="text-blue-600 hover:underline">Menus page</a>
+                  </p>
+                </div>
+
+                {/* Screen Access */}
                 <div className="p-6 border-b">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    {selectedRole.display_name} - Screen Access
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Monitor className="w-5 h-5 text-gray-600" />
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      {selectedRole.display_name} - Screen Access
+                    </h2>
+                  </div>
+                  <p className="text-sm text-gray-600">
                     {roleScreens.filter(s => s.can_access).length} of {roleScreens.length} screens accessible
                   </p>
                 </div>
-                <div className="p-6 max-h-[600px] overflow-y-auto">
+                <div className="p-6 max-h-[500px] overflow-y-auto">
                   {roleScreens.length === 0 ? (
                     <p className="text-center text-gray-500 py-8">No screens available for this app</p>
                   ) : (
@@ -351,7 +460,7 @@ export default function RolesPage() {
             ) : (
               <div className="p-12 text-center">
                 <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">Select a role to view screen access settings</p>
+                <p className="text-gray-500">Select a role to view screen and menu access settings</p>
               </div>
             )}
           </div>
@@ -531,6 +640,103 @@ export default function RolesPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Home Screen Modal */}
+        {isHomeScreenModalOpen && selectedRole && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="flex items-center justify-between p-6 border-b">
+                <div className="flex items-center gap-2">
+                  <Home className="w-5 h-5 text-green-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Set Home Screen for {selectedRole.display_name}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsHomeScreenModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-sm text-gray-600 mb-4">
+                  Select the screen that users with this role will see when they open the app.
+                </p>
+                
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {/* Use App Default Option */}
+                  <label
+                    className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                      selectedHomeScreenId === null
+                        ? 'bg-green-50 border-green-300'
+                        : 'hover:bg-gray-50 border-gray-200'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="homeScreen"
+                      checked={selectedHomeScreenId === null}
+                      onChange={() => setSelectedHomeScreenId(null)}
+                      className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+                    />
+                    <div className="ml-3">
+                      <p className="font-medium text-gray-900">Use App Default</p>
+                      <p className="text-xs text-gray-500">Use the app's default home screen</p>
+                    </div>
+                  </label>
+                  
+                  {/* Screen Options */}
+                  {allScreens.map((screen) => (
+                    <label
+                      key={screen.id}
+                      className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                        selectedHomeScreenId === screen.id
+                          ? 'bg-green-50 border-green-300'
+                          : 'hover:bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="homeScreen"
+                        checked={selectedHomeScreenId === screen.id}
+                        onChange={() => setSelectedHomeScreenId(screen.id)}
+                        className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+                      />
+                      <div className="ml-3 flex-1">
+                        <p className="font-medium text-gray-900">{screen.name}</p>
+                        <p className="text-xs text-gray-500">{screen.screen_key}</p>
+                      </div>
+                      {!screen.is_published && (
+                        <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+                          Draft
+                        </span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+
+                <div className="flex gap-3 pt-6">
+                  <button
+                    type="button"
+                    onClick={() => setIsHomeScreenModalOpen(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveHomeScreen}
+                    disabled={submitting}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    {submitting ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

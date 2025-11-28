@@ -22,4 +22,13 @@ router.delete('/menu-items/:itemId', menuController.removeMenuItem);
 router.get('/screens/:screenId/menus', menuController.getScreenMenus);
 router.put('/screens/:screenId/menus', menuController.assignMenusToScreen);
 
+// Menu role access routes
+router.get('/app/:appId/menus-with-roles', menuController.getAppMenusWithRoles);
+router.get('/menus/:menuId/roles', menuController.getMenuRoleAccess);
+router.put('/menus/:menuId/roles', menuController.updateMenuRoleAccess);
+router.get('/app/:appId/roles/:roleId/menus', menuController.getMenusByRole);
+
+// Menu duplication
+router.post('/menus/:menuId/duplicate', menuController.duplicateMenu);
+
 module.exports = router;

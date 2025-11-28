@@ -33,6 +33,7 @@ const screenRolesRoutes = require('./routes/screenRoles');
 const propertyListingsRoutes = require('./routes/propertyListings');
 const bookingsRoutes = require('./routes/bookings');
 const messagesRoutes = require('./routes/messages');
+const reviewsRoutes = require('./routes/reviews');
 const menuRoutes = require('./routes/menuRoutes');
 const modulesRoutes = require('./routes/modulesRoutes');
 const appFormsRoutes = require('./routes/appForms');
@@ -109,6 +110,7 @@ app.use(`/api/${API_VERSION}/users`, userRoutes);
 app.use(`/api/${API_VERSION}`, propertyListingsRoutes); // Property listings (MUST be before /apps routes)
 app.use(`/api/${API_VERSION}`, bookingsRoutes); // Property bookings
 app.use(`/api/${API_VERSION}`, messagesRoutes); // Messaging system
+app.use(`/api/${API_VERSION}`, reviewsRoutes); // Reviews and reports
 app.use(`/api/${API_VERSION}/apps`, appUsersRoutes); // App users management
 app.use(`/api/${API_VERSION}/apps`, rolesRoutes); // Roles management
 app.use(`/api/${API_VERSION}/apps`, appRoutes);

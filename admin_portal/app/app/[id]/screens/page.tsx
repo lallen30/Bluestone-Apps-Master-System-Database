@@ -7,7 +7,7 @@ import { appsAPI, permissionsAPI, appScreensAPI, menuAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
 import MenuConfigModal from '@/components/MenuConfigModal';
 import ModuleAssignmentModal from '@/components/ModuleAssignmentModal';
-import { Monitor, Sparkles, Edit, GripVertical, Settings, RefreshCw, RefreshCwOff, LayoutGrid, Package, Home } from 'lucide-react';
+import { Monitor, Sparkles, Edit, GripVertical, Settings, RefreshCw, RefreshCwOff, LayoutGrid, Package, Grid, Search, X } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -35,10 +35,9 @@ interface SortableRowProps {
   onMenuConfig: (screen: any) => void;
   onModuleConfig: (screen: any) => void;
   isMasterAdmin: boolean;
-  isHomeScreen: boolean;
 }
 
-function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, onMenuConfig, onModuleConfig, isMasterAdmin, isHomeScreen }: SortableRowProps) {
+function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, onMenuConfig, onModuleConfig, isMasterAdmin }: SortableRowProps) {
   const {
     attributes,
     listeners,
@@ -55,7 +54,7 @@ function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggle
   };
 
   return (
-    <tr ref={setNodeRef} style={style} className={`hover:bg-gray-50 ${isHomeScreen ? 'bg-green-50 border-l-4 border-green-500' : ''}`}>
+    <tr ref={setNodeRef} style={style} className="hover:bg-gray-50">
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
           <button
@@ -65,21 +64,12 @@ function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggle
           >
             <GripVertical className="w-5 h-5" />
           </button>
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isHomeScreen ? 'bg-green-100' : 'bg-primary/10'}`}>
-            {isHomeScreen ? (
-              <Home className="w-5 h-5 text-green-600" />
-            ) : (
-              <Monitor className="w-5 h-5 text-primary" />
-            )}
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary/10">
+            <Monitor className="w-5 h-5 text-primary" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-900">{screen.name}</span>
-              {isHomeScreen && (
-                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                  Home Screen
-                </span>
-              )}
             </div>
             <div className="text-sm text-gray-500">{screen.description || 'No description'}</div>
           </div>
@@ -193,8 +183,7 @@ export default function AppScreens() {
     isOpen: false,
     screen: null,
   });
-  const [homeScreenId, setHomeScreenId] = useState<number | null>(null);
-
+  const [searchQuery, setSearchQuery] = useState('');
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -224,7 +213,6 @@ export default function AppScreens() {
       // Fetch app details
       const appResponse = await appsAPI.getById(appId);
       setApp(appResponse.data);
-      setHomeScreenId(appResponse.data?.default_home_screen_id || null);
 
       // Fetch assigned screens
       const screensResponse = await appScreensAPI.getAppScreens(appId);
@@ -341,13 +329,6 @@ export default function AppScreens() {
         }));
 
         await appScreensAPI.updateScreenOrder(appId, screenOrders);
-
-        // If dragged to position 0, set as home screen
-        if (newIndex === 0) {
-          const newHomeScreenId = newScreens[0].id;
-          await appsAPI.setHomeScreen(appId, newHomeScreenId);
-          setHomeScreenId(newHomeScreenId);
-        }
       } catch (error) {
         console.error('Error updating screen order:', error);
         // Revert on error
@@ -384,46 +365,66 @@ export default function AppScreens() {
               Manage screens and pages for {app.name}
             </p>
           </div>
-          {user?.role_level === 1 && screens.length > 0 && (
-            <div className="flex gap-2">
+          <div className="flex gap-2">
+            {screens.length > 0 && (
               <button
-                onClick={() => handleToggleAutoSyncAll(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                onClick={() => router.push(`/app/${params.id}/screens/previews`)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
               >
-                <RefreshCw className="w-4 h-4" />
-                Enable All Auto-Sync
+                <Grid className="w-4 h-4" />
+                Grid View
               </button>
-              <button
-                onClick={() => handleToggleAutoSyncAll(false)}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
-              >
-                <RefreshCwOff className="w-4 h-4" />
-                Disable All Auto-Sync
-              </button>
-            </div>
-          )}
+            )}
+            {user?.role_level === 1 && screens.length > 0 && (
+              <>
+                <button
+                  onClick={() => handleToggleAutoSyncAll(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Enable All Auto-Sync
+                </button>
+                <button
+                  onClick={() => handleToggleAutoSyncAll(false)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <RefreshCwOff className="w-4 h-4" />
+                  Disable All Auto-Sync
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Menu Icon Legend */}
+        {/* Search Bar */}
         {screens.length > 0 && (
-          <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-600">Not configured</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-blue-600" />
-                <span className="text-sm text-gray-600">In Sidebar Menu</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-purple-600" />
-                <span className="text-sm text-gray-600">In Tab Bar</span>
-              </div>
-              <span className="text-xs text-gray-500 ml-auto">
-                Click the grid icon to configure where screens appear in the mobile app
-              </span>
+          <div className="mb-6">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search screens by name or category..."
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
             </div>
+            {searchQuery && (
+              <p className="mt-2 text-sm text-gray-500">
+                Showing {screens.filter(s => 
+                  s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  (s.category && s.category.toLowerCase().includes(searchQuery.toLowerCase()))
+                ).length} of {screens.length} screens
+              </p>
+            )}
           </div>
         )}
 
@@ -473,20 +474,28 @@ export default function AppScreens() {
                     items={screens.map((s) => s.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {screens.map((screen, index) => (
-                      <SortableRow
-                        key={screen.id}
-                        screen={screen}
-                        onPublishToggle={handlePublishToggle}
-                        onEdit={handleEdit}
-                        onManageFields={handleManageFields}
-                        onToggleAutoSync={handleToggleAutoSync}
-                        onMenuConfig={handleMenuConfig}
-                        onModuleConfig={handleModuleConfig}
-                        isMasterAdmin={user?.role_level === 1}
-                        isHomeScreen={homeScreenId ? screen.id === homeScreenId : index === 0}
-                      />
-                    ))}
+                    {screens
+                      .filter((screen) => {
+                        if (!searchQuery) return true;
+                        const query = searchQuery.toLowerCase();
+                        return (
+                          screen.name.toLowerCase().includes(query) ||
+                          (screen.category && screen.category.toLowerCase().includes(query))
+                        );
+                      })
+                      .map((screen, index) => (
+                        <SortableRow
+                          key={screen.id}
+                          screen={screen}
+                          onPublishToggle={handlePublishToggle}
+                          onEdit={handleEdit}
+                          onManageFields={handleManageFields}
+                          onToggleAutoSync={handleToggleAutoSync}
+                          onMenuConfig={handleMenuConfig}
+                          onModuleConfig={handleModuleConfig}
+                          isMasterAdmin={user?.role_level === 1}
+                        />
+                      ))}
                   </SortableContext>
                 </tbody>
               </table>

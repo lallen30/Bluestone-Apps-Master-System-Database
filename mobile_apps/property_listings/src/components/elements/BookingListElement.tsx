@@ -33,12 +33,15 @@ const BookingListElement: React.FC<BookingListElementProps> = ({ element, naviga
     card_layout = 'compact',
     pull_to_refresh = true,
     items_per_page = 20,
+    viewType = 'guest', // 'guest' or 'host'
+    showPending = false,
   } = config;
 
+  const isHostView = viewType === 'host';
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<string>(default_filter);
+  const [filter, setFilter] = useState<string>(showPending ? 'pending' : default_filter);
 
   useEffect(() => {
     fetchBookings();
@@ -47,11 +50,17 @@ const BookingListElement: React.FC<BookingListElementProps> = ({ element, naviga
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const response = await bookingsService.getMyBookings({
+      const params = {
         status: filter === 'all' ? undefined : filter,
         per_page: items_per_page,
-      });
-      setBookings(response.data.bookings);
+      };
+      
+      // Use different API based on view type
+      const response = isHostView 
+        ? await bookingsService.getMyReservations(params)
+        : await bookingsService.getMyBookings(params);
+      
+      setBookings(response.data.bookings || []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       Alert.alert('Error', 'Unable to load bookings');
@@ -82,6 +91,51 @@ const BookingListElement: React.FC<BookingListElementProps> = ({ element, naviga
               fetchBookings();
             } catch (error: any) {
               Alert.alert('Error', error.response?.data?.message || 'Unable to cancel booking');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleConfirmBooking = (booking: Booking) => {
+    Alert.alert(
+      'Confirm Booking',
+      `Confirm booking from ${booking.guest_first_name} ${booking.guest_last_name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            try {
+              await bookingsService.confirmBooking(booking.id);
+              Alert.alert('Success', 'Booking confirmed!');
+              fetchBookings();
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.message || 'Unable to confirm booking');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRejectBooking = (booking: Booking) => {
+    Alert.alert(
+      'Reject Booking',
+      `Are you sure you want to reject this booking request?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await bookingsService.rejectBooking(booking.id, 'Not available');
+              Alert.alert('Success', 'Booking rejected');
+              fetchBookings();
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.message || 'Unable to reject booking');
             }
           },
         },
@@ -167,7 +221,36 @@ const BookingListElement: React.FC<BookingListElementProps> = ({ element, naviga
           )}
         </View>
 
-        {canCancel && (
+        {/* Host actions for pending bookings */}
+        {isHostView && item.status === 'pending' && (
+          <View style={styles.cardFooter}>
+            <View style={styles.hostActions}>
+              <TouchableOpacity
+                style={[styles.hostActionButton, styles.confirmButton]}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleConfirmBooking(item);
+                }}
+              >
+                <Icon name="check" size={18} color="#fff" />
+                <Text style={styles.hostActionText}>Confirm</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.hostActionButton, styles.rejectButton]}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleRejectBooking(item);
+                }}
+              >
+                <Icon name="close" size={18} color="#fff" />
+                <Text style={styles.hostActionText}>Reject</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Guest cancel action */}
+        {!isHostView && canCancel && (
           <View style={styles.cardFooter}>
             <TouchableOpacity
               style={styles.cancelButton}
@@ -389,6 +472,31 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  hostActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  hostActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginHorizontal: 4,
+  },
+  confirmButton: {
+    backgroundColor: '#34C759',
+  },
+  rejectButton: {
+    backgroundColor: '#FF3B30',
+  },
+  hostActionText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   },
   emptyContainer: {
     flex: 1,

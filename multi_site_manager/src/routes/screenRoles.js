@@ -44,4 +44,23 @@ router.get('/app-users/:userId/roles', screenRolesController.getUserRoles);
  */
 router.put('/app-users/:userId/roles', screenRolesController.updateUserRoles);
 
+/**
+ * GET /api/v1/apps/:appId/role-home-screens
+ * Get all role home screen assignments for an app
+ */
+router.get('/apps/:appId/role-home-screens', screenRolesController.getAllRoleHomeScreens);
+
+/**
+ * GET /api/v1/apps/:appId/roles/:roleId/home-screen
+ * Get home screen for a specific role
+ */
+router.get('/apps/:appId/roles/:roleId/home-screen', screenRolesController.getRoleHomeScreen);
+
+/**
+ * PUT /api/v1/apps/:appId/roles/:roleId/home-screen
+ * Set home screen for a specific role
+ * Body: { screen_id: 123 } or { screen_id: null } to remove
+ */
+router.put('/apps/:appId/roles/:roleId/home-screen', screenRolesController.setRoleHomeScreen);
+
 module.exports = router;

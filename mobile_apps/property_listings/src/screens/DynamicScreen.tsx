@@ -28,14 +28,27 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DynamicSidebar } from '../components/DynamicSidebar';
 import HeaderBar from '../components/HeaderBar';
 import {
+  AvailabilityCalendarElement,
   BookingFormElement,
   BookingListElement,
   BookingDetailElement,
   ConversationListElement,
   ChatInterfaceElement,
+  DynamicPricingElement,
+  HostDashboardElement,
+  PropertyAmenitiesElement,
+  PropertyBookingBarElement,
+  PropertyDescriptionElement,
+  PropertyDetailElement,
+  PropertyHostCardElement,
+  PropertyImageGalleryElement,
+  PropertyInfoCardElement,
   PropertySearchElement,
   PropertyFormElement,
+  PropertyListElement,
+  ReviewsElement,
 } from '../components/elements';
+import { listingsService } from '../api/listingsService';
 
 const DynamicScreen = ({ route, navigation }: any) => {
   const { screenId, screenName, hideTabBar } = route.params;
@@ -917,6 +930,16 @@ const DynamicScreen = ({ route, navigation }: any) => {
           />
         );
 
+      case 'availability_calendar':
+        return (
+          <AvailabilityCalendarElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+            route={route}
+          />
+        );
+
       case 'conversation_list':
         return (
           <ConversationListElement
@@ -948,6 +971,57 @@ const DynamicScreen = ({ route, navigation }: any) => {
       case 'property_form':
         return (
           <PropertyFormElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+            route={route}
+          />
+        );
+
+      case 'property_list':
+        return (
+          <PropertyListElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+          />
+        );
+
+      case 'property_detail':
+        return (
+          <PropertyDetailElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+            route={route}
+          />
+        );
+
+      case 'reviews':
+      case 'reviews_list':
+        return (
+          <ReviewsElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+            route={route}
+          />
+        );
+
+      case 'dashboard_stats':
+      case 'host_dashboard':
+        return (
+          <HostDashboardElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+          />
+        );
+
+      case 'dynamic_pricing':
+      case 'pricing_rules':
+        return (
+          <DynamicPricingElement
             key={element.id}
             element={element}
             navigation={navigation}
@@ -1089,6 +1163,20 @@ const DynamicScreen = ({ route, navigation }: any) => {
   // Find header bar module
   const headerBarModule = modules.find((m) => m.module_type === 'header_bar');
 
+  // Determine if we should show back button
+  // Get the current route name from the route prop - this is more reliable
+  const currentRouteName = route.name;
+  const isHomeScreen = currentRouteName === 'Home';
+  
+  // Show back button only if we're NOT on the Home screen
+  const showBackButton = !isHomeScreen && navigation.canGoBack();
+  
+  // Build header config - override leftIconType to 'back' if we should show back button
+  const headerConfig = headerBarModule?.config ? {
+    ...headerBarModule.config,
+    leftIconType: showBackButton ? 'back' : headerBarModule.config.leftIconType,
+  } : { leftIconType: showBackButton ? 'back' : 'menu' };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.container}>
@@ -1096,7 +1184,7 @@ const DynamicScreen = ({ route, navigation }: any) => {
         {headerBarModule && (
           <HeaderBar
             title={screenName}
-            config={headerBarModule.config}
+            config={headerConfig}
             leftMenu={leftSidebarMenu}
             rightMenu={rightSidebarMenu}
             onLeftIconPress={() => setLeftSidebarVisible(true)}
@@ -1104,38 +1192,55 @@ const DynamicScreen = ({ route, navigation }: any) => {
           />
         )}
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#007AFF"
-            />
-          }
-        >
-          {content.elements
-            .sort((a, b) => a.display_order - b.display_order)
-            .map((element, index) => (
-              <View key={element.id || `element-${index}`}>
+        {/* Check if any element has its own scrolling (like property_list, booking_list) */}
+        {(() => {
+          const sortedElements = content.elements.sort((a, b) => a.display_order - b.display_order);
+          const fullScreenElements = ['property_list', 'booking_list'];
+          const hasFullScreenElement = sortedElements.some(el => fullScreenElements.includes(el.element_type));
+          
+          if (hasFullScreenElement && sortedElements.length === 1) {
+            // Single full-screen element - render without ScrollView wrapper
+            return sortedElements.map((element, index) => (
+              <View key={element.id || `element-${index}`} style={{ flex: 1 }}>
                 {renderElement(element)}
               </View>
-            ))}
-
-          {shouldShowSaveButton && (
-            <TouchableOpacity
-              style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-              onPress={handleSave}
-              disabled={saving}
+            ));
+          }
+          
+          // Normal rendering with ScrollView
+          return (
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor="#007AFF"
+                />
+              }
             >
-              {saving ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.saveButtonText}>Save</Text>
+              {sortedElements.map((element, index) => (
+                <View key={element.id || `element-${index}`}>
+                  {renderElement(element)}
+                </View>
+              ))}
+
+              {shouldShowSaveButton && (
+                <TouchableOpacity
+                  style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+                  onPress={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  )}
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-          )}
-        </ScrollView>
+            </ScrollView>
+          );
+        })()}
 
         {/* Custom Tab Bar - shown if this screen has a tabbar menu assigned and not inside TabNavigator */}
         {!hideTabBar && tabBarMenu && tabBarMenu.items && tabBarMenu.items.length > 0 && (

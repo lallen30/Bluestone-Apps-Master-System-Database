@@ -92,6 +92,22 @@ export const listingsService = {
     return response.data;
   },
 
+  // Get current user's listings (for hosts)
+  getMyListings: async (): Promise<PaginatedResponse<PropertyListing>> => {
+    const response = await apiClient.get<PaginatedResponse<PropertyListing>>(
+      ENDPOINTS.LISTINGS.MY_LISTINGS
+    );
+    // Transform image URLs to absolute URLs
+    const data = response.data;
+    return {
+      ...data,
+      data: {
+        ...data.data,
+        listings: data.data.listings.map(transformListing),
+      },
+    };
+  },
+
   // Get all amenities
   getAmenities: async (): Promise<ApiResponse<Amenity[]>> => {
     const response = await apiClient.get<ApiResponse<Amenity[]>>(

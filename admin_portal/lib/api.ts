@@ -630,6 +630,24 @@ export const rolesAPI = {
     const response = await api.get('/permissions');
     return response.data;
   },
+  
+  // Role Home Screens
+  getAllRoleHomeScreens: async (appId: number) => {
+    const response = await api.get(`/apps/${appId}/role-home-screens`);
+    return response.data;
+  },
+  
+  getRoleHomeScreen: async (appId: number, roleId: number) => {
+    const response = await api.get(`/apps/${appId}/roles/${roleId}/home-screen`);
+    return response.data;
+  },
+  
+  setRoleHomeScreen: async (appId: number, roleId: number, screenId: number | null) => {
+    const response = await api.put(`/apps/${appId}/roles/${roleId}/home-screen`, {
+      screen_id: screenId
+    });
+    return response.data;
+  },
 };
 
 // App Screen Elements API (for app-specific customization)
@@ -827,7 +845,7 @@ export const menuAPI = {
   },
 
   // Update a menu item
-  updateMenuItem: async (itemId: number, data: { display_order?: number; label?: string; icon?: string; is_active?: boolean }) => {
+  updateMenuItem: async (itemId: number, data: { display_order?: number; label?: string | null; icon?: string | null; is_active?: boolean }) => {
     const response = await api.put(`/menu-items/${itemId}`, data);
     return response.data;
   },
@@ -847,6 +865,36 @@ export const menuAPI = {
   // Assign menus to a screen
   assignMenusToScreen: async (screenId: number, menuIds: number[]) => {
     const response = await api.put(`/screens/${screenId}/menus`, { menu_ids: menuIds });
+    return response.data;
+  },
+
+  // Get all menus with their role access for an app
+  getAppMenusWithRoles: async (appId: number) => {
+    const response = await api.get(`/app/${appId}/menus-with-roles`);
+    return response.data;
+  },
+
+  // Get role access for a menu
+  getMenuRoleAccess: async (menuId: number) => {
+    const response = await api.get(`/menus/${menuId}/roles`);
+    return response.data;
+  },
+
+  // Update role access for a menu
+  updateMenuRoleAccess: async (menuId: number, roleIds: number[], appId: number) => {
+    const response = await api.put(`/menus/${menuId}/roles`, { role_ids: roleIds, app_id: appId });
+    return response.data;
+  },
+
+  // Get menus accessible by a specific role
+  getMenusByRole: async (appId: number, roleId: number) => {
+    const response = await api.get(`/app/${appId}/roles/${roleId}/menus`);
+    return response.data;
+  },
+
+  // Duplicate a menu with all its items
+  duplicateMenu: async (menuId: number, newName: string) => {
+    const response = await api.post(`/menus/${menuId}/duplicate`, { name: newName });
     return response.data;
   },
 };

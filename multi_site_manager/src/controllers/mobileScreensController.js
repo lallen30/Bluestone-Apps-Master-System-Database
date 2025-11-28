@@ -703,26 +703,54 @@ exports.submitScreenData = async (req, res) => {
 /**
  * Get all menus for an app (for mobile app)
  * Returns all active menus with their items
+ * Filters by user's role access
  */
 exports.getAppMenus = async (req, res) => {
   try {
     const { appId } = req.params;
+    const userRoleIds = req.user?.role_ids || [];
 
-    // Get all menus for the app
-    const menusQuery = `
-      SELECT 
-        m.id,
-        m.name,
-        m.menu_type,
-        m.description,
-        m.icon
-      FROM app_menus m
-      WHERE m.app_id = ? 
-        AND m.is_active = 1
-      ORDER BY m.menu_type
-    `;
+    let menusQuery, params;
 
-    const menusResult = await db.query(menusQuery, [appId]);
+    // If user has roles, filter menus by role access
+    if (userRoleIds.length > 0) {
+      const roleIdPlaceholders = userRoleIds.map(() => '?').join(',');
+      
+      menusQuery = `
+        SELECT DISTINCT
+          m.id,
+          m.name,
+          m.menu_type,
+          m.description,
+          m.icon
+        FROM app_menus m
+        LEFT JOIN menu_role_access mra ON m.id = mra.menu_id
+        WHERE m.app_id = ? 
+          AND m.is_active = 1
+          AND (mra.role_id IN (${roleIdPlaceholders}) OR mra.id IS NULL)
+        ORDER BY m.menu_type
+      `;
+      params = [appId, ...userRoleIds];
+    } else {
+      // Guest user - only show menus with no role restrictions
+      menusQuery = `
+        SELECT DISTINCT
+          m.id,
+          m.name,
+          m.menu_type,
+          m.description,
+          m.icon
+        FROM app_menus m
+        LEFT JOIN menu_role_access mra ON m.id = mra.menu_id
+        WHERE m.app_id = ? 
+          AND m.is_active = 1
+          AND mra.id IS NULL
+        ORDER BY m.menu_type
+      `;
+      params = [appId];
+    }
+
+    const menusResult = await db.query(menusQuery, params);
     const menus = Array.isArray(menusResult) && Array.isArray(menusResult[0]) 
       ? menusResult[0] 
       : menusResult;
@@ -778,27 +806,56 @@ exports.getAppMenus = async (req, res) => {
 /**
  * Get menus assigned to a screen (for mobile app)
  * Returns all active menus that should display on this screen
+ * Filters by user's role access
  */
 exports.getScreenMenus = async (req, res) => {
   try {
     const { appId, screenId } = req.params;
+    const userRoleIds = req.user?.role_ids || [];
 
-    // Get all menus assigned to this screen
-    const query = `
-      SELECT 
-        m.id,
-        m.name,
-        m.menu_type,
-        m.description
-      FROM screen_menu_assignments sma
-      JOIN app_menus m ON sma.menu_id = m.id
-      WHERE sma.screen_id = ? 
-        AND m.app_id = ?
-        AND m.is_active = 1
-      ORDER BY m.menu_type
-    `;
+    let query, params;
 
-    const menusResult = await db.query(query, [screenId, appId]);
+    // If user has roles, filter menus by role access
+    if (userRoleIds.length > 0) {
+      const roleIdPlaceholders = userRoleIds.map(() => '?').join(',');
+      
+      query = `
+        SELECT DISTINCT
+          m.id,
+          m.name,
+          m.menu_type,
+          m.description
+        FROM screen_menu_assignments sma
+        JOIN app_menus m ON sma.menu_id = m.id
+        LEFT JOIN menu_role_access mra ON m.id = mra.menu_id
+        WHERE sma.screen_id = ? 
+          AND m.app_id = ?
+          AND m.is_active = 1
+          AND (mra.role_id IN (${roleIdPlaceholders}) OR mra.id IS NULL)
+        ORDER BY m.menu_type
+      `;
+      params = [screenId, appId, ...userRoleIds];
+    } else {
+      // Guest user - only show menus with no role restrictions
+      query = `
+        SELECT DISTINCT
+          m.id,
+          m.name,
+          m.menu_type,
+          m.description
+        FROM screen_menu_assignments sma
+        JOIN app_menus m ON sma.menu_id = m.id
+        LEFT JOIN menu_role_access mra ON m.id = mra.menu_id
+        WHERE sma.screen_id = ? 
+          AND m.app_id = ?
+          AND m.is_active = 1
+          AND mra.id IS NULL
+        ORDER BY m.menu_type
+      `;
+      params = [screenId, appId];
+    }
+
+    const menusResult = await db.query(query, params);
     const menus = Array.isArray(menusResult) && Array.isArray(menusResult[0]) 
       ? menusResult[0] 
       : menusResult;
@@ -919,34 +976,74 @@ exports.getFormElements = async (req, res) => {
 };
 
 /**
- * Get the default home screen for an app
+ * Get the home screen for an app
+ * Checks for role-specific home screen first, then falls back to app default
  */
 exports.getHomeScreen = async (req, res) => {
   try {
     const { appId } = req.params;
+    const userRoleIds = req.user?.role_ids || [];
 
-    const result = await db.query(
-      `SELECT default_home_screen_id FROM apps WHERE id = ?`,
-      [appId]
-    );
+    let homeScreenId = null;
+    let homeScreenName = null;
 
-    const apps = Array.isArray(result) && Array.isArray(result[0]) 
-      ? result[0] 
-      : result;
+    // First, check for role-specific home screen
+    if (userRoleIds.length > 0) {
+      const roleIdPlaceholders = userRoleIds.map(() => '?').join(',');
+      
+      const roleHomeResult = await db.query(
+        `SELECT rhs.screen_id, s.name as screen_name, ar.name as role_name
+         FROM role_home_screens rhs
+         JOIN app_screens s ON rhs.screen_id = s.id
+         JOIN app_roles ar ON rhs.role_id = ar.id
+         WHERE rhs.app_id = ? AND rhs.role_id IN (${roleIdPlaceholders})
+         ORDER BY ar.is_default DESC
+         LIMIT 1`,
+        [appId, ...userRoleIds]
+      );
 
-    if (!apps || apps.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'App not found'
-      });
+      const roleHomeScreens = Array.isArray(roleHomeResult) && Array.isArray(roleHomeResult[0]) 
+        ? roleHomeResult[0] 
+        : roleHomeResult;
+
+      if (roleHomeScreens && roleHomeScreens.length > 0) {
+        homeScreenId = roleHomeScreens[0].screen_id;
+        homeScreenName = roleHomeScreens[0].screen_name;
+        console.log(`[Mobile getHomeScreen] Using role-specific home screen: ${roleHomeScreens[0].screen_name} for role: ${roleHomeScreens[0].role_name}`);
+      }
     }
 
-    const homeScreenId = apps[0].default_home_screen_id;
+    // If no role-specific home screen, use app default
+    if (!homeScreenId) {
+      const result = await db.query(
+        `SELECT a.default_home_screen_id, s.name as screen_name 
+         FROM apps a
+         LEFT JOIN app_screens s ON a.default_home_screen_id = s.id
+         WHERE a.id = ?`,
+        [appId]
+      );
+
+      const apps = Array.isArray(result) && Array.isArray(result[0]) 
+        ? result[0] 
+        : result;
+
+      if (!apps || apps.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'App not found'
+        });
+      }
+
+      homeScreenId = apps[0].default_home_screen_id;
+      homeScreenName = apps[0].screen_name;
+      console.log(`[Mobile getHomeScreen] Using app default home screen: ${homeScreenId} (${homeScreenName})`);
+    }
 
     // If no home screen set, return null (mobile app will use default behavior)
     res.json({
       success: true,
-      home_screen_id: homeScreenId || null
+      home_screen_id: homeScreenId || null,
+      home_screen_name: homeScreenName || null
     });
   } catch (error) {
     console.error('[Mobile getHomeScreen] Error:', error);

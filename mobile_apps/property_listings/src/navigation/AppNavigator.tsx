@@ -150,6 +150,7 @@ const AppNavigator = () => {
   const [initialRoute, setInitialRoute] = useState<{ name: string; params?: any } | null>(null);
   const [checkingRedirect, setCheckingRedirect] = useState(false);
   const [homeScreenId, setHomeScreenId] = useState<number | null>(null);
+  const [homeScreenName, setHomeScreenName] = useState<string>('Home');
   const [homeScreenLoaded, setHomeScreenLoaded] = useState(false);
   const wasAuthenticated = useRef(false);
 
@@ -158,9 +159,10 @@ const AppNavigator = () => {
     const fetchHomeScreen = async () => {
       try {
         console.log('[AppNavigator] Fetching home screen...');
-        const homeId = await appService.getHomeScreen();
-        console.log('[AppNavigator] Home screen ID from API:', homeId);
-        setHomeScreenId(homeId);
+        const homeData = await appService.getHomeScreen();
+        console.log('[AppNavigator] Home screen from API:', homeData);
+        setHomeScreenId(homeData.id);
+        setHomeScreenName(homeData.name || 'Home');
       } catch (error) {
         console.error('[AppNavigator] Error fetching home screen:', error);
       } finally {
@@ -286,7 +288,7 @@ const AppNavigator = () => {
                       ...props.route,
                       params: {
                         screenId: homeScreenId,
-                        screenName: 'Home',
+                        screenName: homeScreenName,
                       },
                     }}
                   />

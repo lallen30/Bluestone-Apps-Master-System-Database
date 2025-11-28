@@ -53,11 +53,12 @@ const authenticateDual = async (req, res, next) => {
       }
     }
 
-    // Try mobile user authentication (has id field)
-    if (decoded.id) {
+    // Try mobile user authentication (has user_id or id field)
+    const mobileUserId = decoded.user_id || decoded.id;
+    if (mobileUserId) {
       const mobileUserResult = await db.query(
-        'SELECT * FROM app_users WHERE id = ? AND is_active = 1',
-        [decoded.id]
+        'SELECT * FROM app_users WHERE id = ? AND status = "active"',
+        [mobileUserId]
       );
 
       const mobileUser = Array.isArray(mobileUserResult) && Array.isArray(mobileUserResult[0])

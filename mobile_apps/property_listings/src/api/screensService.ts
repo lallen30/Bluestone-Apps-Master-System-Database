@@ -129,11 +129,14 @@ export const menusService = {
 
 // App service
 export const appService = {
-  // Get the default home screen ID for the app
-  getHomeScreen: async (): Promise<number | null> => {
+  // Get the default home screen ID and name for the app
+  getHomeScreen: async (): Promise<{ id: number | null; name: string }> => {
     const response = await apiClient.get(
       `/mobile/apps/${API_CONFIG.APP_ID}/home-screen`
     );
-    return response.data.home_screen_id || null;
+    return {
+      id: response.data.home_screen_id || null,
+      name: response.data.home_screen_name || 'Home',
+    };
   },
 };

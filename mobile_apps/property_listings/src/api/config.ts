@@ -18,6 +18,7 @@ export const ENDPOINTS = {
   // Property Listings
   LISTINGS: {
     GET_ALL: `/apps/${API_CONFIG.APP_ID}/listings`,
+    MY_LISTINGS: `/apps/${API_CONFIG.APP_ID}/listings/my`,
     GET_BY_ID: (id: number) => `/apps/${API_CONFIG.APP_ID}/listings/${id}`,
     CREATE: `/apps/${API_CONFIG.APP_ID}/listings`,
     UPDATE: (id: number) => `/apps/${API_CONFIG.APP_ID}/listings/${id}`,

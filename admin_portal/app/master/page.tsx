@@ -5,6 +5,46 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, usersAPI, appScreensAPI, screenElementsAPI, modulesAPI } from '@/lib/api';
 import { Users, Globe, Activity, LogOut, Monitor, Layers, Sparkles, Package, FileText } from 'lucide-react';
+import Icon from '@mdi/react';
+import * as mdiIcons from '@mdi/js';
+
+// Convert icon name to mdi path key (e.g., 'home' -> 'mdiHome')
+const toMdiKey = (iconName: string): string => {
+  if (!iconName) return '';
+  return 'mdi' + iconName
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+};
+
+// Get MDI path by icon name
+const getMdiPath = (iconName: string): string | null => {
+  if (!iconName) return null;
+  const key = toMdiKey(iconName);
+  return (mdiIcons as any)[key] || null;
+};
+
+// Get icon for element category
+const getCategoryIcon = (category: string): string => {
+  const categoryIcons: { [key: string]: string } = {
+    'Input': 'form-textbox',
+    'Selection': 'format-list-checks',
+    'DateTime': 'calendar-clock',
+    'Media': 'image-multiple',
+    'Display': 'monitor',
+    'Content': 'file-document',
+    'Navigation': 'navigation',
+    'Interactive': 'gesture-tap',
+    'Advanced': 'cog',
+    'action': 'gesture-tap-button',
+    'detail': 'information',
+    'forms': 'form-select',
+    'lists': 'format-list-bulleted',
+    'messaging': 'message',
+    'search': 'magnify',
+  };
+  return categoryIcons[category] || 'layers';
+};
 
 export default function MasterDashboard() {
   const router = useRouter();
@@ -460,8 +500,14 @@ export default function MasterDashboard() {
                 {screens.slice(0, 10).map((screen) => (
                   <tr key={screen.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/master/screens/${screen.id}`)}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Monitor className="w-4 h-4 text-gray-400" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                          {screen.icon && getMdiPath(screen.icon) ? (
+                            <Icon path={getMdiPath(screen.icon)!} size={0.7} className="text-indigo-600" />
+                          ) : (
+                            <Monitor className="w-4 h-4 text-indigo-600" />
+                          )}
+                        </div>
                         <span className="text-sm font-medium text-gray-900">{screen.name}</span>
                       </div>
                     </td>
@@ -518,16 +564,23 @@ export default function MasterDashboard() {
                   acc[element.category] = (acc[element.category] || 0) + 1;
                   return acc;
                 }, {})
-              ).map(([category, count]) => (
-                <div key={category} className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Layers className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm font-medium text-gray-900">{category}</span>
+              ).map(([category, count]) => {
+                const categoryIconPath = getMdiPath(getCategoryIcon(category));
+                return (
+                  <div key={category} className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      {categoryIconPath ? (
+                        <Icon path={categoryIconPath} size={0.7} className="text-gray-500" />
+                      ) : (
+                        <Layers className="w-4 h-4 text-gray-400" />
+                      )}
+                      <span className="text-sm font-medium text-gray-900">{category}</span>
+                    </div>
+                    <p className="text-2xl font-bold text-gray-900">{count as number}</p>
+                    <p className="text-xs text-gray-500 mt-1">elements</p>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{count as number}</p>
-                  <p className="text-xs text-gray-500 mt-1">elements</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
             {(!Array.isArray(screenElements) || screenElements.length === 0) && (
               <p className="text-center text-sm text-gray-500 py-8">

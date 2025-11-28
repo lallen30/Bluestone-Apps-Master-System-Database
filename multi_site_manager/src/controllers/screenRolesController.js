@@ -206,6 +206,132 @@ exports.updateUserRoles = async (req, res) => {
 };
 
 /**
+ * Get home screen for a specific role
+ */
+exports.getRoleHomeScreen = async (req, res) => {
+  try {
+    const { appId, roleId } = req.params;
+
+    const result = await db.query(
+      `SELECT rhs.screen_id, s.name as screen_name, s.screen_key, s.icon
+       FROM role_home_screens rhs
+       JOIN app_screens s ON rhs.screen_id = s.id
+       WHERE rhs.app_id = ? AND rhs.role_id = ?`,
+      [appId, roleId]
+    );
+
+    const rows = Array.isArray(result) && Array.isArray(result[0]) 
+      ? result[0] 
+      : result;
+
+    if (rows && rows.length > 0) {
+      res.json({
+        success: true,
+        data: rows[0]
+      });
+    } else {
+      // No role-specific home screen, return null (will use app default)
+      res.json({
+        success: true,
+        data: null
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching role home screen:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching role home screen',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Set home screen for a specific role
+ */
+exports.setRoleHomeScreen = async (req, res) => {
+  try {
+    const { appId, roleId } = req.params;
+    const { screen_id } = req.body;
+
+    if (!screen_id) {
+      // Remove role home screen setting
+      await db.query(
+        `DELETE FROM role_home_screens WHERE app_id = ? AND role_id = ?`,
+        [appId, roleId]
+      );
+      
+      return res.json({
+        success: true,
+        message: 'Role home screen removed (will use app default)'
+      });
+    }
+
+    // Upsert the role home screen
+    await db.query(
+      `INSERT INTO role_home_screens (app_id, role_id, screen_id)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE screen_id = VALUES(screen_id), updated_at = CURRENT_TIMESTAMP`,
+      [appId, roleId, screen_id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Role home screen updated successfully'
+    });
+  } catch (error) {
+    console.error('Error setting role home screen:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error setting role home screen',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get all role home screens for an app
+ */
+exports.getAllRoleHomeScreens = async (req, res) => {
+  try {
+    const { appId } = req.params;
+
+    const result = await db.query(
+      `SELECT 
+        ar.id as role_id,
+        ar.name as role_name,
+        ar.display_name as role_display_name,
+        rhs.screen_id,
+        s.name as screen_name,
+        s.screen_key,
+        s.icon as screen_icon
+       FROM app_roles ar
+       LEFT JOIN role_home_screens rhs ON ar.id = rhs.role_id AND rhs.app_id = ?
+       LEFT JOIN app_screens s ON rhs.screen_id = s.id
+       WHERE ar.app_id = ?
+       ORDER BY ar.is_default DESC, ar.name`,
+      [appId, appId]
+    );
+
+    const rows = Array.isArray(result) && Array.isArray(result[0]) 
+      ? result[0] 
+      : result;
+
+    res.json({
+      success: true,
+      data: rows || []
+    });
+  } catch (error) {
+    console.error('Error fetching role home screens:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching role home screens',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Create a new role for an app
  */
 exports.createRole = async (req, res) => {

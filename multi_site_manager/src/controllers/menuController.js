@@ -281,6 +281,18 @@ exports.addMenuItem = async (req, res) => {
       }
     }
 
+    // If no icon provided and it's a screen item, get the screen's default icon
+    let finalIcon = icon;
+    if (!finalIcon && type === 'screen' && screen_id) {
+      const screenResult = await db.query('SELECT icon FROM app_screens WHERE id = ?', [screen_id]);
+      const screens = Array.isArray(screenResult) && Array.isArray(screenResult[0]) 
+        ? screenResult[0] 
+        : screenResult;
+      if (screens && screens.length > 0 && screens[0].icon) {
+        finalIcon = screens[0].icon;
+      }
+    }
+
     const query = `
       INSERT INTO menu_items (menu_id, screen_id, item_type, sidebar_menu_id, sidebar_position, display_order, label, icon)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -294,7 +306,7 @@ exports.addMenuItem = async (req, res) => {
       type === 'sidebar' ? sidebar_position : null,
       display_order || 0,
       label || null,
-      icon || null
+      finalIcon || null
     ]);
 
     const insertResult = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : result;
@@ -311,7 +323,7 @@ exports.addMenuItem = async (req, res) => {
         sidebar_position: type === 'sidebar' ? sidebar_position : null,
         display_order: display_order || 0,
         label,
-        icon
+        icon: finalIcon
       }
     });
   } catch (error) {
@@ -348,13 +360,15 @@ exports.updateMenuItem = async (req, res) => {
       updates.push('display_order = ?');
       values.push(display_order);
     }
+    // Allow null to clear the label (will use screen name instead)
     if (label !== undefined) {
       updates.push('label = ?');
-      values.push(label);
+      values.push(label === null ? null : label);
     }
+    // Allow null to clear the icon
     if (icon !== undefined) {
       updates.push('icon = ?');
-      values.push(icon);
+      values.push(icon === null ? null : icon);
     }
     if (is_active !== undefined) {
       updates.push('is_active = ?');
@@ -615,6 +629,285 @@ exports.assignMenusToScreen = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error assigning menus to screen',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get role access for a menu
+ */
+exports.getMenuRoleAccess = async (req, res) => {
+  try {
+    const { menuId } = req.params;
+
+    const query = `
+      SELECT 
+        mra.id,
+        mra.menu_id,
+        mra.role_id,
+        mra.app_id,
+        r.name as role_name,
+        r.description as role_description
+      FROM menu_role_access mra
+      JOIN roles r ON mra.role_id = r.id
+      WHERE mra.menu_id = ?
+      ORDER BY r.name
+    `;
+
+    const result = await db.query(query, [menuId]);
+    const roles = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : result;
+
+    res.json({
+      success: true,
+      data: roles
+    });
+  } catch (error) {
+    console.error('Error getting menu role access:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting menu role access',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Update role access for a menu
+ */
+exports.updateMenuRoleAccess = async (req, res) => {
+  try {
+    const { menuId } = req.params;
+    const { role_ids, app_id } = req.body;
+
+    if (!app_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'App ID is required'
+      });
+    }
+
+    // Delete existing role access for this menu
+    await db.query('DELETE FROM menu_role_access WHERE menu_id = ?', [menuId]);
+
+    // Insert new role access entries one at a time
+    if (role_ids && role_ids.length > 0) {
+      for (const roleId of role_ids) {
+        await db.query(
+          'INSERT INTO menu_role_access (menu_id, role_id, app_id) VALUES (?, ?, ?)',
+          [parseInt(menuId), roleId, app_id]
+        );
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Menu role access updated successfully',
+      data: {
+        menu_id: parseInt(menuId),
+        role_ids: role_ids || []
+      }
+    });
+  } catch (error) {
+    console.error('Error updating menu role access:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating menu role access',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get all menus with their role access for an app
+ */
+exports.getAppMenusWithRoles = async (req, res) => {
+  try {
+    const { appId } = req.params;
+
+    // Get all menus
+    const menusQuery = `
+      SELECT 
+        m.id,
+        m.app_id,
+        m.name,
+        m.menu_type,
+        m.description,
+        m.is_active,
+        COUNT(mi.id) as item_count
+      FROM app_menus m
+      LEFT JOIN menu_items mi ON m.id = mi.menu_id AND mi.is_active = 1
+      WHERE m.app_id = ?
+      GROUP BY m.id
+      ORDER BY m.menu_type, m.name
+    `;
+
+    const menusResult = await db.query(menusQuery, [appId]);
+    const menus = Array.isArray(menusResult) && Array.isArray(menusResult[0]) ? menusResult[0] : menusResult;
+
+    // Get role access for all menus
+    const roleAccessQuery = `
+      SELECT 
+        mra.menu_id,
+        mra.role_id,
+        r.name as role_name
+      FROM menu_role_access mra
+      JOIN app_roles r ON mra.role_id = r.id
+      WHERE mra.app_id = ?
+    `;
+
+    const roleAccessResult = await db.query(roleAccessQuery, [appId]);
+    const roleAccess = Array.isArray(roleAccessResult) && Array.isArray(roleAccessResult[0]) ? roleAccessResult[0] : roleAccessResult;
+
+    // Map role access to menus
+    const menusWithRoles = menus.map(menu => ({
+      ...menu,
+      roles: roleAccess
+        .filter(ra => ra.menu_id === menu.id)
+        .map(ra => ({ id: ra.role_id, name: ra.role_name }))
+    }));
+
+    res.json({
+      success: true,
+      data: menusWithRoles
+    });
+  } catch (error) {
+    console.error('Error getting app menus with roles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting app menus with roles',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get menus accessible by a specific role
+ */
+exports.getMenusByRole = async (req, res) => {
+  try {
+    const { appId, roleId } = req.params;
+
+    const query = `
+      SELECT 
+        m.id,
+        m.name,
+        m.menu_type,
+        m.description,
+        m.is_active
+      FROM app_menus m
+      JOIN menu_role_access mra ON m.id = mra.menu_id
+      WHERE m.app_id = ? AND mra.role_id = ? AND m.is_active = 1
+      ORDER BY m.menu_type, m.name
+    `;
+
+    const result = await db.query(query, [appId, roleId]);
+    const menus = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : result;
+
+    res.json({
+      success: true,
+      data: menus
+    });
+  } catch (error) {
+    console.error('Error getting menus by role:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting menus by role',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Duplicate a menu with all its items
+ */
+exports.duplicateMenu = async (req, res) => {
+  try {
+    const { menuId } = req.params;
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'New menu name is required'
+      });
+    }
+
+    // Get the original menu
+    const menuResult = await db.query(
+      'SELECT * FROM app_menus WHERE id = ?',
+      [menuId]
+    );
+    const menus = Array.isArray(menuResult) && Array.isArray(menuResult[0]) ? menuResult[0] : menuResult;
+
+    if (!menus || menus.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Menu not found'
+      });
+    }
+
+    const originalMenu = menus[0];
+
+    // Create the new menu
+    const insertResult = await db.query(
+      `INSERT INTO app_menus (app_id, name, menu_type, description, is_active)
+       VALUES (?, ?, ?, ?, ?)`,
+      [originalMenu.app_id, name, originalMenu.menu_type, originalMenu.description, originalMenu.is_active]
+    );
+
+    const insertData = Array.isArray(insertResult) && Array.isArray(insertResult[0]) ? insertResult[0] : insertResult;
+    const newMenuId = insertData.insertId;
+
+    // Get all menu items from the original menu
+    const itemsResult = await db.query(
+      'SELECT * FROM menu_items WHERE menu_id = ? ORDER BY display_order',
+      [menuId]
+    );
+    const items = Array.isArray(itemsResult) && Array.isArray(itemsResult[0]) ? itemsResult[0] : itemsResult;
+
+    // Duplicate each menu item
+    if (items && items.length > 0) {
+      for (const item of items) {
+        await db.query(
+          `INSERT INTO menu_items (menu_id, screen_id, item_type, sidebar_menu_id, sidebar_position, display_order, label, icon, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [newMenuId, item.screen_id, item.item_type, item.sidebar_menu_id, item.sidebar_position, item.display_order, item.label, item.icon, item.is_active]
+        );
+      }
+    }
+
+    // Duplicate role access
+    const roleAccessResult = await db.query(
+      'SELECT * FROM menu_role_access WHERE menu_id = ?',
+      [menuId]
+    );
+    const roleAccess = Array.isArray(roleAccessResult) && Array.isArray(roleAccessResult[0]) ? roleAccessResult[0] : roleAccessResult;
+
+    if (roleAccess && roleAccess.length > 0) {
+      for (const access of roleAccess) {
+        await db.query(
+          'INSERT INTO menu_role_access (menu_id, role_id) VALUES (?, ?)',
+          [newMenuId, access.role_id]
+        );
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Menu duplicated successfully',
+      data: {
+        id: newMenuId,
+        name: name,
+        items_copied: items?.length || 0,
+        roles_copied: roleAccess?.length || 0
+      }
+    });
+  } catch (error) {
+    console.error('Error duplicating menu:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error duplicating menu',
       error: error.message
     });
   }

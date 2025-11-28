@@ -338,12 +338,13 @@ export default function MenuDetailPage() {
 
     try {
       // Update all items with new order and properties
+      // Use null for empty labels to clear them (will use screen name instead)
       await Promise.all(
         menu.items.map((item) =>
           menuAPI.updateMenuItem(item.id, {
             display_order: item.display_order,
-            label: item.label || undefined,
-            icon: item.icon || undefined,
+            label: item.label === '' ? null : item.label,
+            icon: item.icon === '' ? null : item.icon,
           })
         )
       );

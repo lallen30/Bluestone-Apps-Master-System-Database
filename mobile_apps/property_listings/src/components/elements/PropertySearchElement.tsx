@@ -229,11 +229,21 @@ const PropertySearchElement: React.FC<PropertySearchElementProps> = ({ element, 
             returnKeyType="search"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity onPress={() => {
+              setSearchQuery('');
+              // Trigger search with empty query after clearing
+              setTimeout(() => fetchListings(), 100);
+            }}>
               <Icon name="close" size={20} color="#8E8E93" />
             </TouchableOpacity>
           )}
         </View>
+        <TouchableOpacity
+          style={styles.searchButton}
+          onPress={handleSearch}
+        >
+          <Icon name="magnify" size={20} color="#fff" />
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.filterButton}
           onPress={() => setShowFilters(!showFilters)}
@@ -362,6 +372,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginLeft: 8,
     color: '#1C1C1E',
+  },
+  searchButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    marginRight: 8,
   },
   filterButton: {
     width: 44,

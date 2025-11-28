@@ -5,6 +5,24 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { screenElementsAPI } from '@/lib/api';
 import { ArrowLeft, Layers, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import Icon from '@mdi/react';
+import * as mdiIcons from '@mdi/js';
+
+// Convert icon name to mdi path key (e.g., 'home' -> 'mdiHome')
+const toMdiKey = (iconName: string): string => {
+  if (!iconName) return '';
+  return 'mdi' + iconName
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+};
+
+// Get MDI path by icon name
+const getMdiPath = (iconName: string): string | null => {
+  if (!iconName) return null;
+  const key = toMdiKey(iconName);
+  return (mdiIcons as any)[key] || null;
+};
 
 export default function ScreenElementsLibrary() {
   const router = useRouter();
@@ -251,7 +269,11 @@ export default function ScreenElementsLibrary() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Layers className="w-5 h-5 text-primary" />
+                          {element.icon && getMdiPath(element.icon) ? (
+                            <Icon path={getMdiPath(element.icon)!} size={0.9} className="text-primary" />
+                          ) : (
+                            <Layers className="w-5 h-5 text-primary" />
+                          )}
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{element.name}</div>
