@@ -20,7 +20,7 @@ import RenderHTML from 'react-native-render-html';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { screensService, menusService, ScreenContent, ScreenElement, Menu } from '../api/screensService';
+import { screensService, menusService, ScreenContent, ScreenElement, Menu, DataSource } from '../api/screensService';
 import { uploadService } from '../api/uploadService';
 import { authService } from '../api/authService';
 import { useAuth } from '../context/AuthContext';
@@ -36,19 +36,14 @@ import {
   ChatInterfaceElement,
   DynamicPricingElement,
   HostDashboardElement,
-  PropertyAmenitiesElement,
-  PropertyBookingBarElement,
-  PropertyDescriptionElement,
   PropertyDetailElement,
-  PropertyHostCardElement,
-  PropertyImageGalleryElement,
-  PropertyInfoCardElement,
   PropertySearchElement,
   PropertyFormElement,
   PropertyListElement,
   ReviewsElement,
 } from '../components/elements';
-import { listingsService } from '../api/listingsService';
+import { ElementRenderer } from '../components/primitives';
+import apiClient from '../api/client';
 
 const DynamicScreen = ({ route, navigation }: any) => {
   const { screenId, screenName, hideTabBar } = route.params;
@@ -66,6 +61,7 @@ const DynamicScreen = ({ route, navigation }: any) => {
   const [showDatePicker, setShowDatePicker] = useState<string | null>(null);
   const [tempDate, setTempDate] = useState<Date>(new Date());
   const [passwordVisible, setPasswordVisible] = useState<{ [key: string]: boolean }>({});
+  const [primitiveData, setPrimitiveData] = useState<{ [key: string]: any }>({});
 
   useEffect(() => {
     navigation.setOptions({ 
@@ -105,6 +101,11 @@ const DynamicScreen = ({ route, navigation }: any) => {
         });
         setFormData(initialData);
       }
+      
+      // If using primitive renderer, fetch data from data sources
+      if (screenContent.screen.use_primitive_renderer && screenContent.data_sources) {
+        await fetchPrimitiveData(screenContent.data_sources);
+      }
     } catch (error) {
       console.error('Error fetching screen content:', error);
       Alert.alert('Error', 'Failed to load screen content');
@@ -112,6 +113,34 @@ const DynamicScreen = ({ route, navigation }: any) => {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+  
+  // Fetch data from data sources for primitive renderer
+  const fetchPrimitiveData = async (dataSources: DataSource[]) => {
+    const data: { [key: string]: any } = {};
+    
+    for (const source of dataSources) {
+      try {
+        // Replace route params in endpoint
+        let endpoint = source.endpoint;
+        if (source.params_from_route) {
+          for (const param of source.params_from_route) {
+            const value = route.params?.[param];
+            if (value) {
+              endpoint = endpoint.replace(`{${param}}`, value);
+            }
+          }
+        }
+        
+        // Make API request
+        const response = await apiClient.get(endpoint);
+        data[source.name] = response.data?.data || response.data;
+      } catch (error) {
+        console.error(`Error fetching data source ${source.name}:`, error);
+      }
+    }
+    
+    setPrimitiveData(data);
   };
 
   const onRefresh = async () => {
@@ -1172,10 +1201,12 @@ const DynamicScreen = ({ route, navigation }: any) => {
   const showBackButton = !isHomeScreen && navigation.canGoBack();
   
   // Build header config - override leftIconType to 'back' if we should show back button
+  // Also ensure showLeftIcon is true when showing back button
   const headerConfig = headerBarModule?.config ? {
     ...headerBarModule.config,
     leftIconType: showBackButton ? 'back' : headerBarModule.config.leftIconType,
-  } : { leftIconType: showBackButton ? 'back' : 'menu' };
+    showLeftIcon: showBackButton ? true : headerBarModule.config.showLeftIcon,
+  } : { leftIconType: showBackButton ? 'back' : 'menu', showLeftIcon: showBackButton };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1192,55 +1223,87 @@ const DynamicScreen = ({ route, navigation }: any) => {
           />
         )}
 
-        {/* Check if any element has its own scrolling (like property_list, booking_list) */}
-        {(() => {
-          const sortedElements = content.elements.sort((a, b) => a.display_order - b.display_order);
-          const fullScreenElements = ['property_list', 'booking_list'];
-          const hasFullScreenElement = sortedElements.some(el => fullScreenElements.includes(el.element_type));
-          
-          if (hasFullScreenElement && sortedElements.length === 1) {
-            // Single full-screen element - render without ScrollView wrapper
-            return sortedElements.map((element, index) => (
-              <View key={element.id || `element-${index}`} style={{ flex: 1 }}>
-                {renderElement(element)}
-              </View>
-            ));
-          }
-          
-          // Normal rendering with ScrollView
-          return (
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  tintColor="#007AFF"
-                />
-              }
-            >
-              {sortedElements.map((element, index) => (
-                <View key={element.id || `element-${index}`}>
+        {/* Use primitive renderer if enabled */}
+        {content.screen.use_primitive_renderer && content.primitive_elements ? (
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#007AFF"
+              />
+            }
+          >
+            <ElementRenderer
+              elements={content.primitive_elements}
+              data={primitiveData}
+              formData={formData}
+              onFormChange={(field_key, value) => setFormData(prev => ({ ...prev, [field_key]: value }))}
+              onAction={(action, payload) => {
+                if (action === 'navigate' && payload?.target) {
+                  navigation.push('DynamicScreen', {
+                    screenId: parseInt(payload.target),
+                    screenName: payload.screenName || 'Screen',
+                  });
+                } else if (action === 'submit') {
+                  handleSave();
+                }
+              }}
+              navigation={navigation}
+            />
+          </ScrollView>
+        ) : (
+          /* Check if any element has its own scrolling (like property_list, booking_list) */
+          (() => {
+            const sortedElements = content.elements.sort((a, b) => a.display_order - b.display_order);
+            const fullScreenElements = ['property_list', 'booking_list'];
+            const hasFullScreenElement = sortedElements.some(el => fullScreenElements.includes(el.element_type));
+            
+            if (hasFullScreenElement && sortedElements.length === 1) {
+              // Single full-screen element - render without ScrollView wrapper
+              return sortedElements.map((element, index) => (
+                <View key={element.id || `element-${index}`} style={{ flex: 1 }}>
                   {renderElement(element)}
                 </View>
-              ))}
+              ));
+            }
+            
+            // Normal rendering with ScrollView
+            return (
+              <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    tintColor="#007AFF"
+                  />
+                }
+              >
+                {sortedElements.map((element, index) => (
+                  <View key={element.id || `element-${index}`}>
+                    {renderElement(element)}
+                  </View>
+                ))}
 
-              {shouldShowSaveButton && (
-                <TouchableOpacity
-                  style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-                  onPress={handleSave}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Save</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-            </ScrollView>
-          );
-        })()}
+                {shouldShowSaveButton && (
+                  <TouchableOpacity
+                    style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+                    onPress={handleSave}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.saveButtonText}>Save</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
+            );
+          })()
+        )}
 
         {/* Custom Tab Bar - shown if this screen has a tabbar menu assigned and not inside TabNavigator */}
         {!hideTabBar && tabBarMenu && tabBarMenu.items && tabBarMenu.items.length > 0 && (

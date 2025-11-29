@@ -40,9 +40,33 @@ export interface ScreenElement {
   form_type?: string;
 }
 
+export interface DataSource {
+  name: string;
+  endpoint: string;
+  method: 'GET' | 'POST';
+  params_from_route?: string[];
+  params_from_config?: any;
+  refresh_on_focus?: boolean;
+  cache_duration?: number;
+}
+
+export interface PrimitiveElement {
+  id: number;
+  type: string;
+  config?: any;
+  data_binding?: any;
+  children?: PrimitiveElement[];
+  conditions?: {
+    show_if?: string;
+    hide_if?: string;
+  };
+}
+
 export interface ScreenContent {
-  screen: AppScreen;
+  screen: AppScreen & { use_primitive_renderer?: boolean };
   elements: ScreenElement[];
+  primitive_elements?: PrimitiveElement[];
+  data_sources?: DataSource[];
   data?: any;
 }
 
