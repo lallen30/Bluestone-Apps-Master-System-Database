@@ -7,7 +7,7 @@ import { appsAPI, permissionsAPI, appScreensAPI, menuAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
 import MenuConfigModal from '@/components/MenuConfigModal';
 import ModuleAssignmentModal from '@/components/ModuleAssignmentModal';
-import { Monitor, Sparkles, Edit, GripVertical, Settings, RefreshCw, RefreshCwOff, LayoutGrid, Package, Grid, Search, X } from 'lucide-react';
+import { Monitor, Sparkles, Edit, GripVertical, Settings, RefreshCw, RefreshCwOff, LayoutGrid, Package, Grid, Search, X, Trash2 } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -41,11 +41,12 @@ interface SortableRowProps {
   onToggleAutoSync: (screenId: number, autoSyncEnabled: boolean) => void;
   onMenuConfig: (screen: any) => void;
   onModuleConfig: (screen: any) => void;
+  onDelete: (screenId: number, screenName: string) => void;
   isMasterAdmin: boolean;
   screenPermissions: ScreenPermissions;
 }
 
-function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, onMenuConfig, onModuleConfig, isMasterAdmin, screenPermissions }: SortableRowProps) {
+function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, onMenuConfig, onModuleConfig, onDelete, isMasterAdmin, screenPermissions }: SortableRowProps) {
   const {
     attributes,
     listeners,
@@ -176,6 +177,13 @@ function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggle
                 title="Manage Fields (Master Admin Only)"
               >
                 <Settings className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onDelete(screen.id, screen.name)}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                title="Remove Screen from App (Master Admin Only)"
+              >
+                <Trash2 className="w-4 h-4" />
               </button>
             </>
           )}
@@ -368,6 +376,24 @@ export default function AppScreens() {
     } catch (error) {
       console.error('Error toggling auto-sync for all:', error);
       alert('Failed to toggle auto-sync for all screens. Please try again.');
+    }
+  };
+
+  const handleDelete = async (screenId: number, screenName: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to remove "${screenName}" from this app?\n\nThis will unassign the screen from the app but will not delete the master screen.`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      const appId = parseInt(params.id as string);
+      await appScreensAPI.unassignFromApp(appId, screenId);
+      // Refresh the screens list
+      fetchData();
+    } catch (error) {
+      console.error('Error removing screen from app:', error);
+      alert('Failed to remove screen from app. Please try again.');
     }
   };
 
@@ -586,6 +612,7 @@ export default function AppScreens() {
                             onToggleAutoSync={handleToggleAutoSync}
                             onMenuConfig={handleMenuConfig}
                             onModuleConfig={handleModuleConfig}
+                            onDelete={handleDelete}
                             isMasterAdmin={user?.role_level === 1}
                             screenPermissions={screenPerms}
                           />

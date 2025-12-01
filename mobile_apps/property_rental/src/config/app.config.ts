@@ -33,7 +33,7 @@ export const AppConfig = {
   API_TIMEOUT: parseInt(Config.API_TIMEOUT || '30000', 10),
   
   // App Identification
-  APP_ID: parseInt(Config.APP_ID || '48', 10),
+  APP_ID: parseInt(Config.APP_ID || '56', 10),
   APP_NAME: Config.APP_NAME || 'Property Rental',
   APP_DISPLAY_NAME: Config.APP_DISPLAY_NAME || 'Property Rental',
   

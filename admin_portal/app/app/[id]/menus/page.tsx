@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, Menu as MenuIcon, Smartphone, SidebarIcon, Users, Shield, Settings, Copy } from 'lucide-react';
+import { Plus, Edit, Trash2, Menu as MenuIcon, Smartphone, SidebarIcon, Users, Shield, Settings, Copy, Monitor } from 'lucide-react';
 import { menuAPI, appsAPI, rolesAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
+import ScreenAssignmentModal from '@/components/ScreenAssignmentModal';
 
 interface Role {
   id: number;
@@ -39,8 +40,10 @@ export default function MenusPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRolesModal, setShowRolesModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [showScreensModal, setShowScreensModal] = useState(false);
   const [editingMenu, setEditingMenu] = useState<Menu | null>(null);
   const [duplicatingMenu, setDuplicatingMenu] = useState<Menu | null>(null);
+  const [screensMenu, setScreensMenu] = useState<Menu | null>(null);
   const [duplicateName, setDuplicateName] = useState('');
   const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
   const [savingRoles, setSavingRoles] = useState(false);
@@ -188,6 +191,11 @@ export default function MenusPage() {
         ? prev.filter(id => id !== roleId)
         : [...prev, roleId]
     );
+  };
+
+  const handleManageScreens = (menu: Menu) => {
+    setScreensMenu(menu);
+    setShowScreensModal(true);
   };
 
   const handleDuplicateMenu = (menu: Menu) => {
@@ -366,6 +374,13 @@ export default function MenusPage() {
                   title="Manage menu items"
                 >
                   <Settings className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleManageScreens(menu)}
+                  className="px-3 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100"
+                  title="Assign screens to this menu"
+                >
+                  <Monitor className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleManageRoles(menu)}
@@ -740,6 +755,22 @@ export default function MenusPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Screen Assignment Modal */}
+      {screensMenu && (
+        <ScreenAssignmentModal
+          isOpen={showScreensModal}
+          onClose={() => {
+            setShowScreensModal(false);
+            setScreensMenu(null);
+          }}
+          menu={screensMenu}
+          appId={appId}
+          onSave={() => {
+            fetchMenus();
+          }}
+        />
       )}
       </div>
     </AppLayout>
