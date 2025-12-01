@@ -195,6 +195,178 @@ exports.createBooking = async (req, res) => {
 };
 
 /**
+ * Get all bookings for an app (admin only)
+ * GET /api/v1/apps/:appId/bookings/all
+ */
+exports.getAllBookings = async (req, res) => {
+  try {
+    const appId = parseInt(req.params.appId);
+    const { 
+      status, 
+      host_id,
+      guest_id,
+      listing_id,
+      date_from,
+      date_to,
+      page = 1, 
+      per_page = 20 
+    } = req.query;
+
+    let query = `
+      SELECT 
+        b.id, b.listing_id, b.check_in_date, b.check_out_date,
+        b.guests_count, b.nights, b.price_per_night, b.cleaning_fee, 
+        b.service_fee, b.total_price, b.status,
+        b.guest_first_name, b.guest_last_name, b.guest_email, b.guest_phone,
+        b.special_requests, b.created_at, b.confirmed_at, b.cancelled_at,
+        b.cancellation_reason,
+        l.title as listing_title, l.city, l.state, l.country,
+        guest.first_name as guest_user_first_name, guest.last_name as guest_user_last_name,
+        guest.email as guest_user_email,
+        host.first_name as host_first_name, host.last_name as host_last_name,
+        host.email as host_email
+      FROM property_bookings b
+      JOIN property_listings l ON b.listing_id = l.id
+      LEFT JOIN app_users guest ON b.guest_user_id = guest.id
+      LEFT JOIN app_users host ON b.host_user_id = host.id
+      WHERE b.app_id = ?
+    `;
+
+    const params = [appId];
+
+    if (status) {
+      query += ` AND b.status = ?`;
+      params.push(status);
+    }
+
+    if (host_id) {
+      query += ` AND b.host_user_id = ?`;
+      params.push(host_id);
+    }
+
+    if (guest_id) {
+      query += ` AND b.guest_user_id = ?`;
+      params.push(guest_id);
+    }
+
+    if (listing_id) {
+      query += ` AND b.listing_id = ?`;
+      params.push(listing_id);
+    }
+
+    if (date_from) {
+      query += ` AND b.check_in_date >= ?`;
+      params.push(date_from);
+    }
+
+    if (date_to) {
+      query += ` AND b.check_out_date <= ?`;
+      params.push(date_to);
+    }
+
+    // Build count query separately
+    let countQuery = `
+      SELECT COUNT(*) as total 
+      FROM property_bookings b
+      WHERE b.app_id = ?
+    `;
+    const countParams = [appId];
+
+    if (status) {
+      countQuery += ` AND b.status = ?`;
+      countParams.push(status);
+    }
+    if (host_id) {
+      countQuery += ` AND b.host_user_id = ?`;
+      countParams.push(host_id);
+    }
+    if (guest_id) {
+      countQuery += ` AND b.guest_user_id = ?`;
+      countParams.push(guest_id);
+    }
+    if (listing_id) {
+      countQuery += ` AND b.listing_id = ?`;
+      countParams.push(listing_id);
+    }
+    if (date_from) {
+      countQuery += ` AND b.check_in_date >= ?`;
+      countParams.push(date_from);
+    }
+    if (date_to) {
+      countQuery += ` AND b.check_out_date <= ?`;
+      countParams.push(date_to);
+    }
+
+    const countResult = await db.query(countQuery, countParams);
+    const countData = Array.isArray(countResult) && Array.isArray(countResult[0]) 
+      ? countResult[0] 
+      : countResult;
+    const total = countData[0]?.total || 0;
+
+    // Add pagination
+    query += ` ORDER BY b.created_at DESC LIMIT ? OFFSET ?`;
+    const limit = parseInt(per_page);
+    const offset = (parseInt(page) - 1) * limit;
+    params.push(limit, offset);
+
+    const bookingsResult = await db.query(query, params);
+    const bookings = Array.isArray(bookingsResult) && Array.isArray(bookingsResult[0]) 
+      ? bookingsResult[0] 
+      : bookingsResult;
+
+    // Get stats
+    const statsResult = await db.query(
+      `SELECT 
+        COUNT(*) as total_bookings,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled,
+        SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
+        SUM(CASE WHEN status IN ('confirmed', 'completed') THEN total_price ELSE 0 END) as total_revenue,
+        SUM(CASE WHEN status IN ('confirmed', 'completed') THEN nights ELSE 0 END) as total_nights
+       FROM property_bookings 
+       WHERE app_id = ?`,
+      [appId]
+    );
+    const statsData = Array.isArray(statsResult) && Array.isArray(statsResult[0]) 
+      ? statsResult[0] 
+      : statsResult;
+    const stats = statsData[0] || {};
+
+    res.json({
+      success: true,
+      data: {
+        bookings: bookings || [],
+        stats: {
+          total_bookings: parseInt(stats.total_bookings) || 0,
+          pending: parseInt(stats.pending) || 0,
+          confirmed: parseInt(stats.confirmed) || 0,
+          completed: parseInt(stats.completed) || 0,
+          cancelled: parseInt(stats.cancelled) || 0,
+          rejected: parseInt(stats.rejected) || 0,
+          total_revenue: parseFloat(stats.total_revenue) || 0,
+          total_nights: parseInt(stats.total_nights) || 0
+        },
+        pagination: {
+          page: parseInt(page),
+          per_page: limit,
+          total,
+          total_pages: Math.ceil(total / limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching all bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching bookings',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Get user's bookings (as guest)
  * GET /api/v1/apps/:appId/bookings
  */

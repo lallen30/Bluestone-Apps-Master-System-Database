@@ -26,6 +26,13 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+interface ScreenPermissions {
+  can_edit_content: boolean;
+  can_menu_config: boolean;
+  can_module_config: boolean;
+  can_toggle_publish: boolean;
+}
+
 interface SortableRowProps {
   screen: any;
   onPublishToggle: (screenId: number, isPublished: boolean) => void;
@@ -35,9 +42,10 @@ interface SortableRowProps {
   onMenuConfig: (screen: any) => void;
   onModuleConfig: (screen: any) => void;
   isMasterAdmin: boolean;
+  screenPermissions: ScreenPermissions;
 }
 
-function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, onMenuConfig, onModuleConfig, isMasterAdmin }: SortableRowProps) {
+function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggleAutoSync, onMenuConfig, onModuleConfig, isMasterAdmin, screenPermissions }: SortableRowProps) {
   const {
     attributes,
     listeners,
@@ -88,51 +96,67 @@ function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggle
         <div className="text-sm text-gray-900">{screen.element_count || 0} elements</div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        <button
-          type="button"
-          onClick={() => onPublishToggle(screen.id, screen.is_published)}
-          className="inline-flex px-2 py-1 text-xs font-semibold rounded-full border border-transparent focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary cursor-pointer"
-          title={screen.is_published ? 'Click to mark as Draft' : 'Click to mark as Published'}
-        >
+        {screenPermissions.can_toggle_publish ? (
+          <button
+            type="button"
+            onClick={() => onPublishToggle(screen.id, screen.is_published)}
+            className="inline-flex px-2 py-1 text-xs font-semibold rounded-full border border-transparent focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary cursor-pointer"
+            title={screen.is_published ? 'Click to mark as Draft' : 'Click to mark as Published'}
+          >
+            <span
+              className={
+                screen.is_published
+                  ? 'bg-green-100 text-green-800 px-2 py-1 rounded-full'
+                  : 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full'
+              }
+            >
+              {screen.is_published ? 'Published' : 'Draft'}
+            </span>
+          </button>
+        ) : (
           <span
-            className={
+            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
               screen.is_published
-                ? 'bg-green-100 text-green-800 px-2 py-1 rounded-full'
-                : 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full'
-            }
+                ? 'bg-green-100 text-green-800'
+                : 'bg-yellow-100 text-yellow-800'
+            }`}
           >
             {screen.is_published ? 'Published' : 'Draft'}
           </span>
-        </button>
+        )}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => onMenuConfig(screen)}
-            className={`p-2 rounded-lg ${
-              screen.show_in_tabbar
-                ? 'text-purple-600 hover:bg-purple-50'
-                : screen.show_in_sidebar
-                ? 'text-blue-600 hover:bg-blue-50'
-                : 'text-gray-400 hover:bg-gray-100'
-            }`}
-            title={
-              screen.show_in_tabbar
-                ? 'In Tab Bar - Click to configure'
-                : screen.show_in_sidebar
-                ? 'In Sidebar Menu - Click to configure'
-                : 'Not in any menu - Click to configure'
-            }
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onModuleConfig(screen)}
-            className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
-            title="Assign Modules (Header Bar, Footer, etc.)"
-          >
-            <Package className="w-4 h-4" />
-          </button>
+          {screenPermissions.can_menu_config && (
+            <button
+              onClick={() => onMenuConfig(screen)}
+              className={`p-2 rounded-lg ${
+                screen.show_in_tabbar
+                  ? 'text-purple-600 hover:bg-purple-50'
+                  : screen.show_in_sidebar
+                  ? 'text-blue-600 hover:bg-blue-50'
+                  : 'text-gray-400 hover:bg-gray-100'
+              }`}
+              title={
+                screen.show_in_tabbar
+                  ? 'In Tab Bar - Click to configure'
+                  : screen.show_in_sidebar
+                  ? 'In Sidebar Menu - Click to configure'
+                  : 'Not in any menu - Click to configure'
+              }
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          )}
+          {screenPermissions.can_module_config && (
+            <button
+              onClick={() => onModuleConfig(screen)}
+              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+              title="Assign Modules (Header Bar, Footer, etc.)"
+            >
+              <Package className="w-4 h-4" />
+            </button>
+          )}
           {isMasterAdmin && (
             <>
               <button
@@ -155,13 +179,15 @@ function SortableRow({ screen, onPublishToggle, onEdit, onManageFields, onToggle
               </button>
             </>
           )}
-          <button
-            onClick={() => onEdit(screen.id)}
-            className="p-2 text-primary hover:bg-primary/10 rounded-lg"
-            title="Edit Content"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
+          {screenPermissions.can_edit_content && (
+            <button
+              onClick={() => onEdit(screen.id)}
+              className="p-2 text-primary hover:bg-primary/10 rounded-lg"
+              title="Edit Content"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </td>
     </tr>
@@ -175,6 +201,7 @@ export default function AppScreens() {
   const [app, setApp] = useState<any>(null);
   const [screens, setScreens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userScreenPermissions, setUserScreenPermissions] = useState<Record<string, ScreenPermissions>>({});
   const [menuConfigModal, setMenuConfigModal] = useState<{ isOpen: boolean; screen: any | null }>({
     isOpen: false,
     screen: null,
@@ -218,10 +245,22 @@ export default function AppScreens() {
       const screensResponse = await appScreensAPI.getAppScreens(appId);
       setScreens(Array.isArray(screensResponse.data) ? screensResponse.data : []);
 
-      // Check user permissions
+      // Check user permissions and load screen-specific permissions
       if (user?.id) {
-        // Master Admins have full access to all apps
-        if (user.role_level !== 1) {
+        // Master Admins have full access to all apps and all screens
+        if (user.role_level === 1) {
+          // Give Master Admin full permissions for all screens
+          const fullPerms: Record<string, ScreenPermissions> = {};
+          (Array.isArray(screensResponse.data) ? screensResponse.data : []).forEach((screen: any) => {
+            fullPerms[screen.id.toString()] = {
+              can_edit_content: true,
+              can_menu_config: true,
+              can_module_config: true,
+              can_toggle_publish: true,
+            };
+          });
+          setUserScreenPermissions(fullPerms);
+        } else {
           const permsResponse = await permissionsAPI.getUserPermissions(user.id);
           const userPerms = permsResponse.data?.find((p: any) => p.app_id === appId);
           
@@ -229,6 +268,28 @@ export default function AppScreens() {
             router.push('/master');
             return;
           }
+          
+          // Parse custom_permissions to get screen-specific permissions
+          let customPerms: any = {};
+          if (userPerms.custom_permissions) {
+            customPerms = typeof userPerms.custom_permissions === 'string' 
+              ? JSON.parse(userPerms.custom_permissions) 
+              : userPerms.custom_permissions;
+          }
+          
+          // Set screen permissions from custom_permissions.screens
+          const screenPerms: Record<string, ScreenPermissions> = {};
+          if (customPerms.screens) {
+            Object.keys(customPerms.screens).forEach((screenId) => {
+              screenPerms[screenId] = {
+                can_edit_content: customPerms.screens[screenId].can_edit_content || false,
+                can_menu_config: customPerms.screens[screenId].can_menu_config || false,
+                can_module_config: customPerms.screens[screenId].can_module_config || false,
+                can_toggle_publish: customPerms.screens[screenId].can_toggle_publish || false,
+              };
+            });
+          }
+          setUserScreenPermissions(screenPerms);
         }
       }
 
@@ -419,10 +480,24 @@ export default function AppScreens() {
             </div>
             {searchQuery && (
               <p className="mt-2 text-sm text-gray-500">
-                Showing {screens.filter(s => 
-                  s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  (s.category && s.category.toLowerCase().includes(searchQuery.toLowerCase()))
-                ).length} of {screens.length} screens
+                Showing {screens.filter(s => {
+                  const query = searchQuery.toLowerCase();
+                  const matchesSearch = s.name.toLowerCase().includes(query) ||
+                    (s.category && s.category.toLowerCase().includes(query));
+                  if (!matchesSearch) return false;
+                  // Also filter by permissions
+                  if (user?.role_level === 1) return true;
+                  const perms = userScreenPermissions[s.id.toString()];
+                  if (!perms) return false;
+                  return perms.can_edit_content || perms.can_menu_config || 
+                         perms.can_module_config || perms.can_toggle_publish;
+                }).length} of {screens.filter(s => {
+                  if (user?.role_level === 1) return true;
+                  const perms = userScreenPermissions[s.id.toString()];
+                  if (!perms) return false;
+                  return perms.can_edit_content || perms.can_menu_config || 
+                         perms.can_module_config || perms.can_toggle_publish;
+                }).length} screens
               </p>
             )}
           </div>
@@ -476,26 +551,46 @@ export default function AppScreens() {
                   >
                     {screens
                       .filter((screen) => {
-                        if (!searchQuery) return true;
-                        const query = searchQuery.toLowerCase();
-                        return (
-                          screen.name.toLowerCase().includes(query) ||
-                          (screen.category && screen.category.toLowerCase().includes(query))
-                        );
+                        // First filter by search query
+                        if (searchQuery) {
+                          const query = searchQuery.toLowerCase();
+                          if (!screen.name.toLowerCase().includes(query) &&
+                              !(screen.category && screen.category.toLowerCase().includes(query))) {
+                            return false;
+                          }
+                        }
+                        // Then filter by user permissions - only show screens user has any permission for
+                        // Master admins see all screens
+                        if (user?.role_level === 1) return true;
+                        const screenPerms = userScreenPermissions[screen.id.toString()];
+                        if (!screenPerms) return false;
+                        // Show screen if user has at least one permission
+                        return screenPerms.can_edit_content || screenPerms.can_menu_config || 
+                               screenPerms.can_module_config || screenPerms.can_toggle_publish;
                       })
-                      .map((screen, index) => (
-                        <SortableRow
-                          key={screen.id}
-                          screen={screen}
-                          onPublishToggle={handlePublishToggle}
-                          onEdit={handleEdit}
-                          onManageFields={handleManageFields}
-                          onToggleAutoSync={handleToggleAutoSync}
-                          onMenuConfig={handleMenuConfig}
-                          onModuleConfig={handleModuleConfig}
-                          isMasterAdmin={user?.role_level === 1}
-                        />
-                      ))}
+                      .map((screen, index) => {
+                        // Get screen permissions or default to no permissions
+                        const screenPerms = userScreenPermissions[screen.id.toString()] || {
+                          can_edit_content: false,
+                          can_menu_config: false,
+                          can_module_config: false,
+                          can_toggle_publish: false,
+                        };
+                        return (
+                          <SortableRow
+                            key={screen.id}
+                            screen={screen}
+                            onPublishToggle={handlePublishToggle}
+                            onEdit={handleEdit}
+                            onManageFields={handleManageFields}
+                            onToggleAutoSync={handleToggleAutoSync}
+                            onMenuConfig={handleMenuConfig}
+                            onModuleConfig={handleModuleConfig}
+                            isMasterAdmin={user?.role_level === 1}
+                            screenPermissions={screenPerms}
+                          />
+                        );
+                      })}
                   </SortableContext>
                 </tbody>
               </table>

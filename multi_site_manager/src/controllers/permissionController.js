@@ -6,6 +6,7 @@ const assignUserToApp = async (req, res) => {
     const {
       user_id,
       app_id,
+      role_id = 3, // Default to Editor
       can_view = true,
       can_edit = false,
       can_delete = false,
@@ -43,10 +44,10 @@ const assignUserToApp = async (req, res) => {
       // Update existing permission
       await query(
         `UPDATE user_app_permissions 
-         SET can_view = ?, can_edit = ?, can_delete = ?, can_publish = ?,
+         SET role_id = ?, can_view = ?, can_edit = ?, can_delete = ?, can_publish = ?,
              can_manage_users = ?, can_manage_settings = ?, custom_permissions = ?
          WHERE user_id = ? AND app_id = ?`,
-        [can_view, can_edit, can_delete, can_publish,
+        [role_id, can_view, can_edit, can_delete, can_publish,
          can_manage_users, can_manage_settings,
          custom_permissions ? JSON.stringify(custom_permissions) : null,
          user_id, app_id]
@@ -55,10 +56,10 @@ const assignUserToApp = async (req, res) => {
       // Create new permission
       await query(
         `INSERT INTO user_app_permissions 
-         (user_id, app_id, can_view, can_edit, can_delete, can_publish, 
+         (user_id, app_id, role_id, can_view, can_edit, can_delete, can_publish, 
           can_manage_users, can_manage_settings, custom_permissions, granted_by) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [user_id, app_id, can_view, can_edit, can_delete, can_publish,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [user_id, app_id, role_id, can_view, can_edit, can_delete, can_publish,
          can_manage_users, can_manage_settings, 
          custom_permissions ? JSON.stringify(custom_permissions) : null,
          req.user.id]
@@ -133,8 +134,8 @@ const updateUserPermissions = async (req, res) => {
     const values = [];
 
     const allowedFields = [
-      'can_view', 'can_edit', 'can_delete', 'can_publish',
-      'can_manage_users', 'can_manage_settings'
+      'role_id', 'can_view', 'can_edit', 'can_delete', 'can_publish',
+      'can_manage_users', 'can_manage_admins', 'can_manage_settings'
     ];
 
     allowedFields.forEach(field => {
@@ -237,9 +238,9 @@ const getUserPermissions = async (req, res) => {
     const { user_id } = req.params;
 
     const permissions = await query(
-      `SELECT s.id as app_id, s.name, s.domain, 
+      `SELECT s.id as app_id, s.name, s.domain, usp.role_id,
               usp.can_view, usp.can_edit, usp.can_delete, usp.can_publish,
-              usp.can_manage_users, usp.can_manage_settings, usp.custom_permissions
+              usp.can_manage_users, usp.can_manage_admins, usp.can_manage_settings, usp.custom_permissions
        FROM user_app_permissions usp
        JOIN apps s ON usp.app_id = s.id
        WHERE usp.user_id = ?`,
@@ -267,13 +268,13 @@ const getAppUsers = async (req, res) => {
 
     const users = await query(
       `SELECT u.id as user_id, u.email, u.first_name, u.last_name, 
-              r.name as role_name, r.level as role_level,
+              usp.role_id, r.name as role_name, r.level as role_level,
               usp.can_view, usp.can_edit, usp.can_delete, usp.can_publish,
-              usp.can_manage_users, usp.can_manage_settings, usp.custom_permissions,
+              usp.can_manage_users, usp.can_manage_admins, usp.can_manage_settings, usp.custom_permissions,
               CONCAT(granted.first_name, ' ', granted.last_name) as granted_by_name
        FROM user_app_permissions usp
        JOIN users u ON usp.user_id = u.id
-       JOIN roles r ON u.role_id = r.id
+       JOIN roles r ON usp.role_id = r.id
        LEFT JOIN users granted ON usp.granted_by = granted.id
        WHERE usp.app_id = ? AND u.is_active = TRUE`,
       [app_id]

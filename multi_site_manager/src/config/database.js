@@ -28,10 +28,10 @@ const testConnection = async () => {
   }
 };
 
-// Execute query helper
+// Execute query helper (using pool.query instead of pool.execute for better compatibility)
 const query = async (sql, params = []) => {
   try {
-    const [rows] = await pool.execute(sql, params);
+    const [rows] = await pool.query(sql, params);
     return rows;
   } catch (error) {
     console.error('Database query error:', error.message);

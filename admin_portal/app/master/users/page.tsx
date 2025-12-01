@@ -26,6 +26,7 @@ interface App {
 }
 
 interface Permission {
+  role_id: number; // 2 = Admin, 3 = Editor
   can_view: boolean;
   can_edit: boolean;
   can_delete: boolean;
@@ -249,6 +250,7 @@ export default function UsersManagement() {
       const permsMap: Record<number, Permission> = {};
       userPerms.forEach((p: any) => {
         permsMap[p.app_id] = {
+          role_id: p.role_id || 3, // Default to Editor if not set
           can_view: p.can_view,
           can_edit: p.can_edit,
           can_delete: p.can_delete,
@@ -275,10 +277,11 @@ export default function UsersManagement() {
       for (const appId of selectedApps) {
         console.log('Processing appId:', appId, 'Type:', typeof appId);
         const perm = permissions[appId] || {
+          role_id: 3,
           can_view: true,
-          can_edit: false,
-          can_delete: false,
-          can_publish: false,
+          can_edit: true,
+          can_delete: true,
+          can_publish: true,
           can_manage_users: false,
           can_manage_settings: false,
         };
@@ -319,35 +322,22 @@ export default function UsersManagement() {
       const newSelectedApps = [...selectedApps, appId];
       console.log('New selectedApps:', newSelectedApps);
       setSelectedApps(newSelectedApps);
-      // Initialize default permissions for new app
+      // Initialize default permissions for new app - default to Editor role
       if (!permissions[appId]) {
-        // If user is Admin (role_level 2), check all permissions by default
-        // If user is Editor (role_level 3), check View and Edit by default
-        const isAdmin = selectedUser?.role_level === 2;
-        const isEditor = selectedUser?.role_level === 3;
         setPermissions({
           ...permissions,
           [appId]: {
+            role_id: 3, // Default to Editor
             can_view: true,
-            can_edit: isAdmin || isEditor,
-            can_delete: isAdmin,
-            can_publish: isAdmin,
-            can_manage_users: isAdmin,
-            can_manage_settings: isAdmin,
+            can_edit: true,
+            can_delete: true,
+            can_publish: true,
+            can_manage_users: false,
+            can_manage_settings: false,
           },
         });
       }
     }
-  };
-
-  const updatePermission = (appId: number, key: keyof Permission, value: boolean) => {
-    setPermissions({
-      ...permissions,
-      [appId]: {
-        ...(permissions[appId] || {}),
-        [key]: value,
-      } as Permission,
-    });
   };
 
   const openCreateModal = () => {
@@ -918,33 +908,51 @@ export default function UsersManagement() {
                 </div>
 
                 {selectedApps.includes(app.id) && (
-                  <div className="ml-6 grid grid-cols-2 gap-3">
-                    {[
-                      { key: 'can_view', label: 'View' },
-                      { key: 'can_edit', label: 'Edit' },
-                      { key: 'can_delete', label: 'Delete' },
-                      { key: 'can_publish', label: 'Publish' },
-                      { key: 'can_manage_users', label: 'Manage Users' },
-                      { key: 'can_manage_settings', label: 'Manage Settings' },
-                    ].map((perm) => (
-                      <div key={perm.key} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id={`${app.id}-${perm.key}`}
-                          checked={permissions[app.id]?.[perm.key as keyof Permission] || false}
-                          onChange={(e) =>
-                            updatePermission(app.id, perm.key as keyof Permission, e.target.checked)
+                  <div className="ml-6 flex gap-4">
+                    <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
+                      permissions[app.id]?.role_id === 2 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}>
+                      <input
+                        type="radio"
+                        name={`role-${app.id}`}
+                        checked={permissions[app.id]?.role_id === 2}
+                        onChange={() => setPermissions({
+                          ...permissions,
+                          [app.id]: {
+                            ...permissions[app.id],
+                            role_id: 2,
+                            can_manage_users: true,
+                            can_manage_settings: true,
                           }
-                          className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                        />
-                        <label
-                          htmlFor={`${app.id}-${perm.key}`}
-                          className="ml-2 text-sm text-gray-700"
-                        >
-                          {perm.label}
-                        </label>
-                      </div>
-                    ))}
+                        })}
+                        className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                      />
+                      <span className="text-sm font-medium">Admin</span>
+                    </label>
+                    <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
+                      permissions[app.id]?.role_id === 3 
+                        ? 'border-green-500 bg-green-50 text-green-700' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}>
+                      <input
+                        type="radio"
+                        name={`role-${app.id}`}
+                        checked={permissions[app.id]?.role_id === 3}
+                        onChange={() => setPermissions({
+                          ...permissions,
+                          [app.id]: {
+                            ...permissions[app.id],
+                            role_id: 3,
+                            can_manage_users: false,
+                            can_manage_settings: false,
+                          }
+                        })}
+                        className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                      />
+                      <span className="text-sm font-medium">Editor</span>
+                    </label>
                   </div>
                 )}
               </div>

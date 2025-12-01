@@ -746,6 +746,12 @@ export const propertyListingsAPI = {
     return response.data;
   },
   
+  // Get all hosts (users with listings)
+  getHosts: async (appId: number) => {
+    const response = await api.get(`/apps/${appId}/hosts`);
+    return response.data;
+  },
+  
   // Get all amenities
   getAmenities: async () => {
     const response = await api.get('/amenities');
@@ -779,6 +785,24 @@ export const propertyListingsAPI = {
   // Publish/unpublish a listing (backward compatibility)
   publishListing: async (appId: number, listingId: number, isPublished: boolean) => {
     const response = await api.put(`/apps/${appId}/listings/${listingId}/publish`, { is_published: isPublished });
+    return response.data;
+  },
+};
+
+// Bookings API (Admin)
+export const bookingsAPI = {
+  // Get all bookings for an app (admin)
+  getAllBookings: async (appId: number, params?: {
+    status?: string;
+    host_id?: number;
+    guest_id?: number;
+    listing_id?: number;
+    date_from?: string;
+    date_to?: string;
+    page?: number;
+    per_page?: number;
+  }) => {
+    const response = await api.get(`/apps/${appId}/bookings/all`, { params });
     return response.data;
   },
 };
@@ -1010,6 +1034,46 @@ export const formsAPI = {
 
   toggleVisibility: async (appId: number, formId: number, elementId: number) => {
     const response = await api.patch(`/apps/${appId}/forms/${formId}/elements/${elementId}/visibility`);
+    return response.data;
+  },
+};
+
+// Form Submissions API (Admin)
+export const formSubmissionsAPI = {
+  // Get all form submissions for an app
+  getAllSubmissions: async (appId: number, params?: {
+    form_id?: number;
+    status?: string;
+    date_from?: string;
+    date_to?: string;
+    page?: number;
+    per_page?: number;
+  }) => {
+    const response = await api.get(`/apps/${appId}/form-submissions`, { params });
+    return response.data;
+  },
+
+  // Get forms list for filter dropdown
+  getFormsList: async (appId: number) => {
+    const response = await api.get(`/apps/${appId}/forms-list`);
+    return response.data;
+  },
+
+  // Get a single submission
+  getSubmission: async (appId: number, submissionId: number) => {
+    const response = await api.get(`/apps/${appId}/form-submissions/${submissionId}`);
+    return response.data;
+  },
+
+  // Update submission status
+  updateStatus: async (appId: number, submissionId: number, data: { status: string; error_message?: string }) => {
+    const response = await api.put(`/apps/${appId}/form-submissions/${submissionId}/status`, data);
+    return response.data;
+  },
+
+  // Delete a submission
+  deleteSubmission: async (appId: number, submissionId: number) => {
+    const response = await api.delete(`/apps/${appId}/form-submissions/${submissionId}`);
     return response.data;
   },
 };

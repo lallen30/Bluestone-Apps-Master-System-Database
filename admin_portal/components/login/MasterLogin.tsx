@@ -18,9 +18,9 @@ export default function MasterLogin({ onLogin, error }: MasterLoginProps) {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4">
               <Shield className="w-8 h-8 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl font-bold mb-2">Master Admin</h1>
+            <h1 className="text-3xl font-bold mb-2">Admin</h1>
             <p className="text-muted-foreground">
-              Sign in to manage all applications
+              Sign in for Administrative Access
             </p>
           </div>
 

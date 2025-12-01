@@ -100,12 +100,14 @@ export default function EditScreenContent() {
       
       setElements(parsedElements);
       
-      // Initialize content values - use element_instance_id as key
+      // Initialize content values - use element_instance_id for master elements, custom_element_id for custom
       const initialValues: {[key: string]: any} = {};
       const initialOptions: {[key: string]: any} = {};
       parsedElements.forEach((el: any) => {
-        initialValues[el.element_instance_id] = el.content_value || el.default_value || '';
-        initialOptions[el.element_instance_id] = el.content_options || {};
+        // Use a unique key: element_instance_id for master elements, 'custom_' + custom_element_id for custom
+        const key = el.is_custom ? `custom_${el.custom_element_id}` : el.element_instance_id;
+        initialValues[key] = el.content_value || el.default_value || '';
+        initialOptions[key] = el.content_options || {};
       });
       setContentValues(initialValues);
       setContentOptions(initialOptions);
@@ -130,12 +132,16 @@ export default function EditScreenContent() {
     try {
       setSaving(true);
       
-      // Prepare content data - use element_instance_id from API response
-      const contentData = elements.map(element => ({
-        element_instance_id: element.element_instance_id,
-        content_value: contentValues[element.element_instance_id] || null,
-        options: contentOptions[element.element_instance_id] || null
-      }));
+      // Prepare content data - handle both master elements and custom elements
+      const contentData = elements.map(element => {
+        const key = element.is_custom ? `custom_${element.custom_element_id}` : element.element_instance_id;
+        return {
+          element_instance_id: element.is_custom ? null : element.element_instance_id,
+          custom_element_id: element.is_custom ? element.custom_element_id : null,
+          content_value: contentValues[key] || null,
+          options: contentOptions[key] || null
+        };
+      });
 
       await appScreensAPI.saveScreenContent(parseInt(appId), parseInt(screenId), contentData);
       
@@ -213,8 +219,11 @@ export default function EditScreenContent() {
             </div>
           ) : (
             <div className="space-y-6">
-              {elements.map((element: any) => (
-                <div key={element.element_instance_id} className="border border-gray-200 rounded-lg p-4">
+              {elements.map((element: any) => {
+                // Use unique key for both master and custom elements
+                const elementKey = element.is_custom ? `custom_${element.custom_element_id}` : element.element_instance_id;
+                return (
+                <div key={elementKey} className="border border-gray-200 rounded-lg p-4">
                   <div className="mb-3">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {(element.label && element.label !== '0') ? element.label : (element.element_name || element.field_key)}
@@ -224,8 +233,8 @@ export default function EditScreenContent() {
                       <input
                         type="text"
                         placeholder={element.placeholder || ''}
-                        value={contentValues[element.element_instance_id] || ''}
-                        onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                        value={contentValues[elementKey] || ''}
+                        onChange={(e) => handleContentChange(elementKey, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         readOnly={element.is_readonly}
                         disabled={element.is_readonly}
@@ -235,8 +244,8 @@ export default function EditScreenContent() {
                       <input
                         type="email"
                         placeholder={element.placeholder || 'email@example.com'}
-                        value={contentValues[element.element_instance_id] || ''}
-                        onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                        value={contentValues[elementKey] || ''}
+                        onChange={(e) => handleContentChange(elementKey, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         readOnly={element.is_readonly}
                         disabled={element.is_readonly}
@@ -246,8 +255,8 @@ export default function EditScreenContent() {
                       <input
                         type="tel"
                         placeholder={element.placeholder || '(555) 123-4567'}
-                        value={contentValues[element.element_instance_id] || ''}
-                        onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                        value={contentValues[elementKey] || ''}
+                        onChange={(e) => handleContentChange(elementKey, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         readOnly={element.is_readonly}
                         disabled={element.is_readonly}
@@ -257,8 +266,8 @@ export default function EditScreenContent() {
                       <input
                         type="url"
                         placeholder={element.placeholder || 'https://example.com'}
-                        value={contentValues[element.element_instance_id] || ''}
-                        onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                        value={contentValues[elementKey] || ''}
+                        onChange={(e) => handleContentChange(elementKey, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         readOnly={element.is_readonly}
                         disabled={element.is_readonly}
@@ -268,8 +277,8 @@ export default function EditScreenContent() {
                       <input
                         type="number"
                         placeholder={element.placeholder || '0'}
-                        value={contentValues[element.element_instance_id] || ''}
-                        onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                        value={contentValues[elementKey] || ''}
+                        onChange={(e) => handleContentChange(elementKey, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         readOnly={element.is_readonly}
                         disabled={element.is_readonly}
@@ -278,8 +287,8 @@ export default function EditScreenContent() {
                     {element.element_type === 'date_picker' && (
                       <input
                         type="date"
-                        value={contentValues[element.element_instance_id] || ''}
-                        onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                        value={contentValues[elementKey] || ''}
+                        onChange={(e) => handleContentChange(elementKey, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         readOnly={element.is_readonly}
                         disabled={element.is_readonly}
@@ -288,8 +297,8 @@ export default function EditScreenContent() {
                     {element.element_type === 'text_area' && (
                       <textarea
                         placeholder={element.placeholder || ''}
-                        value={contentValues[element.element_instance_id] || ''}
-                        onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                        value={contentValues[elementKey] || ''}
+                        onChange={(e) => handleContentChange(elementKey, e.target.value)}
                         rows={4}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         readOnly={element.is_readonly}
@@ -300,16 +309,16 @@ export default function EditScreenContent() {
                       <input
                         type="text"
                         placeholder="Enter heading text"
-                        value={contentValues[element.element_instance_id] || ''}
-                        onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                        value={contentValues[elementKey] || ''}
+                        onChange={(e) => handleContentChange(elementKey, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-xl font-bold"
                       />
                     )}
                     {element.element_type === 'paragraph' && (
                       <textarea
                         placeholder="Enter paragraph text"
-                        value={contentValues[element.element_instance_id] || ''}
-                        onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                        value={contentValues[elementKey] || ''}
+                        onChange={(e) => handleContentChange(elementKey, e.target.value)}
                         rows={3}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
@@ -319,8 +328,8 @@ export default function EditScreenContent() {
                         <div className="rich-text-editor">
                           <ReactQuill
                             theme="snow"
-                            value={contentValues[element.element_instance_id] || ''}
-                            onChange={(value) => handleContentChange(element.element_instance_id, value)}
+                            value={contentValues[elementKey] || ''}
+                            onChange={(value) => handleContentChange(elementKey, value)}
                             placeholder={element.placeholder || 'Enter formatted content...'}
                             modules={{
                               toolbar: [
@@ -352,8 +361,8 @@ export default function EditScreenContent() {
                     {element.element_type === 'dropdown' && (
                       <div>
                         <select
-                          value={contentValues[element.element_instance_id] || ''}
-                          onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                          value={contentValues[elementKey] || ''}
+                          onChange={(e) => handleContentChange(elementKey, e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                           disabled={element.is_readonly}
                         >
@@ -370,8 +379,8 @@ export default function EditScreenContent() {
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
-                          checked={contentValues[element.element_instance_id] === 'true' || contentValues[element.element_instance_id] === true}
-                          onChange={(e) => handleContentChange(element.element_instance_id, e.target.checked.toString())}
+                          checked={contentValues[elementKey] === 'true' || contentValues[elementKey] === true}
+                          onChange={(e) => handleContentChange(elementKey, e.target.checked.toString())}
                           className="rounded border-gray-300"
                           disabled={element.is_readonly}
                         />
@@ -386,8 +395,8 @@ export default function EditScreenContent() {
                               type="radio"
                               name={`radio_${element.element_instance_id}`}
                               value={option.value}
-                              checked={contentValues[element.element_instance_id] === option.value}
-                              onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                              checked={contentValues[elementKey] === option.value}
+                              onChange={(e) => handleContentChange(elementKey, e.target.value)}
                               className="border-gray-300"
                               disabled={element.is_readonly}
                             />
@@ -402,8 +411,8 @@ export default function EditScreenContent() {
                           <input
                             type="url"
                             placeholder="Image URL or upload below"
-                            value={contentValues[element.element_instance_id] || element.config?.imageUrl || ''}
-                            onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                            value={contentValues[elementKey] || element.config?.imageUrl || ''}
+                            onChange={(e) => handleContentChange(elementKey, e.target.value)}
                             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                             disabled={element.is_readonly}
                           />
@@ -424,7 +433,7 @@ export default function EditScreenContent() {
                                       app?.name
                                     );
                                     const imageUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}${response.data.url}`;
-                                    handleContentChange(element.element_instance_id, imageUrl);
+                                    handleContentChange(elementKey, imageUrl);
                                   } catch (error) {
                                     console.error('Upload error:', error);
                                     alert('Failed to upload image. Please try again.');
@@ -435,10 +444,10 @@ export default function EditScreenContent() {
                             />
                           </label>
                         </div>
-                        {(contentValues[element.element_instance_id] || element.config?.imageUrl) && (
+                        {(contentValues[elementKey] || element.config?.imageUrl) && (
                           <div className="mt-2 border border-gray-200 rounded-lg p-2 bg-gray-50 relative flex justify-center">
                             <img
-                              src={contentValues[element.element_instance_id] || element.config?.imageUrl}
+                              src={contentValues[elementKey] || element.config?.imageUrl}
                               alt={element.config?.altText || 'Preview'}
                               className="h-auto object-contain"
                               style={{
@@ -448,7 +457,7 @@ export default function EditScreenContent() {
                             />
                             {!element.is_readonly && (
                               <button
-                                onClick={() => handleContentChange(element.element_instance_id, '')}
+                                onClick={() => handleContentChange(elementKey, '')}
                                 className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                                 title="Remove image"
                               >
@@ -465,7 +474,7 @@ export default function EditScreenContent() {
                           <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary cursor-pointer transition-colors bg-gray-50 hover:bg-gray-100">
                             <Upload className="w-5 h-5 text-gray-600" />
                             <span className="text-sm font-medium text-gray-700">
-                              {contentValues[element.element_instance_id] ? 'Change Image' : 'Upload Image'}
+                              {contentValues[elementKey] ? 'Change Image' : 'Upload Image'}
                             </span>
                             <input
                               type="file"
@@ -481,7 +490,7 @@ export default function EditScreenContent() {
                                       app?.name
                                     );
                                     const imageUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}${response.data.url}`;
-                                    handleContentChange(element.element_instance_id, imageUrl);
+                                    handleContentChange(elementKey, imageUrl);
                                   } catch (error) {
                                     console.error('Upload error:', error);
                                     alert('Failed to upload image. Please try again.');
@@ -491,9 +500,9 @@ export default function EditScreenContent() {
                               disabled={element.is_readonly}
                             />
                           </label>
-                          {contentValues[element.element_instance_id] && (
+                          {contentValues[elementKey] && (
                             <button
-                              onClick={() => handleContentChange(element.element_instance_id, '')}
+                              onClick={() => handleContentChange(elementKey, '')}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                               title="Remove image"
                             >
@@ -501,10 +510,10 @@ export default function EditScreenContent() {
                             </button>
                           )}
                         </div>
-                        {contentValues[element.element_instance_id] && (
+                        {contentValues[elementKey] && (
                           <div className="mt-2 border border-gray-200 rounded-lg p-2 bg-gray-50 flex justify-center">
                             <img
-                              src={contentValues[element.element_instance_id]}
+                              src={contentValues[elementKey]}
                               alt="Uploaded image"
                               className="h-auto object-contain rounded"
                               style={{ maxHeight: '200px', maxWidth: '100%' }}
@@ -523,8 +532,8 @@ export default function EditScreenContent() {
                           <input
                             type="text"
                             placeholder="Button text"
-                            value={contentValues[element.element_instance_id] || element.label || ''}
-                            onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                            value={contentValues[elementKey] || element.label || ''}
+                            onChange={(e) => handleContentChange(elementKey, e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                             disabled={element.is_readonly}
                           />
@@ -533,15 +542,15 @@ export default function EditScreenContent() {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
                           <select
-                            value={contentOptions[element.element_instance_id]?.actionType || element.config?.actionType || 'none'}
+                            value={contentOptions[elementKey]?.actionType || element.config?.actionType || 'none'}
                             onChange={(e) => {
                               setContentOptions(prev => ({
                                 ...prev,
-                                [element.element_instance_id]: {
-                                  ...prev[element.element_instance_id],
+                                [elementKey]: {
+                                  ...prev[elementKey],
                                   actionType: e.target.value,
-                                  url: e.target.value === 'url' ? prev[element.element_instance_id]?.url : undefined,
-                                  screenId: e.target.value === 'screen' ? prev[element.element_instance_id]?.screenId : undefined
+                                  url: e.target.value === 'url' ? prev[elementKey]?.url : undefined,
+                                  screenId: e.target.value === 'screen' ? prev[elementKey]?.screenId : undefined
                                 }
                               }));
                             }}
@@ -554,18 +563,18 @@ export default function EditScreenContent() {
                           </select>
                         </div>
 
-                        {(contentOptions[element.element_instance_id]?.actionType || element.config?.actionType) === 'url' && (
+                        {(contentOptions[elementKey]?.actionType || element.config?.actionType) === 'url' && (
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
                             <input
                               type="url"
                               placeholder="https://example.com"
-                              value={contentOptions[element.element_instance_id]?.url || element.config?.url || ''}
+                              value={contentOptions[elementKey]?.url || element.config?.url || ''}
                               onChange={(e) => {
                                 setContentOptions(prev => ({
                                   ...prev,
-                                  [element.element_instance_id]: {
-                                    ...prev[element.element_instance_id],
+                                  [elementKey]: {
+                                    ...prev[elementKey],
                                     url: e.target.value
                                   }
                                 }));
@@ -576,16 +585,16 @@ export default function EditScreenContent() {
                           </div>
                         )}
 
-                        {(contentOptions[element.element_instance_id]?.actionType || element.config?.actionType) === 'screen' && (
+                        {(contentOptions[elementKey]?.actionType || element.config?.actionType) === 'screen' && (
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Target Screen</label>
                             <select
-                              value={contentOptions[element.element_instance_id]?.screenId || element.config?.screenId || ''}
+                              value={contentOptions[elementKey]?.screenId || element.config?.screenId || ''}
                               onChange={(e) => {
                                 setContentOptions(prev => ({
                                   ...prev,
-                                  [element.element_instance_id]: {
-                                    ...prev[element.element_instance_id],
+                                  [elementKey]: {
+                                    ...prev[elementKey],
                                     screenId: parseInt(e.target.value) || undefined
                                   }
                                 }));
@@ -609,7 +618,7 @@ export default function EditScreenContent() {
                             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
                             disabled
                           >
-                            {contentValues[element.element_instance_id] || element.label || 'Button'}
+                            {contentValues[elementKey] || element.label || 'Button'}
                           </button>
                           <p className="text-xs text-gray-500 mt-1">Preview (button is disabled in editor)</p>
                         </div>
@@ -622,8 +631,8 @@ export default function EditScreenContent() {
                           <input
                             type="text"
                             placeholder="Link text"
-                            value={contentValues[element.element_instance_id] || element.label || ''}
-                            onChange={(e) => handleContentChange(element.element_instance_id, e.target.value)}
+                            value={contentValues[elementKey] || element.label || ''}
+                            onChange={(e) => handleContentChange(elementKey, e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                             disabled={element.is_readonly}
                           />
@@ -632,15 +641,15 @@ export default function EditScreenContent() {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
                           <select
-                            value={contentOptions[element.element_instance_id]?.actionType || element.config?.actionType || 'url'}
+                            value={contentOptions[elementKey]?.actionType || element.config?.actionType || 'url'}
                             onChange={(e) => {
                               setContentOptions(prev => ({
                                 ...prev,
-                                [element.element_instance_id]: {
-                                  ...prev[element.element_instance_id],
+                                [elementKey]: {
+                                  ...prev[elementKey],
                                   actionType: e.target.value,
-                                  url: e.target.value === 'url' ? prev[element.element_instance_id]?.url : undefined,
-                                  screenId: e.target.value === 'screen' ? prev[element.element_instance_id]?.screenId : undefined
+                                  url: e.target.value === 'url' ? prev[elementKey]?.url : undefined,
+                                  screenId: e.target.value === 'screen' ? prev[elementKey]?.screenId : undefined
                                 }
                               }));
                             }}
@@ -652,18 +661,18 @@ export default function EditScreenContent() {
                           </select>
                         </div>
 
-                        {(!contentOptions[element.element_instance_id]?.actionType || contentOptions[element.element_instance_id]?.actionType === 'url' || (!contentOptions[element.element_instance_id] && (!element.config?.actionType || element.config?.actionType === 'url'))) && (
+                        {(!contentOptions[elementKey]?.actionType || contentOptions[elementKey]?.actionType === 'url' || (!contentOptions[elementKey] && (!element.config?.actionType || element.config?.actionType === 'url'))) && (
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
                             <input
                               type="url"
                               placeholder="https://example.com"
-                              value={contentOptions[element.element_instance_id]?.url || element.config?.url || ''}
+                              value={contentOptions[elementKey]?.url || element.config?.url || ''}
                               onChange={(e) => {
                                 setContentOptions(prev => ({
                                   ...prev,
-                                  [element.element_instance_id]: {
-                                    ...prev[element.element_instance_id],
+                                  [elementKey]: {
+                                    ...prev[elementKey],
                                     url: e.target.value
                                   }
                                 }));
@@ -674,16 +683,16 @@ export default function EditScreenContent() {
                           </div>
                         )}
 
-                        {(contentOptions[element.element_instance_id]?.actionType || element.config?.actionType) === 'screen' && (
+                        {(contentOptions[elementKey]?.actionType || element.config?.actionType) === 'screen' && (
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Target Screen</label>
                             <select
-                              value={contentOptions[element.element_instance_id]?.screenId || element.config?.screenId || ''}
+                              value={contentOptions[elementKey]?.screenId || element.config?.screenId || ''}
                               onChange={(e) => {
                                 setContentOptions(prev => ({
                                   ...prev,
-                                  [element.element_instance_id]: {
-                                    ...prev[element.element_instance_id],
+                                  [elementKey]: {
+                                    ...prev[elementKey],
                                     screenId: parseInt(e.target.value) || undefined
                                   }
                                 }));
@@ -707,7 +716,7 @@ export default function EditScreenContent() {
                             className="text-primary hover:underline" 
                             onClick={(e) => e.preventDefault()}
                           >
-                            {contentValues[element.element_instance_id] || element.label || 'Link'}
+                            {contentValues[elementKey] || element.label || 'Link'}
                           </a>
                           <p className="text-xs text-gray-500 mt-1">Preview (link is disabled in editor)</p>
                         </div>
@@ -782,7 +791,8 @@ export default function EditScreenContent() {
                     Type: {element.element_type} • Key: {element.field_key}
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>

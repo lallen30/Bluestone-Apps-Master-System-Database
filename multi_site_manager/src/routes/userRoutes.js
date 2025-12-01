@@ -11,6 +11,9 @@ const {
 // All routes require authentication
 router.use(authenticate);
 
+// Get all system roles
+router.get('/roles', isAdmin, userController.getRoles);
+
 // Get all users (Admin and Master Admin only)
 router.get('/', isAdmin, userController.getAllUsers);
 

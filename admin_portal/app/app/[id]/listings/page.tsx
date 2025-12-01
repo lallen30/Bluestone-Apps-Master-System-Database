@@ -40,6 +40,8 @@ export default function PropertyListingsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [hostFilter, setHostFilter] = useState('');
+  const [hosts, setHosts] = useState<{id: number; first_name: string; last_name: string; email: string}[]>([]);
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -54,7 +56,8 @@ export default function PropertyListingsPage() {
     }
 
     fetchData();
-  }, [isAuthenticated, user, appId, router, searchTerm, statusFilter, currentPage]);
+    fetchHosts();
+  }, [isAuthenticated, user, appId, router, searchTerm, statusFilter, hostFilter, currentPage]);
 
   const fetchData = async () => {
     try {
@@ -65,6 +68,7 @@ export default function PropertyListingsPage() {
       const listingsResponse = await propertyListingsAPI.getListings(parseInt(appId), {
         search: searchTerm || undefined,
         status: statusFilter || undefined,
+        user_id: hostFilter ? parseInt(hostFilter) : undefined,
         page: currentPage,
         per_page: 20
       });
@@ -76,6 +80,15 @@ export default function PropertyListingsPage() {
     } catch (error) {
       console.error('Error:', error);
       setLoading(false);
+    }
+  };
+
+  const fetchHosts = async () => {
+    try {
+      const response = await propertyListingsAPI.getHosts(parseInt(appId));
+      setHosts(response.data || []);
+    } catch (error) {
+      console.error('Error fetching hosts:', error);
     }
   };
 
@@ -191,7 +204,7 @@ export default function PropertyListingsPage() {
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
               <input
@@ -215,9 +228,24 @@ export default function PropertyListingsPage() {
                 <option value="inactive">Inactive</option>
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Host</label>
+              <select
+                value={hostFilter}
+                onChange={(e) => setHostFilter(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg"
+              >
+                <option value="">All Hosts</option>
+                {hosts.map(host => (
+                  <option key={host.id} value={host.id}>
+                    {host.first_name} {host.last_name} ({host.email})
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex items-end">
               <Button
-                onClick={() => { setSearchTerm(''); setStatusFilter(''); }}
+                onClick={() => { setSearchTerm(''); setStatusFilter(''); setHostFilter(''); }}
                 variant="secondary"
                 className="w-full"
               >
@@ -286,6 +314,13 @@ export default function PropertyListingsPage() {
                       </button>
                     </td>
                     <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => router.push(`/app/${appId}/listings/${listing.id}/edit`)}
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                        title="Edit listing"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
                       {listing.status !== 'suspended' && (
                         <button
                           onClick={() => handleSuspend(listing)}

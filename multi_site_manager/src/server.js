@@ -38,6 +38,9 @@ const menuRoutes = require('./routes/menuRoutes');
 const modulesRoutes = require('./routes/modulesRoutes');
 const appFormsRoutes = require('./routes/appForms');
 const appFormElementsRoutes = require('./routes/appFormElements');
+const favoritesRoutes = require('./routes/favorites');
+const profileRoutes = require('./routes/profile');
+const formSubmissionsRoutes = require('./routes/formSubmissions');
 
 // Initialize Express app
 const app = express();
@@ -136,6 +139,9 @@ app.use(`/api/${API_VERSION}`, menuRoutes); // Menu management
 app.use(`/api/${API_VERSION}/modules`, modulesRoutes); // Modules management
 app.use(`/api/${API_VERSION}`, appFormsRoutes); // Forms management
 app.use(`/api/${API_VERSION}`, appFormElementsRoutes); // Form element overrides
+app.use(`/api/${API_VERSION}`, favoritesRoutes); // Favorites/wishlist
+app.use(`/api/${API_VERSION}`, profileRoutes); // User profile management
+app.use(`/api/${API_VERSION}`, formSubmissionsRoutes); // Form submissions (admin)
 
 // Serve uploaded files statically
 app.use('/uploads', express.static('uploads'));

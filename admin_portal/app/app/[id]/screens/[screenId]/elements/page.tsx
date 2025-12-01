@@ -29,6 +29,9 @@ interface Element {
   display_order: number;
   is_custom: boolean;
   has_override: boolean;
+  content_value?: string;
+  content_options?: any;
+  config?: any;
 }
 
 export default function ManageScreenElements() {
@@ -152,6 +155,25 @@ export default function ManageScreenElements() {
 
   const openEditModal = (element: Element) => {
     setSelectedElement(element);
+    
+    // Parse existing config if available
+    let config: any = {};
+    if (element.config) {
+      config = typeof element.config === 'string' 
+        ? JSON.parse(element.config) 
+        : element.config;
+    }
+    
+    // Convert options array to text for dropdown elements
+    let optionsText = '';
+    if (config.options && Array.isArray(config.options)) {
+      optionsText = config.options.map((opt: any) => {
+        if (typeof opt === 'string') return opt;
+        if (opt.value === opt.label) return opt.label;
+        return `${opt.value}:${opt.label}`;
+      }).join('\n');
+    }
+    
     setFormData({
       custom_label: element.label || '',
       custom_placeholder: element.placeholder || '',
@@ -159,6 +181,10 @@ export default function ManageScreenElements() {
       is_required: element.is_required || false,
       is_hidden: element.is_visible === false,
       display_order: element.display_order || 0,
+      custom_config: {
+        ...config,
+        optionsText
+      }
     });
     setIsEditModalOpen(true);
   };
@@ -169,7 +195,10 @@ export default function ManageScreenElements() {
     setSubmitting(true);
     try {
       if (selectedElement.is_custom) {
-        // Update custom element
+        // Update custom element - remove optionsText before saving (it's just for UI)
+        const configToSave = { ...formData.custom_config };
+        delete configToSave.optionsText;
+        
         await appScreenElementsAPI.updateCustomElement(
           appId,
           selectedElement.custom_element_id!,
@@ -180,6 +209,7 @@ export default function ManageScreenElements() {
             is_required: formData.is_required,
             is_visible: !formData.is_hidden,
             display_order: formData.display_order,
+            config: configToSave,
           }
         );
       } else {
@@ -324,6 +354,10 @@ export default function ManageScreenElements() {
 
     setSubmitting(true);
     try {
+      // Remove optionsText before saving (it's just for UI)
+      const configToSave = { ...customElementForm.custom_config };
+      delete configToSave.optionsText;
+      
       await appScreenElementsAPI.addCustomElement(appId, screenId, {
         element_id: parseInt(customElementForm.element_id),
         field_key: customElementForm.field_key,
@@ -332,7 +366,7 @@ export default function ManageScreenElements() {
         default_value: customElementForm.default_value,
         is_required: customElementForm.is_required,
         display_order: customElementForm.display_order,
-        config: customElementForm.custom_config, // Send custom_config as config
+        config: configToSave,
       });
 
       setIsAddModalOpen(false);
@@ -494,6 +528,11 @@ export default function ManageScreenElements() {
                       <div>
                         <div className="text-sm font-medium text-gray-900">{element.label}</div>
                         <div className="text-sm text-gray-500">Key: {element.field_key}</div>
+                        {element.content_value && (
+                          <div className="text-xs text-green-600 mt-1">
+                            <span className="font-medium">Content:</span> {element.content_value.length > 50 ? element.content_value.substring(0, 50) + '...' : element.content_value}
+                          </div>
+                        )}
                         {element.placeholder && (
                           <div className="text-xs text-gray-400">Placeholder: {element.placeholder}</div>
                         )}
@@ -529,6 +568,11 @@ export default function ManageScreenElements() {
                         {element.is_required === true && (
                           <span className="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800 inline-block w-fit">
                             Required
+                          </span>
+                        )}
+                        {element.content_value && (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 inline-block w-fit">
+                            Has Content
                           </span>
                         )}
                       </div>
@@ -823,6 +867,50 @@ export default function ManageScreenElements() {
                   placeholder="Default value"
                 />
               </div>
+
+              {/* Options field for dropdown/select elements */}
+              {(selectedElement?.element_type === 'dropdown' || 
+                selectedElement?.element_type === 'select' || 
+                selectedElement?.element_type === 'Dropdown') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Options
+                  </label>
+                  <textarea
+                    value={formData.custom_config?.optionsText ?? ''}
+                    onChange={(e) => {
+                      const text = e.target.value;
+                      // Parse options only from non-empty lines
+                      const lines = text.split('\n');
+                      const options = lines
+                        .filter(line => line.trim())
+                        .map(line => {
+                          if (line.includes(':')) {
+                            const colonIndex = line.indexOf(':');
+                            const value = line.substring(0, colonIndex).trim();
+                            const label = line.substring(colonIndex + 1).trim();
+                            return { value, label: label || value };
+                          }
+                          return { value: line.trim(), label: line.trim() };
+                        });
+                      setFormData({ 
+                        ...formData, 
+                        custom_config: { 
+                          ...formData.custom_config, 
+                          optionsText: text,
+                          options 
+                        }
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Enter one option per line, e.g.:&#10;Small&#10;Medium&#10;Large&#10;&#10;Or use value:label format:&#10;sm:Small&#10;md:Medium&#10;lg:Large"
+                    rows={5}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter one option per line. Optionally use "value:label" format for different values and display labels.
+                  </p>
+                </div>
+              )}
             </>
           )}
 
@@ -1068,6 +1156,53 @@ export default function ManageScreenElements() {
                 </div>
               );
             }
+            
+            // Options field for dropdown/select elements
+            if (elementType === 'dropdown' || elementType === 'select' || elementType === 'Dropdown') {
+              return (
+                <div className="space-y-3 border-t pt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Options *
+                    </label>
+                    <textarea
+                      value={customElementForm.custom_config?.optionsText ?? ''}
+                      onChange={(e) => {
+                        const text = e.target.value;
+                        // Parse options only from non-empty lines
+                        const lines = text.split('\n');
+                        const options = lines
+                          .filter(line => line.trim())
+                          .map(line => {
+                            if (line.includes(':')) {
+                              const colonIndex = line.indexOf(':');
+                              const value = line.substring(0, colonIndex).trim();
+                              const label = line.substring(colonIndex + 1).trim();
+                              return { value, label: label || value };
+                            }
+                            return { value: line.trim(), label: line.trim() };
+                          });
+                        setCustomElementForm({
+                          ...customElementForm,
+                          custom_config: { 
+                            ...customElementForm.custom_config, 
+                            optionsText: text,
+                            options 
+                          }
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Enter one option per line, e.g.:&#10;Small&#10;Medium&#10;Large&#10;&#10;Or use value:label format:&#10;sm:Small&#10;md:Medium&#10;lg:Large"
+                      rows={5}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter one option per line. Optionally use "value:label" format for different values and display labels.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+            
             return null;
           })()}
 

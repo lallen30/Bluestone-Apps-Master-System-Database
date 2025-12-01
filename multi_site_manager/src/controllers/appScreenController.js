@@ -389,11 +389,13 @@ exports.saveScreenContent = async (req, res) => {
     for (const item of content) {
       // Convert undefined to null for MySQL2
       const contentValue = item.content_value === undefined || item.content_value === '' ? null : item.content_value;
-      const elementInstanceId = item.element_instance_id !== undefined ? item.element_instance_id : null;
+      const elementInstanceId = item.element_instance_id !== undefined && item.element_instance_id !== null ? item.element_instance_id : null;
+      const customElementId = item.custom_element_id !== undefined && item.custom_element_id !== null ? item.custom_element_id : null;
       const options = item.options ? JSON.stringify(item.options) : null;
       
       console.log('[saveScreenContent] Processing item:', { 
-        element_instance_id: elementInstanceId, 
+        element_instance_id: elementInstanceId,
+        custom_element_id: customElementId,
         content_value: contentValue,
         options: item.options,
         app_id,
@@ -401,16 +403,42 @@ exports.saveScreenContent = async (req, res) => {
         updated_by
       });
       
-      await db.query(
-        `INSERT INTO app_screen_content 
-         (app_id, screen_id, element_instance_id, content_value, options, updated_by)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE 
-         content_value = VALUES(content_value),
-         options = VALUES(options),
-         updated_by = VALUES(updated_by)`,
-        [app_id, screen_id, elementInstanceId, contentValue, options, updated_by]
-      );
+      // Check if record exists first (for custom elements we need different lookup)
+      if (customElementId) {
+        // Custom element - check by custom_element_id
+        const existing = await db.query(
+          `SELECT id FROM app_screen_content WHERE app_id = ? AND screen_id = ? AND custom_element_id = ?`,
+          [app_id, screen_id, customElementId]
+        );
+        
+        const existingRows = Array.isArray(existing) && Array.isArray(existing[0]) ? existing[0] : existing;
+        
+        if (existingRows && existingRows.length > 0) {
+          await db.query(
+            `UPDATE app_screen_content SET content_value = ?, options = ?, updated_by = ? WHERE id = ?`,
+            [contentValue, options, updated_by, existingRows[0].id]
+          );
+        } else {
+          await db.query(
+            `INSERT INTO app_screen_content 
+             (app_id, screen_id, element_instance_id, custom_element_id, content_value, options, updated_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [app_id, screen_id, null, customElementId, contentValue, options, updated_by]
+          );
+        }
+      } else if (elementInstanceId) {
+        // Master element - use element_instance_id
+        await db.query(
+          `INSERT INTO app_screen_content 
+           (app_id, screen_id, element_instance_id, custom_element_id, content_value, options, updated_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE 
+           content_value = VALUES(content_value),
+           options = VALUES(options),
+           updated_by = VALUES(updated_by)`,
+          [app_id, screen_id, elementInstanceId, null, contentValue, options, updated_by]
+        );
+      }
     }
     
     res.json({

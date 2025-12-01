@@ -204,23 +204,25 @@ export default function ScreenPreviewsPage() {
                       </span>
                     </div>
                     
-                    {/* Hover Actions */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                      <button
-                        onClick={() => router.push(`/app/${appId}/screens/${screen.id}`)}
-                        className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
-                        title="Edit screen"
-                      >
-                        <Edit className="w-5 h-5 text-gray-700" />
-                      </button>
-                      <button
-                        onClick={() => router.push(`/app/${appId}/screens/${screen.id}/elements`)}
-                        className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
-                        title="Manage screen elements"
-                      >
-                        <Settings className="w-5 h-5 text-gray-700" />
-                      </button>
-                    </div>
+                    {/* Hover Actions - Only show for Master Admin */}
+                    {user?.role_level === 1 && (
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => router.push(`/app/${appId}/screens/${screen.id}`)}
+                          className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+                          title="Edit screen"
+                        >
+                          <Edit className="w-5 h-5 text-gray-700" />
+                        </button>
+                        <button
+                          onClick={() => router.push(`/app/${appId}/screens/${screen.id}/elements`)}
+                          className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+                          title="Manage screen elements"
+                        >
+                          <Settings className="w-5 h-5 text-gray-700" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Screen Info */}

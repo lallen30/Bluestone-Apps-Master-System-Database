@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, usersAPI, appScreensAPI, screenElementsAPI, modulesAPI } from '@/lib/api';
-import { Users, Globe, Activity, LogOut, Monitor, Layers, Sparkles, Package, FileText } from 'lucide-react';
+import { Users, Globe, Activity, LogOut, Monitor, Layers, Sparkles, Package, FileText, User } from 'lucide-react';
 import Icon from '@mdi/react';
 import * as mdiIcons from '@mdi/js';
 
@@ -181,13 +181,22 @@ export default function MasterDashboard() {
                 <p className="text-sm text-gray-500">Welcome back, {user?.first_name}</p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.push('/profile')}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                <User className="w-4 h-4" />
+                My Profile
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </header>

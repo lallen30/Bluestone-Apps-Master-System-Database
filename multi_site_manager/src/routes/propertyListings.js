@@ -14,6 +14,13 @@ const { authenticateDual } = require('../middleware/dualAuth');
 router.get('/apps/:appId/listings', propertyListingsController.getListings);
 
 /**
+ * GET /api/v1/apps/:appId/hosts
+ * Get all hosts (users with listings)
+ * Public endpoint for admin filtering
+ */
+router.get('/apps/:appId/hosts', propertyListingsController.getHosts);
+
+/**
  * GET /api/v1/apps/:appId/listings/:listingId
  * Get single listing details
  * Public endpoint for viewing a listing

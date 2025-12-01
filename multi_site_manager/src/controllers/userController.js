@@ -213,6 +213,16 @@ const updateUser = async (req, res) => {
     }
 
     if (updates.password) {
+      // If user is updating their own password, verify current password
+      if (req.user.id === parseInt(id) && updates.current_password) {
+        const isValidPassword = await bcrypt.compare(updates.current_password, user.password_hash);
+        if (!isValidPassword) {
+          return res.status(400).json({
+            success: false,
+            message: 'Current password is incorrect'
+          });
+        }
+      }
       // Hash the new password
       const hashedPassword = await bcrypt.hash(updates.password, 10);
       fields.push('password_hash = ?');
@@ -301,10 +311,30 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// Get all system roles
+const getRoles = async (req, res) => {
+  try {
+    const roles = await query('SELECT id, name, description, level FROM roles ORDER BY level');
+    
+    res.json({
+      success: true,
+      data: roles
+    });
+  } catch (error) {
+    console.error('Get roles error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get roles',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
   createUser,
   updateUser,
-  deleteUser
+  deleteUser,
+  getRoles
 };

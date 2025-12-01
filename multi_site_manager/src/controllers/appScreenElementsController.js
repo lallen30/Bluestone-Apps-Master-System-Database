@@ -94,7 +94,7 @@ const getAppScreenElements = async (req, res) => {
     // Ensure overrides is an array
     const safeOverrides = overrides || [];
 
-    // Get custom elements added by this app
+    // Get custom elements added by this app (with saved content)
     const customElementsResult = await db.query(
       `SELECT 
         acse.id as custom_element_id,
@@ -111,9 +111,15 @@ const getAppScreenElements = async (req, res) => {
         se.name as element_name,
         se.element_type,
         se.category as element_category,
-        se.icon as element_icon
+        se.icon as element_icon,
+        asc_content.content_value,
+        asc_content.options as content_options
        FROM app_custom_screen_elements acse
        JOIN screen_elements se ON acse.element_id = se.id
+       LEFT JOIN app_screen_content asc_content 
+         ON asc_content.app_id = acse.app_id 
+         AND asc_content.screen_id = acse.screen_id 
+         AND asc_content.custom_element_id = acse.id
        WHERE acse.app_id = ? AND acse.screen_id = ?
        ORDER BY acse.display_order`,
       [appId, screenId]
@@ -198,6 +204,8 @@ const getAppScreenElements = async (req, res) => {
       is_visible: element.is_visible,
       display_order: element.display_order,
       config: element.config,
+      content_value: element.content_value,
+      content_options: element.content_options,
       is_custom: true,
       has_override: false
     }));

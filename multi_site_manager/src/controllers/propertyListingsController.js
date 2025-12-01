@@ -140,6 +140,43 @@ exports.createListing = async (req, res) => {
 };
 
 /**
+ * Get all hosts (users with listings) for an app
+ * GET /api/v1/apps/:appId/hosts
+ */
+exports.getHosts = async (req, res) => {
+  try {
+    const { appId } = req.params;
+
+    const hosts = await db.query(
+      `SELECT DISTINCT 
+        u.id,
+        u.first_name,
+        u.last_name,
+        u.email,
+        COUNT(l.id) as listing_count
+       FROM app_users u
+       INNER JOIN property_listings l ON u.id = l.user_id AND l.app_id = ?
+       WHERE u.app_id = ?
+       GROUP BY u.id, u.first_name, u.last_name, u.email
+       ORDER BY u.first_name, u.last_name`,
+      [appId, appId]
+    );
+
+    res.json({
+      success: true,
+      data: hosts || []
+    });
+  } catch (error) {
+    console.error('Get hosts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch hosts',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Get all listings for an app (with search/filter)
  * GET /api/v1/apps/:appId/listings
  */
@@ -233,6 +270,9 @@ exports.getListings = async (req, res) => {
     if (status) {
       query += ` AND l.status = ?`;
       params.push(status);
+    } else {
+      // Default: only show active listings for public browsing (exclude drafts)
+      query += ` AND l.status = 'active'`;
     }
 
     if (user_id) {

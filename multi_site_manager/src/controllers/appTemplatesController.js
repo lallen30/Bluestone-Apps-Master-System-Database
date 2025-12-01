@@ -142,10 +142,18 @@ const getAppTemplateById = async (req, res) => {
 /**
  * Create app from template
  * POST /api/v1/app-templates/create-from-template
+ * 
+ * This creates a complete app clone including:
+ * - App record
+ * - Screen assignments
+ * - Roles and role-screen access
+ * - Menus and menu-screen assignments
+ * - Custom elements and element overrides
+ * - Screen content
  */
 const createAppFromTemplate = async (req, res) => {
   try {
-    const { template_id, app_name, app_domain, created_by } = req.body;
+    const { template_id, app_name, app_domain, created_by, source_app_id } = req.body;
 
     // Validate required fields
     if (!template_id || !app_name || !created_by) {
@@ -181,93 +189,822 @@ const createAppFromTemplate = async (req, res) => {
       domain = `${baseDomain}-${timestamp}.app`;
     }
 
-    // Create the app
+    // Create the app with template_id reference
     const appResult = await db.query(
-      `INSERT INTO apps (name, domain, description, is_active, created_by)
-       VALUES (?, ?, ?, TRUE, ?)`,
-      [app_name, domain, template.description, created_by]
+      `INSERT INTO apps (name, domain, description, template_id, is_active, created_by)
+       VALUES (?, ?, ?, ?, TRUE, ?)`,
+      [app_name, domain, template.description, template_id, created_by]
     );
 
-    const appId = appResult.insertId;
+    const newAppId = appResult.insertId;
+    
+    // Track cloning stats
+    const stats = {
+      screens: 0,
+      roles: 0,
+      roleAccess: 0,
+      menus: 0,
+      menuAssignments: 0,
+      customElements: 0,
+      elementOverrides: 0,
+      screenContent: 0
+    };
 
-    // Get template screens
-    const screens = await db.query(
-      `SELECT * FROM app_template_screens 
-       WHERE template_id = ? 
-       ORDER BY display_order`,
-      [template_id]
-    );
+    // If source_app_id provided, clone from existing app instead of template
+    // This enables full app cloning with all customizations
+    const cloneFromAppId = source_app_id || null;
 
-    // Create screens and their elements
-    for (let templateScreen of screens) {
-      // Check if screen with this name already exists
-      const existingScreens = await db.query(
-        `SELECT id FROM app_screens WHERE name = ? LIMIT 1`,
-        [templateScreen.screen_name]
+    // ========================================
+    // STEP 1: Clone Roles
+    // ========================================
+    if (cloneFromAppId) {
+      const sourceRoles = await db.query(
+        'SELECT * FROM app_roles WHERE app_id = ?',
+        [cloneFromAppId]
       );
-
-      let screenId;
-      let isNewScreen = false;
       
-      if (existingScreens && existingScreens.length > 0) {
-        // Use existing screen
-        screenId = existingScreens[0].id;
-      } else {
-        // Create new screen in app_screens (master screens table)
-        const screenResult = await db.query(
-          `INSERT INTO app_screens (name, screen_key, description, icon, category, is_active, created_by)
-           VALUES (?, ?, ?, ?, ?, TRUE, ?)`,
-          [
-            templateScreen.screen_name,
-            `${templateScreen.screen_key}_${appId}_${Date.now()}`, // Make screen_key unique
-            templateScreen.screen_description,
-            templateScreen.screen_icon,
-            templateScreen.screen_category,
-            created_by
-          ]
+      // Map old role IDs to new role IDs
+      const roleIdMap = {};
+      
+      for (const role of sourceRoles) {
+        const roleResult = await db.query(
+          `INSERT INTO app_roles (app_id, name, display_name, description, is_default)
+           VALUES (?, ?, ?, ?, ?)`,
+          [newAppId, role.name, role.display_name || role.name, role.description || null, role.is_default ?? 0]
         );
-        screenId = screenResult.insertId;
-        isNewScreen = true;
+        roleIdMap[role.id] = roleResult.insertId;
+        stats.roles++;
       }
 
-      // Assign screen to app
-      await db.query(
-        `INSERT INTO app_screen_assignments (app_id, screen_id, is_active, display_order, assigned_by)
-         VALUES (?, ?, TRUE, ?, ?)`,
-        [appId, screenId, templateScreen.display_order, created_by]
+      // ========================================
+      // STEP 2: Clone Screen Assignments from source app
+      // ========================================
+      const sourceScreenAssignments = await db.query(
+        'SELECT * FROM app_screen_assignments WHERE app_id = ? ORDER BY display_order',
+        [cloneFromAppId]
       );
 
-      // Only add elements if this is a new screen (existing screens already have elements)
-      if (isNewScreen) {
-        // Get elements for this template screen
-        const elements = await db.query(
-          `SELECT * FROM app_template_screen_elements 
-           WHERE template_screen_id = ? 
-           ORDER BY display_order`,
-          [templateScreen.id]
+      // Map old screen assignment IDs to new ones (for content cloning)
+      const screenAssignmentMap = {};
+
+      for (const assignment of sourceScreenAssignments) {
+        const assignResult = await db.query(
+          `INSERT INTO app_screen_assignments (app_id, screen_id, is_active, is_published, display_order, assigned_by)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [newAppId, assignment.screen_id, assignment.is_active ?? 1, assignment.is_published ?? 0, assignment.display_order ?? 0, created_by]
+        );
+        screenAssignmentMap[assignment.id] = assignResult.insertId;
+        stats.screens++;
+      }
+
+      // ========================================
+      // STEP 3: Clone Screen Role Access
+      // ========================================
+      const sourceRoleAccess = await db.query(
+        'SELECT * FROM screen_role_access WHERE app_id = ?',
+        [cloneFromAppId]
+      );
+
+      for (const access of sourceRoleAccess) {
+        const newRoleId = roleIdMap[access.role_id];
+        if (newRoleId) {
+          await db.query(
+            `INSERT INTO screen_role_access (screen_id, role_id, app_id, can_access)
+             VALUES (?, ?, ?, ?)`,
+            [access.screen_id, newRoleId, newAppId, access.can_access]
+          );
+          stats.roleAccess++;
+        }
+      }
+
+      // ========================================
+      // STEP 4: Clone Menus
+      // ========================================
+      const sourceMenus = await db.query(
+        'SELECT * FROM app_menus WHERE app_id = ?',
+        [cloneFromAppId]
+      );
+
+      const menuIdMap = {};
+
+      for (const menu of sourceMenus) {
+        const menuResult = await db.query(
+          `INSERT INTO app_menus (app_id, name, menu_type, icon, description, is_active)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [newAppId, menu.name, menu.menu_type, menu.icon || null, menu.description || null, menu.is_active ?? 1]
+        );
+        menuIdMap[menu.id] = menuResult.insertId;
+        stats.menus++;
+      }
+
+      // ========================================
+      // STEP 5: Clone Menu-Screen Assignments
+      // ========================================
+      // Get menu assignments for the source app's menus
+      const sourceMenuIds = Object.keys(menuIdMap).join(',');
+      if (sourceMenuIds) {
+        const sourceMenuAssignments = await db.query(
+          `SELECT * FROM screen_menu_assignments WHERE menu_id IN (${sourceMenuIds})`
         );
 
-        // Create screen elements
-        for (let element of elements) {
+        for (const menuAssign of sourceMenuAssignments) {
+          const newMenuId = menuIdMap[menuAssign.menu_id];
+          if (newMenuId) {
+            await db.query(
+              `INSERT INTO screen_menu_assignments (screen_id, menu_id)
+               VALUES (?, ?)`,
+              [menuAssign.screen_id, newMenuId]
+            );
+            stats.menuAssignments++;
+          }
+        }
+      }
+
+      // ========================================
+      // STEP 6: Clone Custom Screen Elements
+      // ========================================
+      const sourceCustomElements = await db.query(
+        'SELECT * FROM app_custom_screen_elements WHERE app_id = ?',
+        [cloneFromAppId]
+      );
+
+      for (const customEl of sourceCustomElements) {
+        await db.query(
+          `INSERT INTO app_custom_screen_elements 
+           (app_id, screen_id, element_id, field_key, label, placeholder, default_value, 
+            is_required, is_visible, display_order, config)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [newAppId, customEl.screen_id, customEl.element_id, customEl.field_key, customEl.label || null,
+           customEl.placeholder || null, customEl.default_value || null, customEl.is_required ?? 0, customEl.is_visible ?? 1,
+           customEl.display_order ?? 0, customEl.config || null]
+        );
+        stats.customElements++;
+      }
+
+      // ========================================
+      // STEP 7: Clone Element Overrides
+      // ========================================
+      const sourceOverrides = await db.query(
+        'SELECT * FROM app_screen_element_overrides WHERE app_id = ?',
+        [cloneFromAppId]
+      );
+
+      for (const override of sourceOverrides) {
+        await db.query(
+          `INSERT INTO app_screen_element_overrides 
+           (app_id, screen_id, element_instance_id, custom_label, custom_placeholder, 
+            custom_default_value, is_required_override, is_hidden, custom_display_order, custom_config)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [newAppId, override.screen_id, override.element_instance_id, override.custom_label || null,
+           override.custom_placeholder || null, override.custom_default_value || null, override.is_required_override ?? null,
+           override.is_hidden ?? 0, override.custom_display_order ?? null, override.custom_config || null]
+        );
+        stats.elementOverrides++;
+      }
+
+      // ========================================
+      // STEP 8: Clone Screen Content
+      // ========================================
+      const sourceContent = await db.query(
+        'SELECT * FROM app_screen_content WHERE app_id = ?',
+        [cloneFromAppId]
+      );
+
+      for (const content of sourceContent) {
+        await db.query(
+          `INSERT INTO app_screen_content 
+           (app_id, screen_id, element_instance_id, content_value, options, updated_by)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [newAppId, content.screen_id, content.element_instance_id,
+           content.content_value || null, content.options || null, created_by]
+        );
+        stats.screenContent++;
+      }
+
+      // ========================================
+      // STEP 9: Clone Administrator Permissions (user_app_permissions)
+      // ========================================
+      const sourceAdminPermissions = await db.query(
+        'SELECT * FROM user_app_permissions WHERE app_id = ?',
+        [cloneFromAppId]
+      );
+
+      stats.adminPermissions = 0;
+      for (const perm of sourceAdminPermissions) {
+        await db.query(
+          `INSERT INTO user_app_permissions 
+           (user_id, app_id, can_view, can_edit, can_delete, can_publish, 
+            can_manage_users, can_manage_settings, custom_permissions, granted_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [perm.user_id, newAppId, perm.can_view ?? 1, perm.can_edit ?? 0, 
+           perm.can_delete ?? 0, perm.can_publish ?? 0, perm.can_manage_users ?? 0,
+           perm.can_manage_settings ?? 0, perm.custom_permissions || null, created_by]
+        );
+        stats.adminPermissions++;
+      }
+
+      // ========================================
+      // STEP 10: Clone App Users (mobile app users)
+      // ========================================
+      const sourceAppUsers = await db.query(
+        'SELECT * FROM app_users WHERE app_id = ?',
+        [cloneFromAppId]
+      );
+
+      // Map old app_user IDs to new app_user IDs for role assignments
+      const appUserIdMap = {};
+      stats.appUsers = 0;
+
+      for (const user of sourceAppUsers) {
+        const userResult = await db.query(
+          `INSERT INTO app_users 
+           (app_id, email, password_hash, first_name, last_name, phone, bio, avatar_url,
+            date_of_birth, gender, status, email_verified, last_login_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [newAppId, user.email, user.password_hash, user.first_name || null, 
+           user.last_name || null, user.phone || null, user.bio || null, user.avatar_url || null,
+           user.date_of_birth || null, user.gender || null,
+           user.status || 'active', user.email_verified ?? 0, user.last_login_at || null]
+        );
+        appUserIdMap[user.id] = userResult.insertId;
+        stats.appUsers++;
+      }
+
+      // ========================================
+      // STEP 11: Clone App User Role Assignments
+      // ========================================
+      // Get role assignments for source app's roles
+      const sourceRoleIds = Object.keys(roleIdMap).join(',');
+      stats.appUserRoleAssignments = 0;
+
+      if (sourceRoleIds) {
+        const sourceRoleAssignments = await db.query(
+          `SELECT * FROM app_user_role_assignments WHERE app_role_id IN (${sourceRoleIds})`
+        );
+
+        for (const assignment of sourceRoleAssignments) {
+          const newUserId = appUserIdMap[assignment.user_id];
+          const newRoleId = roleIdMap[assignment.app_role_id];
+          
+          if (newUserId && newRoleId) {
+            await db.query(
+              `INSERT INTO app_user_role_assignments (user_id, app_role_id, assigned_by)
+               VALUES (?, ?, ?)`,
+              [newUserId, newRoleId, created_by]
+            );
+            stats.appUserRoleAssignments++;
+          }
+        }
+      }
+
+      // ========================================
+      // STEP 12: Clone Property Listings
+      // ========================================
+      const sourceListings = await db.query(
+        'SELECT * FROM property_listings WHERE app_id = ?',
+        [cloneFromAppId]
+      );
+
+      // Map old listing IDs to new listing IDs for images/amenities
+      const listingIdMap = {};
+      stats.propertyListings = 0;
+
+      for (const listing of sourceListings) {
+        // Map the user_id to the new app's user
+        const newUserId = appUserIdMap[listing.user_id] || listing.user_id;
+        
+        const listingResult = await db.query(
+          `INSERT INTO property_listings 
+           (app_id, user_id, title, description, property_type, 
+            address_line1, address_line2, city, state, country, postal_code,
+            latitude, longitude, bedrooms, bathrooms, beds, guests_max, square_feet,
+            price_per_night, currency, cleaning_fee, service_fee_percentage,
+            min_nights, max_nights, check_in_time, check_out_time,
+            cancellation_policy, status, is_published, is_instant_book,
+            house_rules, additional_info)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [newAppId, newUserId, listing.title, listing.description || null, listing.property_type || 'apartment',
+           listing.address_line1 || null, listing.address_line2 || null, listing.city, listing.state || null,
+           listing.country, listing.postal_code || null, listing.latitude || null, listing.longitude || null,
+           listing.bedrooms ?? 0, listing.bathrooms ?? 0, listing.beds ?? 0, listing.guests_max ?? 1,
+           listing.square_feet || null, listing.price_per_night, listing.currency || 'USD',
+           listing.cleaning_fee ?? 0, listing.service_fee_percentage ?? 0,
+           listing.min_nights ?? 1, listing.max_nights ?? 365, listing.check_in_time || '15:00:00',
+           listing.check_out_time || '11:00:00', listing.cancellation_policy || 'moderate',
+           listing.status || 'draft', listing.is_published ?? 0, listing.is_instant_book ?? 0,
+           listing.house_rules || null, listing.additional_info || null]
+        );
+        listingIdMap[listing.id] = listingResult.insertId;
+        stats.propertyListings++;
+      }
+
+      // ========================================
+      // STEP 13: Clone Property Images
+      // ========================================
+      stats.propertyImages = 0;
+      const sourceListingIds = Object.keys(listingIdMap).join(',');
+      
+      if (sourceListingIds) {
+        const sourceImages = await db.query(
+          `SELECT * FROM property_images WHERE listing_id IN (${sourceListingIds})`
+        );
+
+        for (const image of sourceImages) {
+          const newListingId = listingIdMap[image.listing_id];
+          if (newListingId) {
+            await db.query(
+              `INSERT INTO property_images 
+               (listing_id, image_url, image_key, caption, display_order, is_primary)
+               VALUES (?, ?, ?, ?, ?, ?)`,
+              [newListingId, image.image_url, image.image_key || null, image.caption || null,
+               image.display_order ?? 0, image.is_primary ?? 0]
+            );
+            stats.propertyImages++;
+          }
+        }
+
+        // ========================================
+        // STEP 14: Clone Property Listing Amenities
+        // ========================================
+        stats.propertyAmenities = 0;
+        const sourceAmenities = await db.query(
+          `SELECT * FROM property_listing_amenities WHERE listing_id IN (${sourceListingIds})`
+        );
+
+        for (const amenity of sourceAmenities) {
+          const newListingId = listingIdMap[amenity.listing_id];
+          if (newListingId) {
+            await db.query(
+              `INSERT INTO property_listing_amenities (listing_id, amenity_id)
+               VALUES (?, ?)`,
+              [newListingId, amenity.amenity_id]
+            );
+            stats.propertyAmenities++;
+          }
+        }
+      }
+
+      // ========================================
+      // STEP 15: Clone Menu Items
+      // ========================================
+      stats.menuItems = 0;
+      const sourceMenuIdsForItems = Object.keys(menuIdMap).join(',');
+      
+      if (sourceMenuIdsForItems) {
+        const sourceMenuItems = await db.query(
+          `SELECT * FROM menu_items WHERE menu_id IN (${sourceMenuIdsForItems}) ORDER BY display_order`
+        );
+
+        for (const item of sourceMenuItems) {
+          const newMenuId = menuIdMap[item.menu_id];
+          // For sidebar items, map the sidebar_menu_id to the new menu
+          const newSidebarMenuId = item.sidebar_menu_id ? menuIdMap[item.sidebar_menu_id] : null;
+          
+          if (newMenuId) {
+            await db.query(
+              `INSERT INTO menu_items 
+               (menu_id, screen_id, item_type, sidebar_menu_id, sidebar_position, 
+                display_order, label, icon, is_active)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [newMenuId, item.screen_id || null, item.item_type || 'screen', 
+               newSidebarMenuId, item.sidebar_position || null,
+               item.display_order ?? 0, item.label || null, item.icon || null, 
+               item.is_active ?? 1]
+            );
+            stats.menuItems++;
+          }
+        }
+      }
+
+    } else {
+      // ========================================
+      // Clone from template tables (self-contained templates)
+      // ========================================
+      
+      // STEP 1: Clone Roles from template
+      const templateRoles = await db.query(
+        'SELECT * FROM app_template_roles WHERE template_id = ?',
+        [template_id]
+      );
+      
+      const roleIdMap = {};
+      for (const role of templateRoles) {
+        const roleResult = await db.query(
+          `INSERT INTO app_roles (app_id, name, display_name, description, is_default)
+           VALUES (?, ?, ?, ?, ?)`,
+          [newAppId, role.name, role.display_name || role.name, role.description || null, role.is_default ?? 0]
+        );
+        roleIdMap[role.id] = roleResult.insertId;
+        stats.roles++;
+      }
+
+      // STEP 2: Clone Screens from template
+      const screens = await db.query(
+        `SELECT * FROM app_template_screens 
+         WHERE template_id = ? 
+         ORDER BY display_order`,
+        [template_id]
+      );
+
+      for (let templateScreen of screens) {
+        // Use existing master screen if it exists
+        let screenId = templateScreen.screen_id;
+        
+        if (screenId) {
           await db.query(
-            `INSERT INTO screen_element_instances 
-             (screen_id, element_id, field_key, label, placeholder, default_value, 
-              is_required, is_readonly, display_order, config, validation_rules)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              screenId,
-              element.element_id,
-              element.field_key,
-              element.label,
-              element.placeholder,
-              element.default_value,
-              element.is_required,
-              element.is_readonly,
-              element.display_order,
-              element.config,
-              element.validation_rules
-            ]
+            `INSERT INTO app_screen_assignments (app_id, screen_id, is_active, display_order, is_published, published_at, assigned_by)
+             VALUES (?, ?, TRUE, ?, ?, ?, ?)`,
+            [newAppId, screenId, templateScreen.display_order, 
+             templateScreen.is_published ?? 1, templateScreen.published_at || new Date(), created_by]
           );
+          stats.screens++;
+        }
+      }
+
+      // STEP 3: Clone Screen Role Access from template
+      const templateScreenRoleAccess = await db.query(
+        'SELECT * FROM app_template_screen_role_access WHERE template_id = ?',
+        [template_id]
+      );
+
+      for (const access of templateScreenRoleAccess) {
+        const newRoleId = roleIdMap[access.template_role_id];
+        if (newRoleId) {
+          await db.query(
+            `INSERT INTO screen_role_access (screen_id, role_id, app_id, can_access)
+             VALUES (?, ?, ?, ?)`,
+            [access.screen_id, newRoleId, newAppId, access.can_access]
+          );
+          stats.roleAccess = (stats.roleAccess || 0) + 1;
+        }
+      }
+
+      // STEP 4: Clone Menus from template
+      const templateMenus = await db.query(
+        'SELECT * FROM app_template_menus WHERE template_id = ?',
+        [template_id]
+      );
+
+      const menuIdMap = {};
+      for (const menu of templateMenus) {
+        const menuResult = await db.query(
+          `INSERT INTO app_menus (app_id, name, menu_type, icon, description, is_active)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [newAppId, menu.name, menu.menu_type, menu.icon || null, menu.description || null, menu.is_active ?? 1]
+        );
+        menuIdMap[menu.id] = menuResult.insertId;
+        stats.menus = (stats.menus || 0) + 1;
+      }
+
+      // STEP 5: Clone Menu Items from template
+      for (const templateMenu of templateMenus) {
+        const templateMenuItems = await db.query(
+          'SELECT * FROM app_template_menu_items WHERE template_menu_id = ? ORDER BY display_order',
+          [templateMenu.id]
+        );
+
+        const newMenuId = menuIdMap[templateMenu.id];
+        for (const item of templateMenuItems) {
+          await db.query(
+            `INSERT INTO menu_items (menu_id, screen_id, item_type, display_order, label, icon, is_active)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [newMenuId, item.screen_id || null, item.item_type || 'screen',
+             item.display_order ?? 0, item.label || null, item.icon || null, item.is_active ?? 1]
+          );
+          stats.menuItems = (stats.menuItems || 0) + 1;
+        }
+      }
+
+      // STEP 6: Clone Menu Role Access from template
+      const templateMenuRoleAccess = await db.query(
+        `SELECT atmra.*, atm.id as template_menu_id
+         FROM app_template_menu_role_access atmra
+         JOIN app_template_menus atm ON atmra.template_menu_id = atm.id
+         WHERE atm.template_id = ?`,
+        [template_id]
+      );
+
+      for (const access of templateMenuRoleAccess) {
+        const newMenuId = menuIdMap[access.template_menu_id];
+        const newRoleId = roleIdMap[access.template_role_id];
+        if (newMenuId && newRoleId) {
+          await db.query(
+            `INSERT INTO menu_role_access (menu_id, role_id, app_id)
+             VALUES (?, ?, ?)`,
+            [newMenuId, newRoleId, newAppId]
+          );
+          stats.menuRoleAccess = (stats.menuRoleAccess || 0) + 1;
+        }
+      }
+
+      // STEP 6b: Clone Screen Menu Assignments from template
+      const templateScreenMenuAssignments = await db.query(
+        'SELECT * FROM app_template_screen_menu_assignments WHERE template_id = ?',
+        [template_id]
+      );
+
+      for (const assignment of templateScreenMenuAssignments) {
+        const newMenuId = menuIdMap[assignment.template_menu_id];
+        if (newMenuId) {
+          await db.query(
+            `INSERT INTO screen_menu_assignments (screen_id, menu_id)
+             VALUES (?, ?)`,
+            [assignment.screen_id, newMenuId]
+          );
+          stats.screenMenuAssignments = (stats.screenMenuAssignments || 0) + 1;
+        }
+      }
+
+      // STEP 7: Clone Users from template
+      const templateUsers = await db.query(
+        'SELECT * FROM app_template_users WHERE template_id = ?',
+        [template_id]
+      );
+
+      const userIdMap = {};
+      for (const user of templateUsers) {
+        const userResult = await db.query(
+          `INSERT INTO app_users 
+           (app_id, email, password_hash, first_name, last_name, phone, bio, avatar_url,
+            date_of_birth, gender, status, email_verified)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [newAppId, user.email, user.password_hash, user.first_name || null, 
+           user.last_name || null, user.phone || null, user.bio || null, user.avatar_url || null,
+           user.date_of_birth || null, user.gender || null,
+           user.status || 'active', user.email_verified ?? 0]
+        );
+        userIdMap[user.id] = userResult.insertId;
+        stats.appUsers = (stats.appUsers || 0) + 1;
+      }
+
+      // STEP 8: Clone User Role Assignments from template
+      const templateUserRoleAssignments = await db.query(
+        `SELECT atura.*, atu.id as template_user_id
+         FROM app_template_user_role_assignments atura
+         JOIN app_template_users atu ON atura.template_user_id = atu.id
+         WHERE atu.template_id = ?`,
+        [template_id]
+      );
+
+      for (const assignment of templateUserRoleAssignments) {
+        const newUserId = userIdMap[assignment.template_user_id];
+        const newRoleId = roleIdMap[assignment.template_role_id];
+        if (newUserId && newRoleId) {
+          await db.query(
+            `INSERT INTO app_user_role_assignments (user_id, app_role_id, assigned_by)
+             VALUES (?, ?, ?)`,
+            [newUserId, newRoleId, created_by]
+          );
+          stats.appUserRoleAssignments = (stats.appUserRoleAssignments || 0) + 1;
+        }
+      }
+
+      // STEP 9: Clone Property Listings from template
+      const templateListings = await db.query(
+        'SELECT * FROM app_template_property_listings WHERE template_id = ?',
+        [template_id]
+      );
+
+      const listingIdMap = {};
+      for (const listing of templateListings) {
+        const newUserId = userIdMap[listing.template_user_id] || null;
+        const listingResult = await db.query(
+          `INSERT INTO property_listings 
+           (app_id, user_id, title, description, property_type, 
+            address_line1, address_line2, city, state, country, postal_code,
+            latitude, longitude, bedrooms, bathrooms, beds, guests_max, square_feet,
+            price_per_night, currency, cleaning_fee, service_fee_percentage,
+            min_nights, max_nights, check_in_time, check_out_time,
+            cancellation_policy, status, is_published, is_instant_book,
+            house_rules, additional_info)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [newAppId, newUserId, listing.title, listing.description || null, listing.property_type || 'apartment',
+           listing.address_line1 || null, listing.address_line2 || null, listing.city, listing.state || null,
+           listing.country, listing.postal_code || null, listing.latitude || null, listing.longitude || null,
+           listing.bedrooms ?? 0, listing.bathrooms ?? 0, listing.beds ?? 0, listing.guests_max ?? 1,
+           listing.square_feet || null, listing.price_per_night, listing.currency || 'USD',
+           listing.cleaning_fee ?? 0, listing.service_fee_percentage ?? 0,
+           listing.min_nights ?? 1, listing.max_nights ?? 365, listing.check_in_time || '15:00:00',
+           listing.check_out_time || '11:00:00', listing.cancellation_policy || 'moderate',
+           listing.status || 'draft', listing.is_published ?? 0, listing.is_instant_book ?? 0,
+           listing.house_rules || null, listing.additional_info || null]
+        );
+        listingIdMap[listing.id] = listingResult.insertId;
+        stats.propertyListings = (stats.propertyListings || 0) + 1;
+      }
+
+      // STEP 10: Clone Property Images from template
+      for (const templateListing of templateListings) {
+        const templateImages = await db.query(
+          'SELECT * FROM app_template_property_images WHERE template_listing_id = ?',
+          [templateListing.id]
+        );
+
+        const newListingId = listingIdMap[templateListing.id];
+        for (const image of templateImages) {
+          await db.query(
+            `INSERT INTO property_images 
+             (listing_id, image_url, image_key, caption, display_order, is_primary)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [newListingId, image.image_url, image.image_key || null, image.caption || null,
+             image.display_order ?? 0, image.is_primary ?? 0]
+          );
+          stats.propertyImages = (stats.propertyImages || 0) + 1;
+        }
+      }
+
+      // STEP 11: Clone Property Amenities from template
+      for (const templateListing of templateListings) {
+        const templateAmenities = await db.query(
+          'SELECT * FROM app_template_property_amenities WHERE template_listing_id = ?',
+          [templateListing.id]
+        );
+
+        const newListingId = listingIdMap[templateListing.id];
+        for (const amenity of templateAmenities) {
+          await db.query(
+            `INSERT INTO property_listing_amenities (listing_id, amenity_id)
+             VALUES (?, ?)`,
+            [newListingId, amenity.amenity_id]
+          );
+          stats.propertyAmenities = (stats.propertyAmenities || 0) + 1;
+        }
+      }
+
+      // STEP 12: Clone Screen Content from template
+      const templateScreenContent = await db.query(
+        'SELECT * FROM app_template_screen_content WHERE template_id = ?',
+        [template_id]
+      );
+
+      for (const content of templateScreenContent) {
+        // Ensure all values are properly handled - undefined should become null
+        const elementInstanceId = content.element_instance_id !== undefined ? content.element_instance_id : null;
+        const customElementId = content.custom_element_id !== undefined ? content.custom_element_id : null;
+        const contentValue = content.content_value !== undefined && content.content_value !== null ? content.content_value : null;
+        // Options must be a valid JSON string or null
+        let optionsValue = null;
+        if (content.options !== undefined && content.options !== null && content.options !== '') {
+          optionsValue = typeof content.options === 'string' ? content.options : JSON.stringify(content.options);
+        }
+        
+        await db.query(
+          `INSERT INTO app_screen_content (app_id, screen_id, element_instance_id, custom_element_id, content_value, options, updated_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [newAppId, content.screen_id, elementInstanceId, customElementId, contentValue, optionsValue, created_by]
+        );
+        stats.screenContent = (stats.screenContent || 0) + 1;
+      }
+
+      // STEP 13: Clone Custom Screen Elements from template
+      const templateCustomElements = await db.query(
+        'SELECT * FROM app_template_custom_screen_elements WHERE template_id = ?',
+        [template_id]
+      );
+
+      for (const element of templateCustomElements) {
+        // Ensure config is properly serialized as JSON string
+        let configValue = null;
+        if (element.config !== undefined && element.config !== null && element.config !== '') {
+          configValue = typeof element.config === 'string' ? element.config : JSON.stringify(element.config);
+        }
+        
+        await db.query(
+          `INSERT INTO app_custom_screen_elements 
+           (app_id, screen_id, element_id, field_key, label, placeholder, default_value, 
+            validation_rules, is_required, display_order, config)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [newAppId, element.screen_id, element.element_id, element.field_key,
+           element.label || null, element.placeholder || null, element.default_value || null,
+           element.validation_rules || null, element.is_required ?? 0, element.display_order ?? 0,
+           configValue]
+        );
+        stats.customElements = (stats.customElements || 0) + 1;
+      }
+
+      // STEP 14: Clone Administrators from template with role-based permissions
+      const templateAdmins = await db.query(
+        'SELECT * FROM app_template_administrators WHERE template_id = ?',
+        [template_id]
+      );
+
+      // Admin permission preset (role_id = 2)
+      const adminScreenPermissions = {
+        "18": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "96": { can_menu_config: true, can_edit_content: true, can_module_config: true, can_toggle_publish: true },
+        "97": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "98": { can_menu_config: true, can_edit_content: true, can_module_config: true, can_toggle_publish: true },
+        "99": { can_menu_config: true, can_edit_content: true, can_module_config: true, can_toggle_publish: true },
+        "100": { can_menu_config: true, can_edit_content: true, can_module_config: true, can_toggle_publish: true },
+        "101": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "102": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "103": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "104": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: false },
+        "105": { can_menu_config: true, can_edit_content: true, can_module_config: true, can_toggle_publish: true },
+        "106": { can_menu_config: true, can_edit_content: true, can_module_config: true, can_toggle_publish: true },
+        "107": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: false },
+        "108": { can_menu_config: true, can_edit_content: true, can_module_config: true, can_toggle_publish: true },
+        "109": { can_menu_config: true, can_edit_content: true, can_module_config: true, can_toggle_publish: true },
+        "110": { can_menu_config: true, can_edit_content: true, can_module_config: true, can_toggle_publish: true },
+        "111": { can_menu_config: true, can_edit_content: true, can_module_config: true, can_toggle_publish: true },
+        "112": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: false },
+        "113": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: true },
+        "114": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: false },
+        "115": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "116": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: false },
+        "117": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "127": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: false },
+        "128": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "129": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: false },
+        "130": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: false },
+        "131": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: false },
+        "132": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: false },
+        "133": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: false },
+        "134": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: false },
+        "135": { can_menu_config: true, can_edit_content: false, can_module_config: true, can_toggle_publish: false },
+        "137": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+      };
+      const adminMenuAccess = { property_listings: true, bookings: true, contact_submissions: true, menus: true };
+      const adminCustomPermissions = JSON.stringify({ screens: adminScreenPermissions, menu_access: adminMenuAccess });
+
+      // Editor permission preset (role_id = 3)
+      const editorScreenPermissions = {
+        "18": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "96": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "97": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "98": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "99": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "100": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "101": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "102": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "103": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "104": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "105": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "106": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "107": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "108": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "109": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "110": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "111": { can_menu_config: false, can_edit_content: true, can_module_config: false, can_toggle_publish: true },
+        "112": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "113": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "114": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "115": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "116": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "117": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "127": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "128": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "129": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "130": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "131": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "132": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "133": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "134": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "135": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+        "137": { can_menu_config: false, can_edit_content: false, can_module_config: false, can_toggle_publish: false },
+      };
+      const editorMenuAccess = { property_listings: false, bookings: false, contact_submissions: false, menus: false };
+      const editorCustomPermissions = JSON.stringify({ screens: editorScreenPermissions, menu_access: editorMenuAccess });
+
+      for (const admin of templateAdmins) {
+        // Determine role-based permissions
+        const roleId = admin.role_id || 3; // Default to Editor
+        const isAdmin = roleId === 2;
+        
+        const customPerms = isAdmin ? adminCustomPermissions : editorCustomPermissions;
+        const canManageUsers = isAdmin ? 1 : 0;
+        const canManageAdmins = isAdmin ? 1 : 0;
+        const canManageSettings = isAdmin ? 1 : 0;
+        
+        await db.query(
+          `INSERT INTO user_app_permissions 
+           (user_id, app_id, role_id, can_view, can_edit, can_delete, can_publish, 
+            can_manage_users, can_manage_admins, can_manage_settings, custom_permissions, granted_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [admin.user_id, newAppId, roleId, 1, 1, 1, 1, 
+           canManageUsers, canManageAdmins, canManageSettings, customPerms, created_by]
+        );
+        stats.administrators = (stats.administrators || 0) + 1;
+      }
+
+      // STEP 15: Clone Role Home Screens from template
+      const templateRoleHomeScreens = await db.query(
+        `SELECT atrhs.*, atr.id as template_role_id
+         FROM app_template_role_home_screens atrhs
+         JOIN app_template_roles atr ON atrhs.template_role_id = atr.id
+         WHERE atr.template_id = ?`,
+        [template_id]
+      );
+
+      for (const homeScreen of templateRoleHomeScreens) {
+        const newRoleId = roleIdMap[homeScreen.template_role_id];
+        if (newRoleId) {
+          await db.query(
+            `INSERT INTO role_home_screens (app_id, role_id, screen_id)
+             VALUES (?, ?, ?)`,
+            [newAppId, newRoleId, homeScreen.screen_id]
+          );
+          stats.roleHomeScreens = (stats.roleHomeScreens || 0) + 1;
         }
       }
     }
@@ -276,9 +1013,10 @@ const createAppFromTemplate = async (req, res) => {
       success: true,
       message: 'App created from template successfully',
       data: {
-        app_id: appId,
+        app_id: newAppId,
         app_name: app_name,
-        screens_created: screens.length
+        cloned_from: cloneFromAppId ? `App ID ${cloneFromAppId}` : `Template ID ${template_id}`,
+        stats: stats
       }
     });
   } catch (error) {

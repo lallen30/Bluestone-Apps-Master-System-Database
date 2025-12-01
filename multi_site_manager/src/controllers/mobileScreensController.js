@@ -201,9 +201,9 @@ exports.getScreenWithElements = async (req, res) => {
       }
     }
 
-    // Get screen details
+    // Get screen details including primitive renderer flag
     const screenResult = await db.query(
-      `SELECT id, name, screen_key, description, category, icon
+      `SELECT id, name, screen_key, description, category, icon, use_primitive_renderer
        FROM app_screens
        WHERE id = ? AND is_active = 1`,
       [screenId]
@@ -284,7 +284,7 @@ exports.getScreenWithElements = async (req, res) => {
 
     const safeOverrides = overrides || [];
 
-    // Get custom elements
+    // Get custom elements with saved content
     const customElementsResult = await db.query(
       `SELECT 
         acse.id as custom_element_id,
@@ -300,9 +300,15 @@ exports.getScreenWithElements = async (req, res) => {
         se.name as element_name,
         se.element_type,
         se.category as element_category,
-        se.icon as element_icon
+        se.icon as element_icon,
+        asc_content.content_value,
+        asc_content.options as content_options
        FROM app_custom_screen_elements acse
        JOIN screen_elements se ON acse.element_id = se.id
+       LEFT JOIN app_screen_content asc_content 
+         ON asc_content.app_id = acse.app_id 
+         AND asc_content.screen_id = acse.screen_id 
+         AND asc_content.custom_element_id = acse.id
        WHERE acse.app_id = ? AND acse.screen_id = ?
        ORDER BY acse.display_order`,
       [appId, screenId]
@@ -413,6 +419,8 @@ exports.getScreenWithElements = async (req, res) => {
         element_category: element.element_category,
         element_icon: element.element_icon,
         config: element.config,
+        content_value: element.content_value,
+        content_options: element.content_options,
         is_custom: true
       };
     });
@@ -535,6 +543,141 @@ exports.getScreenWithElements = async (req, res) => {
       });
     }
 
+    // Check if screen uses primitive renderer
+    const usePrimitiveRenderer = screen.use_primitive_renderer === 1 || screen.use_primitive_renderer === true;
+    
+    // If using primitive renderer, fetch element templates for each element
+    let primitiveElements = null;
+    let dataSources = null;
+    
+    if (usePrimitiveRenderer) {
+      // Get element templates for each element type used
+      const elementTypes = [...new Set(elementsWithData.map(e => e.element_type))];
+      
+      if (elementTypes.length > 0) {
+        const placeholders = elementTypes.map(() => '?').join(',');
+        const templatesResult = await db.query(
+          `SELECT element_type, template, default_config, data_bindings
+           FROM element_templates
+           WHERE element_type IN (${placeholders}) AND is_active = 1`,
+          elementTypes
+        );
+        
+        const templates = Array.isArray(templatesResult) && Array.isArray(templatesResult[0])
+          ? templatesResult[0]
+          : templatesResult;
+        
+        // Create a map of element_type to template
+        const templateMap = {};
+        (templates || []).forEach(t => {
+          try {
+            templateMap[t.element_type] = {
+              template: typeof t.template === 'string' ? JSON.parse(t.template) : t.template,
+              default_config: typeof t.default_config === 'string' ? JSON.parse(t.default_config) : t.default_config,
+              data_bindings: typeof t.data_bindings === 'string' ? JSON.parse(t.data_bindings) : t.data_bindings
+            };
+          } catch (e) {
+            console.error(`Failed to parse template for ${t.element_type}:`, e);
+          }
+        });
+        
+        // Transform elements to primitive format
+        primitiveElements = elementsWithData.map(element => {
+          const template = templateMap[element.element_type];
+          
+          // Parse content_options if it's a string
+          let contentOptions = {};
+          if (element.content_options) {
+            try {
+              contentOptions = typeof element.content_options === 'string' 
+                ? JSON.parse(element.content_options) 
+                : element.content_options;
+            } catch (e) {
+              console.error('Failed to parse content_options:', e);
+            }
+          }
+          
+          // Use content_value for text/label, content_options for config overrides
+          const contentValue = element.content_value;
+          
+          if (template) {
+            // Merge configs: template defaults < master config < content_options
+            const mergedConfig = {
+              ...template.default_config,
+              ...element.config,
+              ...contentOptions,
+              field_key: element.field_key,
+              label: element.label,
+              placeholder: element.placeholder,
+              required: element.is_required
+            };
+            
+            // For text-based elements, use content_value as the text
+            if (contentValue && ['heading', 'paragraph', 'text', 'Text', 'Heading'].includes(element.element_type)) {
+              mergedConfig.text = contentValue;
+            }
+            
+            // For buttons, use content_value as label if provided
+            if (contentValue && ['button', 'Button'].includes(element.element_type)) {
+              mergedConfig.label = contentValue;
+            }
+            
+            return {
+              id: element.element_instance_id || element.custom_element_id,
+              ...template.template,
+              config: mergedConfig,
+              data_binding: {
+                ...template.data_bindings,
+                ...(element.data_bindings || {})
+              }
+            };
+          }
+          // Fallback for elements without templates
+          const fallbackConfig = {
+            ...element.config,
+            ...contentOptions,
+            // Always include these from the element
+            field_key: element.field_key,
+            label: element.label,
+            placeholder: element.placeholder,
+            required: element.is_required,
+            defaultValue: element.default_value
+          };
+          if (contentValue) {
+            fallbackConfig.text = contentValue;
+            fallbackConfig.label = contentValue;
+          }
+          return {
+            id: element.element_instance_id || element.custom_element_id,
+            type: element.element_type,
+            config: fallbackConfig
+          };
+        });
+      }
+      
+      // Get data sources for this screen
+      const dataSourcesResult = await db.query(
+        `SELECT source_name, endpoint, method, params_from_route, params_from_config, refresh_on_focus, cache_duration
+         FROM screen_data_sources
+         WHERE screen_id = ?`,
+        [screenId]
+      );
+      
+      const sources = Array.isArray(dataSourcesResult) && Array.isArray(dataSourcesResult[0])
+        ? dataSourcesResult[0]
+        : dataSourcesResult;
+      
+      dataSources = (sources || []).map(s => ({
+        name: s.source_name,
+        endpoint: s.endpoint,
+        method: s.method,
+        params_from_route: typeof s.params_from_route === 'string' ? JSON.parse(s.params_from_route) : s.params_from_route,
+        params_from_config: typeof s.params_from_config === 'string' ? JSON.parse(s.params_from_config) : s.params_from_config,
+        refresh_on_focus: s.refresh_on_focus,
+        cache_duration: s.cache_duration
+      }));
+    }
+
     res.json({
       success: true,
       data: {
@@ -543,9 +686,12 @@ exports.getScreenWithElements = async (req, res) => {
           name: screen.name,
           description: screen.description,
           category: screen.category,
-          icon: screen.icon
+          icon: screen.icon,
+          use_primitive_renderer: usePrimitiveRenderer
         },
         elements: elementsWithData,
+        primitive_elements: primitiveElements,
+        data_sources: dataSources,
         modules: safeModules,
         total_elements: elementsWithData.length
       }

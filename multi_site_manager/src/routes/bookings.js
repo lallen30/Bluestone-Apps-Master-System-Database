@@ -2,8 +2,22 @@ const express = require('express');
 const router = express.Router();
 const bookingsController = require('../controllers/bookingsController');
 const { authenticateMobileUser } = require('../middleware/mobileAuth');
+const { authenticate, hasAppAccess } = require('../middleware/auth');
 
-// All routes require authentication
+// Admin routes (require admin auth)
+
+/**
+ * GET /api/v1/apps/:appId/bookings/all
+ * Get all bookings for an app (admin only)
+ */
+router.get(
+  '/apps/:appId/bookings/all',
+  authenticate,
+  hasAppAccess,
+  bookingsController.getAllBookings
+);
+
+// Mobile user routes (require authentication)
 
 /**
  * POST /api/v1/apps/:appId/bookings
