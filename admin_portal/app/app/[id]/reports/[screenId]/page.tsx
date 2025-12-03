@@ -82,6 +82,7 @@ export default function ReportViewPage() {
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [editFields, setEditFields] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -106,15 +107,19 @@ export default function ReportViewPage() {
 
       // Fetch report config to get screen name and elements
       const configResponse = await reportsAPI.getReportConfig(appId, screenId);
-      const { screen, elements: screenElements, config: reportConfig } = configResponse.data;
+      const { screen, elements: screenElements, config: reportConfig, canEdit: userCanEdit } = configResponse.data;
       
       setReportName(reportConfig?.report_name || screen.name);
       setElements(screenElements || []);
+      setCanEdit(userCanEdit ?? false);
 
       // Fetch report data
       await fetchReportData(1, {});
     } catch (err: any) {
       console.error('Error fetching report:', err);
+      if (err.response?.status === 403) {
+        router.push(`/app/${appId}/reports`);
+      }
     } finally {
       setLoading(false);
     }
@@ -261,13 +266,15 @@ export default function ReportViewPage() {
                 Export CSV
               </button>
             )}
-            <button
-              onClick={() => router.push(`/app/${appId}/reports/${screenId}/config`)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-            >
-              <Settings className="w-4 h-4" />
-              Configure
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => router.push(`/app/${appId}/reports/${screenId}/config`)}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+              >
+                <Settings className="w-4 h-4" />
+                Configure
+              </button>
+            )}
           </div>
         </div>
 

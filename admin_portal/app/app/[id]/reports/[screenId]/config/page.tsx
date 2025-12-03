@@ -449,7 +449,7 @@ export default function ReportConfigPage() {
                       View
                     </div>
                     <div className="px-4 py-3 text-sm font-medium text-gray-700 text-center">
-                      Edit
+                      Configure
                     </div>
                   </div>
                   {/* Rows */}
@@ -485,7 +485,7 @@ export default function ReportConfigPage() {
                 </div>
               )}
               <p className="text-xs text-gray-400 mt-3">
-                View: Can see reports and data. Edit: Can configure reports (automatically includes View access).
+                View: Can see reports and data. Configure: Can configure reports (automatically includes View access).
               </p>
             </div>
           </div>
@@ -512,6 +512,9 @@ export default function ReportConfigPage() {
                   
                   // Skip if it's a field column that doesn't exist in elements
                   if (!isSystem && !element) return null;
+                  
+                  // Skip non-input elements (they don't contain user data)
+                  if (element && ['paragraph', 'button', 'heading'].includes(element.element_type?.toLowerCase())) return null;
                   
                   const isVisible = isDate 
                     ? config.show_date_column 
@@ -590,11 +593,13 @@ export default function ReportConfigPage() {
                 Select which fields can be used as search/filter criteria
               </p>
               
-              {elements.length === 0 ? (
+              {elements.filter(el => !['paragraph', 'button', 'heading'].includes(el.element_type?.toLowerCase())).length === 0 ? (
                 <p className="text-sm text-gray-400">No fields available for this screen</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {elements.map((element) => (
+                  {elements
+                    .filter(el => !['paragraph', 'button', 'heading'].includes(el.element_type?.toLowerCase()))
+                    .map((element) => (
                     <label
                       key={element.id}
                       className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
@@ -626,11 +631,13 @@ export default function ReportConfigPage() {
                 Select which fields to display when viewing a submission
               </p>
               
-              {elements.length === 0 ? (
+              {elements.filter(el => !['paragraph', 'button', 'heading'].includes(el.element_type?.toLowerCase())).length === 0 ? (
                 <p className="text-sm text-gray-400">No fields available for this screen</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {elements.map((element) => (
+                  {elements
+                    .filter(el => !['paragraph', 'button', 'heading'].includes(el.element_type?.toLowerCase()))
+                    .map((element) => (
                     <label
                       key={element.id}
                       className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
@@ -667,11 +674,13 @@ export default function ReportConfigPage() {
                 Select which fields can be edited when editing a submission
               </p>
               
-              {elements.length === 0 ? (
+              {elements.filter(el => !['paragraph', 'button', 'heading'].includes(el.element_type?.toLowerCase())).length === 0 ? (
                 <p className="text-sm text-gray-400">No fields available for this screen</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {elements.map((element) => (
+                  {elements
+                    .filter(el => !['paragraph', 'button', 'heading'].includes(el.element_type?.toLowerCase()))
+                    .map((element) => (
                     <label
                       key={element.id}
                       className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"

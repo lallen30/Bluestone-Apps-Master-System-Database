@@ -58,11 +58,30 @@ exports.getReportScreens = async (req, res) => {
       return { ...screen, allowed_roles: allowedRoles, edit_roles: editRoles };
     });
     
-    console.log('[getReportScreens] Found screens:', screensWithParsedRoles.length);
+    // Filter screens based on user's role access
+    // Master Admin (role_level = 1) sees all reports
+    const userRoleLevel = req.user?.role_level;
+    const userRoleId = req.user?.role_id;
+    
+    console.log('[getReportScreens] User role_level:', userRoleLevel, 'role_id:', userRoleId);
+    
+    const filteredScreens = screensWithParsedRoles.filter(screen => {
+      // Master admin (role_level 1) sees all
+      if (userRoleLevel === 1) return true;
+      
+      // If no config exists yet (allowed_roles is empty array from LEFT JOIN), hide from non-master users
+      // If allowed_roles is empty, only master admin can see it
+      if (!screen.allowed_roles || screen.allowed_roles.length === 0) return false;
+      
+      // Check if user's role is in allowed_roles
+      return screen.allowed_roles.includes(userRoleId);
+    });
+    
+    console.log('[getReportScreens] Found screens:', screensWithParsedRoles.length, 'Filtered for user:', filteredScreens.length);
     
     res.json({
       success: true,
-      data: screensWithParsedRoles
+      data: filteredScreens
     });
   } catch (error) {
     console.error('Error fetching report screens:', error);
@@ -158,12 +177,21 @@ exports.getReportConfig = async (req, res) => {
       config.column_order = safeParseJSON(config.column_order, null);
     }
     
+    // Determine if user can edit this report config
+    // Master Admin (role_level = 1) can always edit
+    // Otherwise check if user's role_id is in edit_roles
+    const userRoleLevel = req.user?.role_level;
+    const userRoleId = req.user?.role_id;
+    const editRoles = config?.edit_roles || [];
+    const canEdit = userRoleLevel === 1 || editRoles.includes(userRoleId);
+    
     res.json({
       success: true,
       data: {
         screen,
         elements,
-        config
+        config,
+        canEdit
       }
     });
   } catch (error) {
@@ -316,6 +344,7 @@ exports.getReportData = async (req, res) => {
     } = req.query;
     
     console.log('[getReportData] Fetching data for app:', app_id, 'screen:', screen_id);
+    console.log('[getReportData] User:', req.user?.id, 'Role:', req.user?.role_id, 'Role Level:', req.user?.role_level);
     
     // Get the report config
     const configResult = await db.query(
@@ -328,6 +357,33 @@ exports.getReportData = async (req, res) => {
       : configResult;
     
     const config = configs && configs.length > 0 ? configs[0] : null;
+    
+    // Check role-based access
+    // Master Admin (role_level = 1) always has access
+    const userRoleLevel = req.user?.role_level;
+    const userRoleId = req.user?.role_id;
+    
+    if (userRoleLevel !== 1 && config) {
+      const allowedRoles = (() => {
+        if (!config.allowed_roles) return [];
+        if (typeof config.allowed_roles === 'object') return config.allowed_roles;
+        try {
+          return JSON.parse(config.allowed_roles);
+        } catch (e) {
+          return [];
+        }
+      })();
+      
+      // If allowed_roles is empty, no one except master_admin has access
+      // If allowed_roles has values, check if user's role_id is in the list
+      if (allowedRoles.length === 0 || !allowedRoles.includes(userRoleId)) {
+        console.log('[getReportData] Access denied. User role:', userRoleId, 'Allowed roles:', allowedRoles);
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to view this report'
+        });
+      }
+    }
     
     // Helper to safely parse JSON
     const safeParseJSON = (val, defaultVal) => {
