@@ -110,13 +110,13 @@ exports.createScreen = async (req, res) => {
 exports.updateScreen = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, icon, category, is_active } = req.body;
+    const { name, screen_key, description, icon, category, is_active, is_report } = req.body;
     
     await db.query(
       `UPDATE app_screens 
-       SET name = ?, description = ?, icon = ?, category = ?, is_active = ?
+       SET name = ?, screen_key = ?, description = ?, icon = ?, category = ?, is_active = ?, is_report = ?
        WHERE id = ?`,
-      [name, description || null, icon || null, category || null, is_active !== undefined ? is_active : 1, id]
+      [name, screen_key, description || null, icon || null, category || null, is_active !== undefined ? is_active : 1, is_report ? 1 : 0, id]
     );
     
     res.json({

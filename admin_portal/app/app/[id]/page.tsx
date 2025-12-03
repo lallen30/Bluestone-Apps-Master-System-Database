@@ -62,8 +62,8 @@ export default function AppDashboard() {
           const userPerms = permsResponse.data?.find((p: any) => p.app_id === appId);
           
           if (!userPerms) {
-            // User doesn't have access to this app
-            router.push('/master');
+            // User doesn't have access to this app - redirect to dashboard
+            router.push('/dashboard');
             return;
           }
           
@@ -71,13 +71,30 @@ export default function AppDashboard() {
         }
       }
 
-      // Fetch stats
-      const usersResponse = await permissionsAPI.getAppUsers(appId);
-      const screensResponse = await appScreensAPI.getAppScreens(appId);
+      // Fetch stats - some may fail for non-admin users
+      let totalUsers = 0;
+      let totalScreens = 0;
+      
+      // Only admins can fetch user count
+      if (user?.role_level && user.role_level <= 2) {
+        try {
+          const usersResponse = await permissionsAPI.getAppUsers(appId);
+          totalUsers = usersResponse.data?.length || 0;
+        } catch (e) {
+          // User doesn't have permission to view users
+        }
+      }
+      
+      try {
+        const screensResponse = await appScreensAPI.getAppScreens(appId);
+        totalScreens = Array.isArray(screensResponse.data) ? screensResponse.data.length : 0;
+      } catch (e) {
+        // Failed to fetch screens
+      }
       
       setStats({
-        totalUsers: usersResponse.data?.length || 0,
-        totalScreens: Array.isArray(screensResponse.data) ? screensResponse.data.length : 0,
+        totalUsers,
+        totalScreens,
         recentActivity: 0,
       });
 
@@ -85,7 +102,6 @@ export default function AppDashboard() {
     } catch (error) {
       console.error('Error fetching app data:', error);
       setLoading(false);
-      router.push('/master');
     }
   };
 

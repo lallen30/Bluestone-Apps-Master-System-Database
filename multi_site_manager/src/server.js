@@ -41,6 +41,7 @@ const appFormElementsRoutes = require('./routes/appFormElements');
 const favoritesRoutes = require('./routes/favorites');
 const profileRoutes = require('./routes/profile');
 const formSubmissionsRoutes = require('./routes/formSubmissions');
+const reportsRoutes = require('./routes/reports');
 
 // Initialize Express app
 const app = express();
@@ -142,6 +143,7 @@ app.use(`/api/${API_VERSION}`, appFormElementsRoutes); // Form element overrides
 app.use(`/api/${API_VERSION}`, favoritesRoutes); // Favorites/wishlist
 app.use(`/api/${API_VERSION}`, profileRoutes); // User profile management
 app.use(`/api/${API_VERSION}`, formSubmissionsRoutes); // Form submissions (admin)
+app.use(`/api/${API_VERSION}`, reportsRoutes); // Reports management
 
 // Serve uploaded files statically
 app.use('/uploads', express.static('uploads'));

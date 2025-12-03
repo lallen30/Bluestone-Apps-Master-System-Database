@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, UserCog, Monitor, Settings, ArrowLeft, LogOut, Shield, Home, Menu, Calendar, Mail, User, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Users, UserCog, Monitor, Settings, ArrowLeft, LogOut, Shield, Home, Menu, Calendar, Mail, User, ChevronRight, FileBarChart } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
-import { permissionsAPI, appsAPI, appScreensAPI } from '@/lib/api';
+import { permissionsAPI, appsAPI, appScreensAPI, reportsAPI } from '@/lib/api';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -49,6 +49,7 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
   const [userAppCount, setUserAppCount] = useState<number>(0);
   const [hasPropertyListings, setHasPropertyListings] = useState<boolean>(false);
   const [hasContactScreen, setHasContactScreen] = useState<boolean>(false);
+  const [hasReportAccess, setHasReportAccess] = useState<boolean>(false);
   const [menuAccess, setMenuAccess] = useState<MenuAccess>(defaultMenuAccess);
   const [generalPermissions, setGeneralPermissions] = useState<GeneralPermissions>(defaultGeneralPermissions);
 
@@ -130,6 +131,35 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
           console.error('Error fetching app screens:', error);
           setHasContactScreen(false);
         });
+      
+      // Check if user has access to any reports
+      reportsAPI.getReportScreens(parseInt(appId))
+        .then((response) => {
+          const reportScreens = Array.isArray(response.data) ? response.data : [];
+          if (reportScreens.length > 0) {
+            // Master Admin always has access
+            if (user?.role_level === 1) {
+              setHasReportAccess(true);
+            } else {
+              // Check if user's role is in any report's allowed_roles
+              // User role_id corresponds to the roles table (Admin=2, Editor=3)
+              const userRoleId = user?.role_id;
+              const hasAccess = reportScreens.some((report: any) => {
+                const allowedRoles = report.allowed_roles || [];
+                // If no roles specified, only Master Admin can access
+                if (allowedRoles.length === 0) return false;
+                return allowedRoles.includes(userRoleId);
+              });
+              setHasReportAccess(hasAccess);
+            }
+          } else {
+            setHasReportAccess(false);
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching report screens:', error);
+          setHasReportAccess(false);
+        });
     }
   }, [user, appId]);
 
@@ -206,6 +236,15 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
       name: 'Contact Submissions',
       href: `/app/${appId}/contact-submissions`,
       icon: Mail,
+    });
+  }
+  
+  // Show Reports menu item if user has access (Master Admin or allowed role)
+  if (hasReportAccess) {
+    templateMenuItems.push({
+      name: 'Reports',
+      href: `/app/${appId}/reports`,
+      icon: FileBarChart,
     });
   }
   

@@ -53,6 +53,7 @@ export default function EditScreen() {
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('home');
   const [category, setCategory] = useState('');
+  const [isReport, setIsReport] = useState(false);
   
   // Elements
   const [availableElements, setAvailableElements] = useState<ScreenElement[]>([]);
@@ -104,6 +105,7 @@ export default function EditScreen() {
       setDescription(screen.description || '');
       setIcon(screen.icon || 'home');
       setCategory(screen.category || '');
+      setIsReport(screen.is_report || false);
       
       // Map elements to instances
       const instances: ElementInstance[] = elements.map((el: any) => ({
@@ -313,7 +315,8 @@ export default function EditScreen() {
         screen_key: screenKey,
         description,
         icon,
-        category
+        category,
+        is_report: isReport
       });
 
       // Update existing elements and add new ones
@@ -502,6 +505,19 @@ export default function EditScreen() {
                     onChange={setIcon}
                     placeholder="Select default icon"
                   />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="isReport"
+                    checked={isReport}
+                    onChange={(e) => setIsReport(e.target.checked)}
+                    className="w-4 h-4 text-primary rounded focus:ring-2 focus:ring-primary"
+                  />
+                  <label htmlFor="isReport" className="text-sm font-medium text-gray-700">
+                    Report
+                  </label>
                 </div>
               </div>
 

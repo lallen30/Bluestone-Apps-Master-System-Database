@@ -573,8 +573,15 @@ export const appUsersAPI = {
 
 // Roles API
 export const rolesAPI = {
+  // Get App User roles (for mobile app users)
   getAppRoles: async (appId: number) => {
     const response = await api.get(`/apps/${appId}/roles`);
+    return response.data;
+  },
+  
+  // Get Administrator roles (Admin, Editor, etc.)
+  getAdminRoles: async () => {
+    const response = await api.get('/roles');
     return response.data;
   },
   
@@ -1074,6 +1081,79 @@ export const formSubmissionsAPI = {
   // Delete a submission
   deleteSubmission: async (appId: number, submissionId: number) => {
     const response = await api.delete(`/apps/${appId}/form-submissions/${submissionId}`);
+    return response.data;
+  },
+};
+
+// Reports API
+export const reportsAPI = {
+  // Get all report screens for an app
+  getReportScreens: async (appId: number) => {
+    const response = await api.get(`/app/${appId}/reports`);
+    return response.data;
+  },
+
+  // Get report config for a specific screen
+  getReportConfig: async (appId: number, screenId: number) => {
+    const response = await api.get(`/app/${appId}/reports/${screenId}/config`);
+    return response.data;
+  },
+
+  // Save/update report config
+  saveReportConfig: async (appId: number, screenId: number, config: {
+    report_name?: string;
+    description?: string;
+    display_columns?: string[];
+    filter_fields?: string[];
+    action_buttons?: string[];
+    view_fields?: string[];
+    edit_fields?: string[];
+    default_sort_field?: string;
+    default_sort_order?: 'asc' | 'desc';
+    rows_per_page?: number;
+    allowed_roles?: number[];
+    edit_roles?: number[];
+    is_active?: boolean;
+  }) => {
+    const response = await api.post(`/app/${appId}/reports/${screenId}/config`, config);
+    return response.data;
+  },
+
+  // Get report data (submissions)
+  getReportData: async (appId: number, screenId: number, params?: {
+    page?: number;
+    limit?: number;
+    sort_field?: string;
+    sort_order?: 'asc' | 'desc';
+    [key: string]: any; // For dynamic filters
+  }) => {
+    const response = await api.get(`/app/${appId}/reports/${screenId}/data`, { params });
+    return response.data;
+  },
+
+  // Get single submission detail
+  getSubmissionDetail: async (appId: number, screenId: number, submissionId: number) => {
+    const response = await api.get(`/app/${appId}/reports/${screenId}/submissions/${submissionId}`);
+    return response.data;
+  },
+
+  // Update a submission
+  updateSubmission: async (appId: number, screenId: number, submissionId: number, data: Record<string, string>) => {
+    const response = await api.put(`/app/${appId}/reports/${screenId}/submissions/${submissionId}`, { submission_data: data });
+    return response.data;
+  },
+
+  // Delete a submission
+  deleteSubmission: async (appId: number, screenId: number, submissionId: number) => {
+    const response = await api.delete(`/app/${appId}/reports/${screenId}/submissions/${submissionId}`);
+    return response.data;
+  },
+
+  // Export report data as CSV
+  exportReportData: async (appId: number, screenId: number) => {
+    const response = await api.get(`/app/${appId}/reports/${screenId}/export`, {
+      responseType: 'blob'
+    });
     return response.data;
   },
 };
