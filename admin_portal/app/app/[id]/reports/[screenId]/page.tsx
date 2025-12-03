@@ -25,6 +25,9 @@ interface ReportConfig {
   action_buttons: string[];
   view_fields: string[];
   edit_fields: string[];
+  show_date_column: boolean;
+  show_user_column: boolean;
+  column_order: string[] | null;
 }
 
 interface Pagination {
@@ -59,6 +62,9 @@ export default function ReportViewPage() {
     action_buttons: ['view'],
     view_fields: [],
     edit_fields: [],
+    show_date_column: true,
+    show_user_column: true,
+    column_order: null,
   });
   const [elements, setElements] = useState<ScreenElement[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -311,20 +317,31 @@ export default function ReportViewPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User
-                  </th>
-                  {config.display_columns.map((fieldKey) => (
-                    <th
-                      key={fieldKey}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      {getFieldLabel(fieldKey)}
-                    </th>
-                  ))}
+                  {(() => {
+                    // Use column_order if available, otherwise fall back to default order
+                    const orderedColumns = config.column_order || ['_date', '_user', ...config.display_columns];
+                    return orderedColumns.map((columnKey) => {
+                      const isDate = columnKey === '_date';
+                      const isUser = columnKey === '_user';
+                      const isSystem = columnKey.startsWith('_');
+                      
+                      // Check visibility
+                      if (isDate && !config.show_date_column) return null;
+                      if (isUser && !config.show_user_column) return null;
+                      if (!isSystem && !config.display_columns.includes(columnKey)) return null;
+                      
+                      const label = isDate ? 'Date' : isUser ? 'User' : getFieldLabel(columnKey);
+                      
+                      return (
+                        <th
+                          key={columnKey}
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {label}
+                        </th>
+                      );
+                    });
+                  })()}
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -334,7 +351,7 @@ export default function ReportViewPage() {
                 {submissions.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={config.display_columns.length + 3}
+                      colSpan={config.display_columns.length + 1 + (config.show_date_column ? 1 : 0) + (config.show_user_column ? 1 : 0)}
                       className="px-6 py-12 text-center text-gray-500"
                     >
                       No submissions found
@@ -343,21 +360,43 @@ export default function ReportViewPage() {
                 ) : (
                   submissions.map((submission) => (
                     <tr key={submission.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(submission.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {submission.user_name}
-                      </td>
-                      {config.display_columns.map((fieldKey) => (
-                        <td
-                          key={fieldKey}
-                          className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate"
-                          title={submission.fields[fieldKey] || ''}
-                        >
-                          {submission.fields[fieldKey] || '-'}
-                        </td>
-                      ))}
+                      {(() => {
+                        const orderedColumns = config.column_order || ['_date', '_user', ...config.display_columns];
+                        return orderedColumns.map((columnKey) => {
+                          const isDate = columnKey === '_date';
+                          const isUser = columnKey === '_user';
+                          const isSystem = columnKey.startsWith('_');
+                          
+                          // Check visibility
+                          if (isDate && !config.show_date_column) return null;
+                          if (isUser && !config.show_user_column) return null;
+                          if (!isSystem && !config.display_columns.includes(columnKey)) return null;
+                          
+                          if (isDate) {
+                            return (
+                              <td key={columnKey} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {new Date(submission.created_at).toLocaleDateString()}
+                              </td>
+                            );
+                          }
+                          if (isUser) {
+                            return (
+                              <td key={columnKey} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {submission.user_name}
+                              </td>
+                            );
+                          }
+                          return (
+                            <td
+                              key={columnKey}
+                              className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate"
+                              title={submission.fields[columnKey] || ''}
+                            >
+                              {submission.fields[columnKey] || '-'}
+                            </td>
+                          );
+                        });
+                      })()}
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                         <div className="flex items-center justify-end gap-2">
                           {config.action_buttons.includes('view') && (

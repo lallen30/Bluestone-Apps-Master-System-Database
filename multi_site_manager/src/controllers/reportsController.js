@@ -155,6 +155,7 @@ exports.getReportConfig = async (req, res) => {
       config.edit_fields = safeParseJSON(config.edit_fields, []);
       config.allowed_roles = safeParseJSON(config.allowed_roles, []);
       config.edit_roles = safeParseJSON(config.edit_roles, []);
+      config.column_order = safeParseJSON(config.column_order, null);
     }
     
     res.json({
@@ -191,7 +192,10 @@ exports.saveReportConfig = async (req, res) => {
       rows_per_page,
       allowed_roles,
       edit_roles,
-      is_active
+      is_active,
+      show_date_column,
+      show_user_column,
+      column_order
     } = req.body;
     
     const created_by = req.user?.id || 1;
@@ -222,7 +226,10 @@ exports.saveReportConfig = async (req, res) => {
           rows_per_page = ?,
           allowed_roles = ?,
           edit_roles = ?,
-          is_active = ?
+          is_active = ?,
+          show_date_column = ?,
+          show_user_column = ?,
+          column_order = ?
         WHERE app_id = ? AND screen_id = ?
       `, [
         report_name,
@@ -238,6 +245,9 @@ exports.saveReportConfig = async (req, res) => {
         JSON.stringify(allowed_roles || []),
         JSON.stringify(edit_roles || []),
         is_active !== undefined ? is_active : true,
+        show_date_column !== undefined ? show_date_column : true,
+        show_user_column !== undefined ? show_user_column : true,
+        JSON.stringify(column_order || []),
         app_id,
         screen_id
       ]);
@@ -254,8 +264,9 @@ exports.saveReportConfig = async (req, res) => {
           display_columns, filter_fields, action_buttons,
           view_fields, edit_fields,
           default_sort_field, default_sort_order, rows_per_page,
-          allowed_roles, edit_roles, is_active, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          allowed_roles, edit_roles, is_active, 
+          show_date_column, show_user_column, column_order, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         app_id,
         screen_id,
@@ -272,6 +283,9 @@ exports.saveReportConfig = async (req, res) => {
         JSON.stringify(allowed_roles || []),
         JSON.stringify(edit_roles || []),
         is_active !== undefined ? is_active : true,
+        show_date_column !== undefined ? show_date_column : true,
+        show_user_column !== undefined ? show_user_column : true,
+        JSON.stringify(column_order || []),
         created_by
       ]);
       
@@ -423,7 +437,10 @@ exports.getReportData = async (req, res) => {
           filter_fields: filterFields,
           action_buttons: safeParseJSON(config?.action_buttons, ['view']),
           view_fields: safeParseJSON(config?.view_fields, []),
-          edit_fields: safeParseJSON(config?.edit_fields, [])
+          edit_fields: safeParseJSON(config?.edit_fields, []),
+          show_date_column: config?.show_date_column !== false && config?.show_date_column !== 0,
+          show_user_column: config?.show_user_column !== false && config?.show_user_column !== 0,
+          column_order: safeParseJSON(config?.column_order, null)
         }
       }
     });

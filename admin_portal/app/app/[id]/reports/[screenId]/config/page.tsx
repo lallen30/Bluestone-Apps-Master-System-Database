@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { reportsAPI, appsAPI, rolesAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { ArrowLeft, Save, Eye, EyeOff, Trash2, Edit, Download, GripVertical } from 'lucide-react';
+import { ArrowLeft, Save, Eye, EyeOff, Trash2, Edit, Download, GripVertical, Calendar, User, FileText } from 'lucide-react';
 
 interface ScreenElement {
   id: number;
@@ -31,6 +31,17 @@ interface ReportConfig {
   allowed_roles: number[];  // Roles that can VIEW reports
   edit_roles: number[];     // Roles that can EDIT/configure reports
   is_active: boolean;
+  show_date_column: boolean;
+  show_user_column: boolean;
+  column_order: string[];   // Order of all columns (system + field)
+}
+
+interface ColumnItem {
+  key: string;
+  label: string;
+  type: 'system' | 'field';
+  subLabel?: string;
+  isVisible: boolean;
 }
 
 interface Role {
@@ -74,7 +85,11 @@ export default function ReportConfigPage() {
     allowed_roles: [],
     edit_roles: [],
     is_active: true,
+    show_date_column: true,
+    show_user_column: true,
+    column_order: ['_date', '_user'],
   });
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -126,6 +141,9 @@ export default function ReportConfigPage() {
 
       // If config exists, populate form
       if (existingConfig) {
+        const allFieldKeys = screenElements.map((el: ScreenElement) => el.field_key);
+        // Build default column order if not present
+        const defaultOrder = ['_date', '_user', ...allFieldKeys];
         setConfig({
           report_name: existingConfig.report_name || screen.name,
           description: existingConfig.description || '',
@@ -140,6 +158,9 @@ export default function ReportConfigPage() {
           allowed_roles: existingConfig.allowed_roles || [],
           edit_roles: existingConfig.edit_roles || [],
           is_active: existingConfig.is_active !== false,
+          show_date_column: existingConfig.show_date_column !== false,
+          show_user_column: existingConfig.show_user_column !== false,
+          column_order: existingConfig.column_order || defaultOrder,
         });
       } else {
         // Default: all fields visible in all views
@@ -150,6 +171,7 @@ export default function ReportConfigPage() {
           display_columns: allFieldKeys,
           view_fields: allFieldKeys,
           edit_fields: allFieldKeys,
+          column_order: ['_date', '_user', ...allFieldKeys],
         }));
       }
 
@@ -474,41 +496,91 @@ export default function ReportConfigPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Display Columns</h2>
               <p className="text-sm text-gray-500 mb-4">
-                Select which fields to display as columns in the report
+                Drag to reorder columns. Toggle visibility with the eye icon.
               </p>
+              <div className="flex items-center gap-4 mb-4 text-xs text-gray-500">
+                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> System</span>
+                <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> Field</span>
+              </div>
               
-              {elements.length === 0 ? (
-                <p className="text-sm text-gray-400">No fields available for this screen</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {elements.map((element) => (
-                    <label
-                      key={element.id}
-                      className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+              <div className="space-y-2">
+                {config.column_order.map((columnKey, index) => {
+                  const isSystem = columnKey.startsWith('_');
+                  const isDate = columnKey === '_date';
+                  const isUser = columnKey === '_user';
+                  const element = elements.find(el => el.field_key === columnKey);
+                  
+                  // Skip if it's a field column that doesn't exist in elements
+                  if (!isSystem && !element) return null;
+                  
+                  const isVisible = isDate 
+                    ? config.show_date_column 
+                    : isUser 
+                      ? config.show_user_column 
+                      : config.display_columns.includes(columnKey);
+                  
+                  const label = isDate ? 'Date' : isUser ? 'User' : (element?.label || columnKey);
+                  const subLabel = isDate ? 'Submission date' : isUser ? 'Submitted by' : `${element?.element_type} • ${columnKey}`;
+                  
+                  return (
+                    <div
+                      key={columnKey}
+                      draggable
+                      onDragStart={() => setDraggedItem(columnKey)}
+                      onDragEnd={() => setDraggedItem(null)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (draggedItem && draggedItem !== columnKey) {
+                          const newOrder = [...config.column_order];
+                          const dragIndex = newOrder.indexOf(draggedItem);
+                          const dropIndex = newOrder.indexOf(columnKey);
+                          newOrder.splice(dragIndex, 1);
+                          newOrder.splice(dropIndex, 0, draggedItem);
+                          setConfig(prev => ({ ...prev, column_order: newOrder }));
+                        }
+                      }}
+                      className={`flex items-center gap-3 p-3 border rounded-lg cursor-move transition-all ${
+                        draggedItem === columnKey 
+                          ? 'border-blue-500 bg-blue-50 opacity-50' 
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={config.display_columns.includes(element.field_key)}
-                        onChange={() => toggleColumn(element.field_key)}
-                        className="w-4 h-4 text-blue-600 rounded"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium block truncate">
-                          {element.label || element.field_key}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {element.element_type} • {element.field_key}
-                        </span>
+                      <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <div className="flex-shrink-0">
+                        {isSystem ? (
+                          <Calendar className="w-4 h-4 text-purple-500" />
+                        ) : (
+                          <FileText className="w-4 h-4 text-blue-500" />
+                        )}
                       </div>
-                      {config.display_columns.includes(element.field_key) ? (
-                        <Eye className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <EyeOff className="w-4 h-4 text-gray-300" />
-                      )}
-                    </label>
-                  ))}
-                </div>
-              )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium block truncate">{label}</span>
+                        <span className="text-xs text-gray-500">{subLabel}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isDate) {
+                            setConfig(prev => ({ ...prev, show_date_column: !prev.show_date_column }));
+                          } else if (isUser) {
+                            setConfig(prev => ({ ...prev, show_user_column: !prev.show_user_column }));
+                          } else {
+                            toggleColumn(columnKey);
+                          }
+                        }}
+                        className="p-1 rounded hover:bg-gray-200"
+                      >
+                        {isVisible ? (
+                          <Eye className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <EyeOff className="w-4 h-4 text-gray-300" />
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Filter Fields */}

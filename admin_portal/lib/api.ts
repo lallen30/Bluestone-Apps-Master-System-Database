@@ -1114,6 +1114,9 @@ export const reportsAPI = {
     allowed_roles?: number[];
     edit_roles?: number[];
     is_active?: boolean;
+    show_date_column?: boolean;
+    show_user_column?: boolean;
+    column_order?: string[];
   }) => {
     const response = await api.post(`/app/${appId}/reports/${screenId}/config`, config);
     return response.data;
