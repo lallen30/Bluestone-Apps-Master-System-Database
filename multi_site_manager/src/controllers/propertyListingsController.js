@@ -831,7 +831,11 @@ exports.getAvailability = async (req, res) => {
     res.json({
       success: true,
       data: {
-        availability: result.sort((a, b) => a.date.localeCompare(b.date))
+        availability: result.sort((a, b) => {
+          const dateA = typeof a.date === 'string' ? a.date : a.date.toISOString().split('T')[0];
+          const dateB = typeof b.date === 'string' ? b.date : b.date.toISOString().split('T')[0];
+          return dateA.localeCompare(dateB);
+        })
       }
     });
   } catch (error) {

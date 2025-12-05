@@ -115,7 +115,9 @@ const ConversationListElement: React.FC<ConversationListElementProps> = ({ eleme
       <TouchableOpacity
         style={[styles.card, hasUnread && styles.cardUnread]}
         onPress={() =>
-          navigation.navigate('Chat', {
+          navigation.navigate('DynamicScreen', {
+            screenId: 117, // Chat screen
+            screenName: 'Chat',
             conversationId: item.id,
             otherUserName,
             listingTitle: item.listing_title,

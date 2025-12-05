@@ -1007,6 +1007,72 @@ const createAppFromTemplate = async (req, res) => {
           stats.roleHomeScreens = (stats.roleHomeScreens || 0) + 1;
         }
       }
+
+      // STEP 16: Clone Driver Profiles from template (for rideshare apps)
+      const templateDriverProfiles = await db.query(
+        'SELECT * FROM app_template_driver_profiles WHERE template_id = ?',
+        [template_id]
+      );
+
+      for (const profile of templateDriverProfiles) {
+        const newUserId = userIdMap[profile.template_user_id];
+        if (newUserId) {
+          await db.query(
+            `INSERT INTO driver_profiles 
+             (app_id, user_id, vehicle_make, vehicle_model, vehicle_year, vehicle_color,
+              license_plate, vehicle_type, rating, total_rides, is_verified, is_online)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+            [newAppId, newUserId, profile.vehicle_make, profile.vehicle_model,
+             profile.vehicle_year, profile.vehicle_color, profile.license_plate,
+             profile.vehicle_type || 'sedan', profile.rating || 5.00,
+             profile.total_rides || 0, profile.is_verified ? 1 : 0]
+          );
+          stats.driverProfiles = (stats.driverProfiles || 0) + 1;
+        }
+      }
+
+      // STEP 17: Clone Rides from template (for rideshare apps)
+      const templateRides = await db.query(
+        'SELECT * FROM app_template_rides WHERE template_id = ?',
+        [template_id]
+      );
+
+      for (const ride of templateRides) {
+        const riderId = userIdMap[ride.template_rider_id];
+        const driverId = userIdMap[ride.template_driver_id];
+        if (riderId) {
+          await db.query(
+            `INSERT INTO rides 
+             (app_id, rider_id, driver_id, pickup_address, pickup_latitude, pickup_longitude,
+              destination_address, destination_latitude, destination_longitude,
+              ride_type, status, estimated_fare, actual_fare)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [newAppId, riderId, driverId || null, ride.pickup_address,
+             ride.pickup_latitude, ride.pickup_longitude, ride.destination_address,
+             ride.destination_latitude, ride.destination_longitude,
+             ride.ride_type || 'standard', ride.status || 'completed',
+             ride.estimated_fare, ride.actual_fare]
+          );
+          stats.rides = (stats.rides || 0) + 1;
+        }
+      }
+
+      // STEP 18: Clone Ride Pricing Rules from template (for rideshare apps)
+      const templatePricing = await db.query(
+        'SELECT * FROM app_template_ride_pricing WHERE template_id = ?',
+        [template_id]
+      );
+
+      for (const pricing of templatePricing) {
+        await db.query(
+          `INSERT INTO ride_pricing_rules 
+           (app_id, ride_type, base_fare, per_km_rate, per_minute_rate, minimum_fare, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, 1)`,
+          [newAppId, pricing.ride_type, pricing.base_fare, pricing.per_km_rate,
+           pricing.per_minute_rate, pricing.minimum_fare]
+        );
+        stats.pricingRules = (stats.pricingRules || 0) + 1;
+      }
     }
 
     res.json({

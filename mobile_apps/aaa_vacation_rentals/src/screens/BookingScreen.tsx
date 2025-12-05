@@ -140,7 +140,10 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ route, navigation }) => {
         [
           {
             text: 'View Bookings',
-            onPress: () => navigation.navigate('MyBookings'),
+            onPress: () => navigation.navigate('DynamicScreen', {
+              screenId: 114,
+              screenName: 'My Bookings',
+            }),
           },
           {
             text: 'OK',

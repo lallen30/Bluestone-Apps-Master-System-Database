@@ -962,6 +962,7 @@ const DynamicScreen = ({ route, navigation }: any) => {
             key={element.id}
             element={element}
             navigation={navigation}
+            route={route}
           />
         );
 
@@ -1316,7 +1317,7 @@ const DynamicScreen = ({ route, navigation }: any) => {
           /* Check if any element has its own scrolling (like property_list, booking_list) */
           (() => {
             const sortedElements = content.elements.sort((a, b) => a.display_order - b.display_order);
-            const fullScreenElements = ['property_list', 'booking_list', 'favorites_list', 'user_profile'];
+            const fullScreenElements = ['property_list', 'booking_list', 'favorites_list', 'user_profile', 'chat_interface', 'conversation_list'];
             const hasFullScreenElement = sortedElements.some(el => fullScreenElements.includes(el.element_type));
             
             if (hasFullScreenElement && sortedElements.length === 1) {

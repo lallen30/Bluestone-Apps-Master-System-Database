@@ -48,7 +48,8 @@ export interface CreateBookingRequest {
 export interface BookingsResponse {
   success: boolean;
   data: {
-    bookings: Booking[];
+    bookings?: Booking[];
+    reservations?: Booking[];
     pagination: {
       page: number;
       per_page: number;

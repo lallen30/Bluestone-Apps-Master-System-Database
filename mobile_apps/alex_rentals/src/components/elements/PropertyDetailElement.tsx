@@ -9,9 +9,12 @@ import {
   ActivityIndicator,
   Dimensions,
   Alert,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { listingsService } from '../../api/listingsService';
+import { messagesService } from '../../api/messagesService';
 import { API_CONFIG } from '../../api/config';
 
 // Helper to transform relative URLs to absolute
@@ -36,6 +39,7 @@ interface PropertyDetailElementProps {
 
 interface PropertyListing {
   id: number;
+  user_id: number; // Host's user ID
   title: string;
   description: string;
   property_type: string;
@@ -47,7 +51,8 @@ interface PropertyListing {
   cleaning_fee?: string | number;
   bedrooms: number;
   bathrooms: number;
-  max_guests: number;
+  max_guests?: number;
+  guests_max?: number;
   amenities: string[];
   primary_image?: string;
   images?: Array<{ id: number; image_url: string; is_primary?: number }>;
@@ -61,6 +66,7 @@ interface PropertyListing {
 const { width: screenWidth } = Dimensions.get('window');
 
 const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, navigation, route }) => {
+  const insets = useSafeAreaInsets();
   const listingId = route.params?.listingId;
   const config = element.config || element.default_config || {};
   const {
@@ -104,13 +110,31 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
     });
   };
 
-  const handleContactHost = () => {
-    navigation.navigate('DynamicScreen', {
-      screenId: 117, // Chat screen
-      screenName: 'Chat',
-      listingId: listing?.id,
-      hostId: listing?.host_first_name ? 1 : undefined, // TODO: Get actual host ID
-    });
+  const handleContactHost = async () => {
+    if (!listing?.user_id) {
+      Alert.alert('Error', 'Unable to contact host');
+      return;
+    }
+
+    try {
+      // Start or get existing conversation with the host
+      const response = await messagesService.startConversation({
+        other_user_id: listing.user_id,
+        listing_id: listing.id,
+      });
+
+      // Navigate to chat screen with conversation ID
+      navigation.navigate('DynamicScreen', {
+        screenId: 117, // Chat screen
+        screenName: 'Chat',
+        conversationId: response.data.conversation_id,
+        otherUserName: `${listing.host_first_name || ''} ${listing.host_last_name || ''}`.trim() || 'Host',
+        listingTitle: listing.title,
+      });
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+      Alert.alert('Error', 'Unable to start conversation with host');
+    }
   };
 
   const handleToggleFavorite = () => {
@@ -256,7 +280,7 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
               </View>
               <View style={styles.detailItem}>
                 <Icon name="account-group" size={20} color="#007AFF" />
-                <Text style={styles.detailValue}>{listing.max_guests}</Text>
+                <Text style={styles.detailValue}>{listing.guests_max || listing.max_guests || 0}</Text>
                 <Text style={styles.detailLabel}>Guests</Text>
               </View>
             </View>
@@ -319,10 +343,12 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
       </ScrollView>
 
       {/* Bottom Bar */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <View style={styles.priceContainer}>
-          <Text style={styles.price}>${price.toFixed(0)}</Text>
-          <Text style={styles.priceLabel}>/night</Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.price}>${price.toFixed(0)}</Text>
+            <Text style={styles.priceLabel}>/night</Text>
+          </View>
           {cleaningFee > 0 && (
             <Text style={styles.cleaningFee}>+${cleaningFee.toFixed(0)} cleaning</Text>
           )}
@@ -590,30 +616,34 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   priceContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  priceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    flexWrap: 'wrap',
   },
   price: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: '#1C1C1E',
   },
   priceLabel: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#8E8E93',
-    marginLeft: 4,
+    marginLeft: 2,
   },
   cleaningFee: {
     fontSize: 12,
     color: '#8E8E93',
-    width: '100%',
+    marginTop: 2,
   },
   bookButton: {
     backgroundColor: '#FF385C',
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 8,
+    flexShrink: 0,
   },
   bookButtonText: {
     color: '#fff',

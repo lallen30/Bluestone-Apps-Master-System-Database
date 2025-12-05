@@ -417,7 +417,10 @@ const ProfileElement: React.FC<ProfileElementProps> = ({
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => navigation.navigate('MyBookings')}
+          onPress={() => navigation.navigate('DynamicScreen', {
+            screenId: 114,
+            screenName: 'My Bookings',
+          })}
         >
           <Icon name="calendar-check" size={20} color="#666" />
           <Text style={styles.menuItemText}>My Bookings</Text>

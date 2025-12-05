@@ -183,7 +183,7 @@ const ChatInterfaceElement: React.FC<ChatInterfaceElementProps> = ({ element, na
   };
 
   const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
+    <View style={[styles.emptyContainer, { transform: [{ scaleY: -1 }] }]}>
       <Icon name="chat" size={64} color="#C7C7CC" />
       <Text style={styles.emptyText}>No messages yet</Text>
       <Text style={styles.emptySubtext}>Start the conversation!</Text>

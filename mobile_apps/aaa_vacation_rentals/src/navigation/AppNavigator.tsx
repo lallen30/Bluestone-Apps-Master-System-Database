@@ -153,10 +153,12 @@ const AppNavigator = () => {
   const wasAuthenticated = useRef(false);
 
   // Fetch the app's default home screen setting
+  // Re-fetch when authentication state changes (to get role-specific home screen)
   useEffect(() => {
     const fetchHomeScreen = async () => {
       try {
-        console.log('[AppNavigator] Fetching home screen...');
+        console.log('[AppNavigator] Fetching home screen... isAuthenticated:', isAuthenticated);
+        setHomeScreenLoaded(false);
         const homeData = await appService.getHomeScreen();
         console.log('[AppNavigator] Home screen from API:', homeData);
         setHomeScreenId(homeData.id);
@@ -168,7 +170,7 @@ const AppNavigator = () => {
       }
     };
     fetchHomeScreen();
-  }, []);
+  }, [isAuthenticated]);
 
   // Check for login redirect when transitioning to authenticated state
   useEffect(() => {

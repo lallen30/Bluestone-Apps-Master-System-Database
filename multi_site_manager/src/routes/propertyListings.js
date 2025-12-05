@@ -21,6 +21,18 @@ router.get('/apps/:appId/listings', propertyListingsController.getListings);
 router.get('/apps/:appId/hosts', propertyListingsController.getHosts);
 
 /**
+ * GET /api/v1/apps/:appId/listings/my
+ * Get current user's listings (for hosts)
+ * Requires authentication
+ * NOTE: Must be before /:listingId route to avoid "my" being treated as an ID
+ */
+router.get(
+  '/apps/:appId/listings/my',
+  authenticateMobileUser({ required: true }),
+  propertyListingsController.getMyListings
+);
+
+/**
  * GET /api/v1/apps/:appId/listings/:listingId
  * Get single listing details
  * Public endpoint for viewing a listing
@@ -45,17 +57,6 @@ router.get(
   '/apps/:appId/host/dashboard',
   authenticateMobileUser({ required: true }),
   propertyListingsController.getHostDashboard
-);
-
-/**
- * GET /api/v1/apps/:appId/listings/my
- * Get current user's listings (for hosts)
- * Requires authentication
- */
-router.get(
-  '/apps/:appId/listings/my',
-  authenticateMobileUser({ required: true }),
-  propertyListingsController.getMyListings
 );
 
 /**

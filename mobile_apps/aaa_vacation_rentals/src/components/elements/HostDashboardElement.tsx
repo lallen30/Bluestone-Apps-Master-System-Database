@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useFocusEffect } from '@react-navigation/native';
 import apiClient from '../../api/client';
 import { API_CONFIG } from '../../api/config';
 
@@ -72,9 +73,12 @@ const HostDashboardElement: React.FC<HostDashboardElementProps> = ({ element, na
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardData();
+    }, [])
+  );
 
   const fetchDashboardData = async () => {
     try {
@@ -239,7 +243,7 @@ const HostDashboardElement: React.FC<HostDashboardElementProps> = ({ element, na
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Bookings</Text>
             <TouchableOpacity
-              onPress={() => navigation.navigate('DynamicScreen', { screenId: 132, screenName: 'Host Bookings' })}
+              onPress={() => navigation.navigate('DynamicScreen', { screenId: 132, screenName: 'Host Bookings', defaultFilter: 'all' })}
             >
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>

@@ -173,7 +173,10 @@ const BookingFormElement: React.FC<BookingFormElementProps> = ({ element, naviga
         [
           {
             text: 'View Bookings',
-            onPress: () => navigation.navigate(success_navigation),
+            onPress: () => navigation.navigate('DynamicScreen', {
+              screenId: 114,
+              screenName: 'My Bookings',
+            }),
           },
           {
             text: 'OK',

@@ -383,24 +383,6 @@ exports.getMyBookings = async (req, res) => {
       });
     }
 
-    // Temporary: Return empty bookings until we fix the query
-    const pageNum = parseInt(page);
-    const perPage = parseInt(per_page);
-    
-    return res.json({
-      success: true,
-      data: {
-        bookings: [],
-        pagination: {
-          page: pageNum,
-          per_page: perPage,
-          total: 0,
-          total_pages: 0
-        }
-      }
-    });
-
-    /* ORIGINAL CODE - COMMENTED OUT
     let query = `
       SELECT 
         b.id, b.listing_id, b.check_in_date, b.check_out_date,
@@ -444,7 +426,10 @@ exports.getMyBookings = async (req, res) => {
     }
 
     const countResult = await db.query(countQuery, countParams);
-    const total = countResult[0]?.total || 0;
+    const countData = Array.isArray(countResult) && Array.isArray(countResult[0]) 
+      ? countResult[0] 
+      : countResult;
+    const total = countData[0]?.total || 0;
 
     res.json({
       success: true,
@@ -458,7 +443,6 @@ exports.getMyBookings = async (req, res) => {
         }
       }
     });
-    */
   } catch (error) {
     console.error('Error fetching bookings:', error);
     res.status(500).json({

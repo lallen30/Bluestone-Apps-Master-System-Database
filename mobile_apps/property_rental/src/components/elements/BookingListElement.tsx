@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { bookingsService, Booking } from '../../api/bookingsService';
@@ -20,9 +22,10 @@ interface ScreenElement {
 interface BookingListElementProps {
   element: ScreenElement;
   navigation: any;
+  route?: any;
 }
 
-const BookingListElement: React.FC<BookingListElementProps> = ({ element, navigation }) => {
+const BookingListElement: React.FC<BookingListElementProps> = ({ element, navigation, route }) => {
   // Extract config
   const config = element.config || element.default_config || {};
   const {
@@ -37,11 +40,14 @@ const BookingListElement: React.FC<BookingListElementProps> = ({ element, naviga
     showPending = false,
   } = config;
 
+  // Check for defaultFilter from route params (overrides config)
+  const routeDefaultFilter = route?.params?.defaultFilter;
+  
   const isHostView = viewType === 'host';
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<string>(showPending ? 'pending' : default_filter);
+  const [filter, setFilter] = useState<string>(routeDefaultFilter || (showPending ? 'pending' : default_filter));
 
   useEffect(() => {
     fetchBookings();
@@ -60,7 +66,9 @@ const BookingListElement: React.FC<BookingListElementProps> = ({ element, naviga
         ? await bookingsService.getMyReservations(params)
         : await bookingsService.getMyBookings(params);
       
-      setBookings(response.data.bookings || []);
+      // Handle both 'bookings' and 'reservations' response keys
+      const bookingsList = response.data.bookings || response.data.reservations || [];
+      setBookings(bookingsList);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       Alert.alert('Error', 'Unable to load bookings');
@@ -317,13 +325,25 @@ const BookingListElement: React.FC<BookingListElementProps> = ({ element, naviga
       {bookings.length === 0 ? (
         renderEmptyState()
       ) : (
-        <View style={styles.list}>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            pull_to_refresh ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor="#007AFF"
+              />
+            ) : undefined
+          }
+        >
           {bookings.map((item) => (
             <View key={item.id.toString()}>
               {renderBookingCard({ item })}
             </View>
           ))}
-        </View>
+        </ScrollView>
       )}
     </View>
   );
@@ -333,6 +353,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2F2F7',
+  },
+  scrollView: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,

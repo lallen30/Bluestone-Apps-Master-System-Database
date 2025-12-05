@@ -887,8 +887,24 @@ exports.duplicateMenu = async (req, res) => {
     if (roleAccess && roleAccess.length > 0) {
       for (const access of roleAccess) {
         await db.query(
-          'INSERT INTO menu_role_access (menu_id, role_id) VALUES (?, ?)',
-          [newMenuId, access.role_id]
+          'INSERT INTO menu_role_access (menu_id, role_id, app_id) VALUES (?, ?, ?)',
+          [newMenuId, access.role_id, access.app_id]
+        );
+      }
+    }
+
+    // Duplicate screen assignments
+    const screenAssignmentsResult = await db.query(
+      'SELECT * FROM screen_menu_assignments WHERE menu_id = ?',
+      [menuId]
+    );
+    const screenAssignments = Array.isArray(screenAssignmentsResult) && Array.isArray(screenAssignmentsResult[0]) ? screenAssignmentsResult[0] : screenAssignmentsResult;
+
+    if (screenAssignments && screenAssignments.length > 0) {
+      for (const assignment of screenAssignments) {
+        await db.query(
+          'INSERT INTO screen_menu_assignments (screen_id, menu_id) VALUES (?, ?)',
+          [assignment.screen_id, newMenuId]
         );
       }
     }
@@ -900,7 +916,8 @@ exports.duplicateMenu = async (req, res) => {
         id: newMenuId,
         name: name,
         items_copied: items?.length || 0,
-        roles_copied: roleAccess?.length || 0
+        roles_copied: roleAccess?.length || 0,
+        screens_copied: screenAssignments?.length || 0
       }
     });
   } catch (error) {

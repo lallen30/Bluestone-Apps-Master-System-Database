@@ -126,7 +126,14 @@ const BookingDetailElement: React.FC<BookingDetailElementProps> = ({ element, na
   const checkIn = new Date(booking.check_in_date);
   const checkOut = new Date(booking.check_out_date);
   const canCancel = enable_cancel && (booking.status === 'pending' || booking.status === 'confirmed');
-  const subtotal = booking.price_per_night * booking.nights;
+  
+  // Safely parse numeric values
+  const pricePerNight = parseFloat(String(booking.price_per_night || 0));
+  const nights = parseInt(String(booking.nights || 1));
+  const cleaningFee = parseFloat(String(booking.cleaning_fee || 0));
+  const serviceFee = parseFloat(String(booking.service_fee || 0));
+  const totalPrice = parseFloat(String(booking.total_price || 0));
+  const subtotal = pricePerNight * nights;
 
   return (
     <ScrollView style={styles.container}>
@@ -256,28 +263,28 @@ const BookingDetailElement: React.FC<BookingDetailElementProps> = ({ element, na
 
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>
-              ${booking.price_per_night.toFixed(2)} × {booking.nights} nights
+              ${pricePerNight.toFixed(2)} × {nights} nights
             </Text>
             <Text style={styles.priceValue}>${subtotal.toFixed(2)}</Text>
           </View>
 
-          {booking.cleaning_fee > 0 && (
+          {cleaningFee > 0 && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Cleaning fee</Text>
-              <Text style={styles.priceValue}>${booking.cleaning_fee.toFixed(2)}</Text>
+              <Text style={styles.priceValue}>${cleaningFee.toFixed(2)}</Text>
             </View>
           )}
 
-          {booking.service_fee > 0 && (
+          {serviceFee > 0 && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Service fee</Text>
-              <Text style={styles.priceValue}>${booking.service_fee.toFixed(2)}</Text>
+              <Text style={styles.priceValue}>${serviceFee.toFixed(2)}</Text>
             </View>
           )}
 
           <View style={[styles.priceRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>${booking.total_price.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>
           </View>
         </View>
       )}

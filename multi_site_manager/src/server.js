@@ -42,6 +42,8 @@ const favoritesRoutes = require('./routes/favorites');
 const profileRoutes = require('./routes/profile');
 const formSubmissionsRoutes = require('./routes/formSubmissions');
 const reportsRoutes = require('./routes/reports');
+const ridesRoutes = require('./routes/rides');
+const driversRoutes = require('./routes/drivers');
 
 // Initialize Express app
 const app = express();
@@ -144,6 +146,8 @@ app.use(`/api/${API_VERSION}`, favoritesRoutes); // Favorites/wishlist
 app.use(`/api/${API_VERSION}`, profileRoutes); // User profile management
 app.use(`/api/${API_VERSION}`, formSubmissionsRoutes); // Form submissions (admin)
 app.use(`/api/${API_VERSION}`, reportsRoutes); // Reports management
+app.use(`/api/${API_VERSION}/apps/:appId/rides`, ridesRoutes); // Rideshare rides
+app.use(`/api/${API_VERSION}/apps/:appId/drivers`, driversRoutes); // Rideshare drivers
 
 // Serve uploaded files statically
 app.use('/uploads', express.static('uploads'));

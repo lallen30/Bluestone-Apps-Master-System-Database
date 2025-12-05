@@ -448,7 +448,7 @@ export default function RolesPage() {
                               className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                             />
                             <span className="ml-2 text-sm text-gray-700">
-                              {screen.can_access ? 'Accessible' : 'Blocked'}
+                              {screen.can_access ? 'Accessible' : 'Accessible'}
                             </span>
                           </label>
                         </div>

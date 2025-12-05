@@ -523,9 +523,24 @@ exports.getScreenWithElements = async (req, res) => {
       console.log(`[Screen ${screenId}] No user authenticated`);
     }
 
-    // Merge submission data into elements
+    // Check if this is a profile screen (for display purposes)
+    const isProfileScreen = screen.screen_key && (
+      screen.screen_key.includes('profile') || 
+      screen.name.toLowerCase().includes('profile')
+    );
+
+    // Merge submission data into elements (but not into buttons/links)
+    // For profile screens, allow paragraph elements to show user data
+    const nonDataElements = isProfileScreen 
+      ? ['button', 'link', 'heading', 'image', 'logout_button']  // Allow paragraph/text on profile screens
+      : ['button', 'link', 'heading', 'paragraph', 'text', 'image', 'logout_button'];
+    
     const elementsWithData = allElements.map(element => {
-      if (submissionData && element.field_key && submissionData[element.field_key]) {
+      // Don't merge submission data into non-data elements like buttons
+      if (nonDataElements.includes(element.element_type)) {
+        return element;
+      }
+      if (submissionData && element.field_key && submissionData[element.field_key] !== undefined) {
         return {
           ...element,
           content_value: submissionData[element.field_key]
