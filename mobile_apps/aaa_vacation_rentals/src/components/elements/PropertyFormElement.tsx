@@ -540,6 +540,19 @@ export const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ elemen
           </View>
         );
 
+      case 'media_gallery':
+        // Media gallery for multiple images and videos
+        const MediaGalleryElement = require('./MediaGalleryElement').default;
+        return (
+          <MediaGalleryElement
+            key={element.id}
+            element={element}
+            value={Array.isArray(value) ? value : []}
+            onChange={handleChange}
+            disabled={false}
+          />
+        );
+
       case 'dropdown':
       case 'country_selector':
       case 'currency_selector':

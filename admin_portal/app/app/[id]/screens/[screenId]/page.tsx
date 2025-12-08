@@ -781,7 +781,1104 @@ export default function EditScreenContent() {
                         )}
                       </div>
                     )}
-                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button', 'email_input', 'phone_input', 'url_input', 'number_input', 'date_picker', 'image_display', 'image_upload', 'button', 'link', 'property_form'].includes(element.element_type) && (
+                    {element.element_type === 'booking_list' && (
+                      <div className="space-y-4">
+                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-orange-800">
+                            <strong>Booking List Element</strong> - Configure filters, display options, and actions for booking lists.
+                          </p>
+                        </div>
+
+                        {/* View Type */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">View Type</label>
+                          <select
+                            value={contentOptions[elementKey]?.viewType || element.config?.viewType || 'guest'}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], viewType: e.target.value }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          >
+                            <option value="guest">Guest View (My Bookings)</option>
+                            <option value="host">Host View (Reservations)</option>
+                          </select>
+                        </div>
+
+                        {/* Card Layout */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Card Layout</label>
+                          <select
+                            value={contentOptions[elementKey]?.card_layout || element.config?.card_layout || 'compact'}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], card_layout: e.target.value }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          >
+                            <option value="compact">Compact</option>
+                            <option value="detailed">Detailed</option>
+                          </select>
+                        </div>
+
+                        {/* Default Filter */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Default Filter</label>
+                          <select
+                            value={contentOptions[elementKey]?.default_filter || element.config?.default_filter || 'all'}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], default_filter: e.target.value }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          >
+                            <option value="all">All</option>
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </div>
+
+                        {/* Items Per Page */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Items Per Page</label>
+                          <input
+                            type="number"
+                            min="5"
+                            max="50"
+                            value={contentOptions[elementKey]?.items_per_page || element.config?.items_per_page || 20}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], items_per_page: parseInt(e.target.value) || 20 }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+
+                        {/* Filter Tabs */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Filter Tabs</label>
+                          <div className="space-y-2">
+                            {['all', 'pending', 'confirmed', 'cancelled', 'completed'].map((filter) => {
+                              const currentFilters = contentOptions[elementKey]?.filters || element.config?.filters || ['all', 'pending', 'confirmed', 'cancelled'];
+                              const isChecked = currentFilters.includes(filter);
+                              return (
+                                <label key={filter} className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      const newFilters = e.target.checked
+                                        ? [...currentFilters, filter]
+                                        : currentFilters.filter((f: string) => f !== filter);
+                                      setContentOptions(prev => ({
+                                        ...prev,
+                                        [elementKey]: { ...prev[elementKey], filters: newFilters }
+                                      }));
+                                    }}
+                                    className="rounded border-gray-300"
+                                  />
+                                  <span className="text-sm text-gray-700 capitalize">{filter}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.show_status_badges ?? element.config?.show_status_badges ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], show_status_badges: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Status Badges</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.enable_cancel ?? element.config?.enable_cancel ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], enable_cancel: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Enable Cancel Button</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.pull_to_refresh ?? element.config?.pull_to_refresh ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], pull_to_refresh: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Pull to Refresh</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                    {element.element_type === 'booking_detail' && (
+                      <div className="space-y-4">
+                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-orange-800">
+                            <strong>Booking Detail Element</strong> - Configure which sections and actions to display.
+                          </p>
+                        </div>
+
+                        {/* Sections */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Visible Sections</label>
+                          <div className="space-y-2">
+                            {[
+                              { value: 'property', label: 'Property Info' },
+                              { value: 'trip', label: 'Trip Details' },
+                              { value: 'guest', label: 'Guest Info' },
+                              { value: 'host', label: 'Host Info' },
+                              { value: 'price', label: 'Price Breakdown' },
+                              { value: 'timeline', label: 'Status Timeline' }
+                            ].map((section) => {
+                              const currentSections = contentOptions[elementKey]?.sections || element.config?.sections || ['property', 'trip', 'guest', 'host', 'price', 'timeline'];
+                              const isChecked = currentSections.includes(section.value);
+                              return (
+                                <label key={section.value} className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      const newSections = e.target.checked
+                                        ? [...currentSections, section.value]
+                                        : currentSections.filter((s: string) => s !== section.value);
+                                      setContentOptions(prev => ({
+                                        ...prev,
+                                        [elementKey]: { ...prev[elementKey], sections: newSections }
+                                      }));
+                                    }}
+                                    className="rounded border-gray-300"
+                                  />
+                                  <span className="text-sm text-gray-700">{section.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.show_timeline ?? element.config?.show_timeline ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], show_timeline: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Status Timeline</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.enable_cancel ?? element.config?.enable_cancel ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], enable_cancel: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Enable Cancel Booking</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.enable_contact_host ?? element.config?.enable_contact_host ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], enable_contact_host: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Enable Contact Host</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                    {element.element_type === 'property_detail' && (
+                      <div className="space-y-4">
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-green-800">
+                            <strong>Property Detail Element</strong> - Configure which sections and actions to display.
+                          </p>
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.showBookButton ?? element.config?.showBookButton ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], showBookButton: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Book Now Button</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.showContactHost ?? element.config?.showContactHost ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], showContactHost: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Contact Host Button</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.showAmenities ?? element.config?.showAmenities ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], showAmenities: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Amenities Section</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.showReviews ?? element.config?.showReviews ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], showReviews: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Reviews Section</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                    {element.element_type === 'notification_list' && (
+                      <div className="space-y-4">
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-purple-800">
+                            <strong>Notification List Element</strong> - Configure display and interaction options.
+                          </p>
+                        </div>
+
+                        {/* Empty Message */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Empty State Message</label>
+                          <input
+                            type="text"
+                            value={contentOptions[elementKey]?.empty_message || element.config?.empty_message || 'No notifications yet'}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], empty_message: e.target.value }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.show_unread_badge ?? element.config?.show_unread_badge ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], show_unread_badge: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Unread Badge</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.group_by_date ?? element.config?.group_by_date ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], group_by_date: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Group by Date</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.enable_swipe_actions ?? element.config?.enable_swipe_actions ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], enable_swipe_actions: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Enable Swipe Actions</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                    {element.element_type === 'conversation_list' && (
+                      <div className="space-y-4">
+                        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-indigo-800">
+                            <strong>Conversation List Element</strong> - Configure messaging list options.
+                          </p>
+                        </div>
+
+                        {/* Auto Refresh Interval */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Auto Refresh Interval (ms)</label>
+                          <input
+                            type="number"
+                            min="5000"
+                            max="120000"
+                            step="5000"
+                            value={contentOptions[elementKey]?.auto_refresh_interval || element.config?.auto_refresh_interval || 30000}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], auto_refresh_interval: parseInt(e.target.value) || 30000 }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">How often to check for new messages (5000 = 5 seconds)</p>
+                        </div>
+
+                        {/* Items Per Page */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Items Per Page</label>
+                          <input
+                            type="number"
+                            min="10"
+                            max="100"
+                            value={contentOptions[elementKey]?.items_per_page || element.config?.items_per_page || 50}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], items_per_page: parseInt(e.target.value) || 50 }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.show_unread_badge ?? element.config?.show_unread_badge ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], show_unread_badge: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Unread Badge</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.show_avatars ?? element.config?.show_avatars ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], show_avatars: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show User Avatars</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.enable_archive ?? element.config?.enable_archive ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], enable_archive: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Enable Archive</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.pull_to_refresh ?? element.config?.pull_to_refresh ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], pull_to_refresh: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Pull to Refresh</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                    {element.element_type === 'chat_interface' && (
+                      <div className="space-y-4">
+                        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-indigo-800">
+                            <strong>Chat Interface Element</strong> - Configure chat display and behavior.
+                          </p>
+                        </div>
+
+                        {/* Message Bubble Style */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Message Bubble Style</label>
+                          <select
+                            value={contentOptions[elementKey]?.message_bubble_style || element.config?.message_bubble_style || 'ios'}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], message_bubble_style: e.target.value }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          >
+                            <option value="ios">iOS Style</option>
+                            <option value="android">Android Style</option>
+                            <option value="minimal">Minimal</option>
+                          </select>
+                        </div>
+
+                        {/* Auto Refresh Interval */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Auto Refresh Interval (ms)</label>
+                          <input
+                            type="number"
+                            min="1000"
+                            max="30000"
+                            step="1000"
+                            value={contentOptions[elementKey]?.auto_refresh_interval || element.config?.auto_refresh_interval || 5000}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], auto_refresh_interval: parseInt(e.target.value) || 5000 }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">How often to check for new messages</p>
+                        </div>
+
+                        {/* Max Message Length */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Max Message Length</label>
+                          <input
+                            type="number"
+                            min="100"
+                            max="5000"
+                            value={contentOptions[elementKey]?.max_message_length || element.config?.max_message_length || 1000}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], max_message_length: parseInt(e.target.value) || 1000 }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.show_timestamps ?? element.config?.show_timestamps ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], show_timestamps: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Timestamps</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.show_date_separators ?? element.config?.show_date_separators ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], show_date_separators: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Date Separators</span>
+                          </label>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.enable_attachments ?? element.config?.enable_attachments ?? false}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], enable_attachments: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Enable Attachments</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                    {(element.element_type === 'dashboard_stats' || element.element_type === 'host_dashboard') && (
+                      <div className="space-y-4">
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-emerald-800">
+                            <strong>Host Dashboard Element</strong> - Configure which sections to display on the dashboard.
+                          </p>
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.showListings ?? element.config?.showListings ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], showListings: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Listings Stats</span>
+                          </label>
+                          <p className="text-xs text-gray-500 ml-6">Display active/total listings count</p>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.showBookings ?? element.config?.showBookings ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], showBookings: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Bookings Stats</span>
+                          </label>
+                          <p className="text-xs text-gray-500 ml-6">Display pending/upcoming bookings</p>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.showEarnings ?? element.config?.showEarnings ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], showEarnings: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Earnings</span>
+                          </label>
+                          <p className="text-xs text-gray-500 ml-6">Display total and monthly earnings</p>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.showReviews ?? element.config?.showReviews ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], showReviews: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Reviews</span>
+                          </label>
+                          <p className="text-xs text-gray-500 ml-6">Display average rating and review count</p>
+                        </div>
+                      </div>
+                    )}
+                    {element.element_type === 'availability_calendar' && (
+                      <div className="space-y-4">
+                        <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-teal-800">
+                            <strong>Availability Calendar Element</strong> - Configure calendar display and selection options.
+                          </p>
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.showLegend ?? element.config?.showLegend ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], showLegend: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Legend</span>
+                          </label>
+                          <p className="text-xs text-gray-500 ml-6">Display color legend for availability status</p>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.allowMultiSelect ?? element.config?.allowMultiSelect ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], allowMultiSelect: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Allow Multi-Select</span>
+                          </label>
+                          <p className="text-xs text-gray-500 ml-6">Allow selecting multiple dates at once</p>
+                        </div>
+                      </div>
+                    )}
+                    {element.element_type === 'property_search' && (
+                      <div className="space-y-4">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-blue-800">
+                            <strong>Property Search Element</strong> - Configure search filters, sorting, and display options for property listings.
+                          </p>
+                        </div>
+
+                        {/* Card Layout */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Card Layout</label>
+                          <select
+                            value={contentOptions[elementKey]?.card_layout || element.config?.card_layout || 'grid'}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: {
+                                  ...prev[elementKey],
+                                  card_layout: e.target.value
+                                }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          >
+                            <option value="grid">Grid View</option>
+                            <option value="list">List View</option>
+                          </select>
+                        </div>
+
+                        {/* Items Per Page */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Items Per Page</label>
+                          <input
+                            type="number"
+                            min="5"
+                            max="50"
+                            value={contentOptions[elementKey]?.items_per_page || element.config?.items_per_page || 20}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: {
+                                  ...prev[elementKey],
+                                  items_per_page: parseInt(e.target.value) || 20
+                                }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+
+                        {/* Default Sort */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Default Sort</label>
+                          <select
+                            value={contentOptions[elementKey]?.default_sort || element.config?.default_sort || 'newest'}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: {
+                                  ...prev[elementKey],
+                                  default_sort: e.target.value
+                                }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          >
+                            <option value="newest">Newest First</option>
+                            <option value="price_asc">Price: Low to High</option>
+                            <option value="price_desc">Price: High to Low</option>
+                            <option value="rating">Highest Rated</option>
+                          </select>
+                        </div>
+
+                        {/* Filters */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Available Filters</label>
+                          <div className="space-y-2">
+                            {['location', 'dates', 'guests', 'price'].map((filter) => {
+                              const currentFilters = contentOptions[elementKey]?.filters || element.config?.filters || ['location', 'dates', 'guests', 'price'];
+                              const isChecked = currentFilters.includes(filter);
+                              return (
+                                <label key={filter} className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      const newFilters = e.target.checked
+                                        ? [...currentFilters, filter]
+                                        : currentFilters.filter((f: string) => f !== filter);
+                                      setContentOptions(prev => ({
+                                        ...prev,
+                                        [elementKey]: {
+                                          ...prev[elementKey],
+                                          filters: newFilters
+                                        }
+                                      }));
+                                    }}
+                                    className="rounded border-gray-300"
+                                  />
+                                  <span className="text-sm text-gray-700 capitalize">{filter}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Sort Options */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Sort Options</label>
+                          <div className="space-y-2">
+                            {[
+                              { value: 'price_asc', label: 'Price: Low to High' },
+                              { value: 'price_desc', label: 'Price: High to Low' },
+                              { value: 'newest', label: 'Newest' },
+                              { value: 'rating', label: 'Rating' }
+                            ].map((option) => {
+                              const currentSortOptions = contentOptions[elementKey]?.sort_options || element.config?.sort_options || ['price_asc', 'price_desc', 'newest', 'rating'];
+                              const isChecked = currentSortOptions.includes(option.value);
+                              return (
+                                <label key={option.value} className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      const newSortOptions = e.target.checked
+                                        ? [...currentSortOptions, option.value]
+                                        : currentSortOptions.filter((s: string) => s !== option.value);
+                                      setContentOptions(prev => ({
+                                        ...prev,
+                                        [elementKey]: {
+                                          ...prev[elementKey],
+                                          sort_options: newSortOptions
+                                        }
+                                      }));
+                                    }}
+                                    className="rounded border-gray-300"
+                                  />
+                                  <span className="text-sm text-gray-700">{option.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Enable Favorites */}
+                        <div>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.enable_favorites ?? element.config?.enable_favorites ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: {
+                                    ...prev[elementKey],
+                                    enable_favorites: e.target.checked
+                                  }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Enable Favorites</span>
+                          </label>
+                          <p className="text-xs text-gray-500 mt-1 ml-6">Allow users to save properties to favorites</p>
+                        </div>
+
+                        {/* Show Map */}
+                        <div>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.show_map ?? element.config?.show_map ?? false}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: {
+                                    ...prev[elementKey],
+                                    show_map: e.target.checked
+                                  }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Map View</span>
+                          </label>
+                          <p className="text-xs text-gray-500 mt-1 ml-6">Display properties on a map (requires map integration)</p>
+                        </div>
+                      </div>
+                    )}
+                    {element.element_type === 'media_gallery' && (
+                      <div className="space-y-4">
+                        <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-violet-800">
+                            <strong>Media Gallery Element</strong> - Configure multi-image and video upload with reordering and captions.
+                          </p>
+                        </div>
+
+                        {/* Media Types */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Allowed Media Types</label>
+                          <div className="space-y-2">
+                            {[
+                              { value: 'image', label: 'Images' },
+                              { value: 'video', label: 'Videos' }
+                            ].map((mediaType) => {
+                              const currentTypes = contentOptions[elementKey]?.media_types || element.config?.media_types || ['image'];
+                              const isChecked = currentTypes.includes(mediaType.value);
+                              return (
+                                <label key={mediaType.value} className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      const newTypes = e.target.checked
+                                        ? [...currentTypes, mediaType.value]
+                                        : currentTypes.filter((t: string) => t !== mediaType.value);
+                                      setContentOptions(prev => ({
+                                        ...prev,
+                                        [elementKey]: { ...prev[elementKey], media_types: newTypes.length > 0 ? newTypes : ['image'] }
+                                      }));
+                                    }}
+                                    className="rounded border-gray-300"
+                                  />
+                                  <span className="text-sm text-gray-700">{mediaType.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Max Items */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Maximum Items</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="50"
+                            value={contentOptions[elementKey]?.max_items || element.config?.max_items || 10}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], max_items: parseInt(e.target.value) || 10 }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+
+                        {/* Min Items */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Required Items</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="20"
+                            value={contentOptions[elementKey]?.min_items || element.config?.min_items || 0}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], min_items: parseInt(e.target.value) || 0 }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+
+                        {/* Grid Columns */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Grid Columns</label>
+                          <select
+                            value={contentOptions[elementKey]?.grid_columns || element.config?.grid_columns || 3}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], grid_columns: parseInt(e.target.value) }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          >
+                            <option value={2}>2 Columns</option>
+                            <option value={3}>3 Columns</option>
+                            <option value={4}>4 Columns</option>
+                          </select>
+                        </div>
+
+                        {/* Upload Text */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Upload Button Text</label>
+                          <input
+                            type="text"
+                            value={contentOptions[elementKey]?.upload_text || element.config?.upload_text || 'Add Media'}
+                            onChange={(e) => {
+                              setContentOptions(prev => ({
+                                ...prev,
+                                [elementKey]: { ...prev[elementKey], upload_text: e.target.value }
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.allow_reorder ?? element.config?.allow_reorder ?? true}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], allow_reorder: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Allow Reordering</span>
+                          </label>
+                          <p className="text-xs text-gray-500 ml-6">Users can drag to reorder media items</p>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.allow_captions ?? element.config?.allow_captions ?? false}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], allow_captions: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Allow Captions</span>
+                          </label>
+                          <p className="text-xs text-gray-500 ml-6">Users can add captions to each media item</p>
+
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={contentOptions[elementKey]?.show_primary_selector ?? element.config?.show_primary_selector ?? false}
+                              onChange={(e) => {
+                                setContentOptions(prev => ({
+                                  ...prev,
+                                  [elementKey]: { ...prev[elementKey], show_primary_selector: e.target.checked }
+                                }));
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Show Primary Selector</span>
+                          </label>
+                          <p className="text-xs text-gray-500 ml-6">Allow selecting one item as the primary/featured image</p>
+                        </div>
+                      </div>
+                    )}
+                    {!['text_field', 'text_area', 'heading', 'paragraph', 'rich_text_display', 'rich_text_editor', 'dropdown', 'checkbox', 'radio_button', 'email_input', 'phone_input', 'url_input', 'number_input', 'date_picker', 'image_display', 'image_upload', 'button', 'link', 'property_form', 'property_search', 'booking_list', 'booking_detail', 'property_detail', 'notification_list', 'conversation_list', 'chat_interface', 'dashboard_stats', 'host_dashboard', 'availability_calendar', 'media_gallery'].includes(element.element_type) && (
                       <div className="text-sm text-gray-500 italic">
                         {element.element_type} - Content editing coming soon
                       </div>

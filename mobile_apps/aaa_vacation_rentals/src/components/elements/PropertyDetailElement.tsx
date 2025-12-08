@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,13 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  Dimensions,
+  useWindowDimensions,
   Alert,
   Platform,
+  Modal,
+  StatusBar,
 } from 'react-native';
+import Video from 'react-native-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { listingsService } from '../../api/listingsService';
@@ -55,7 +58,8 @@ interface PropertyListing {
   guests_max?: number;
   amenities: string[];
   primary_image?: string;
-  images?: Array<{ id: number; image_url: string; is_primary?: number }>;
+  images?: Array<{ id: number; image_url: string; is_primary?: number; caption?: string }>;
+  videos?: Array<{ id: number; video_url: string; thumbnail_url?: string; caption?: string }>;
   host_first_name?: string;
   host_last_name?: string;
   host_avatar?: string;
@@ -64,9 +68,8 @@ interface PropertyListing {
   status: string;
 }
 
-const { width: screenWidth } = Dimensions.get('window');
-
 const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, navigation, route }) => {
+  const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const listingId = route.params?.listingId;
   const config = element.config || element.default_config || {};
@@ -81,6 +84,10 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [videoModalVisible, setVideoModalVisible] = useState(false);
+  const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
+  const [videoPaused, setVideoPaused] = useState(false);
+  const videoRef = useRef<any>(null);
 
   useEffect(() => {
     if (listingId) {
@@ -173,17 +180,62 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
     );
   }
 
-  // Extract and transform image URLs
-  const imageUrls: string[] = [];
+  // Build media items array (images + videos)
+  interface MediaItem {
+    type: 'image' | 'video';
+    url: string;
+    thumbnailUrl?: string;
+    caption?: string;
+  }
+  
+  const mediaItems: MediaItem[] = [];
+  
+  // Add images
   if (listing.images && listing.images.length > 0) {
     listing.images.forEach((img) => {
       const url = getImageUrl(img.image_url);
-      if (url) imageUrls.push(url);
+      if (url) {
+        mediaItems.push({
+          type: 'image',
+          url,
+          caption: img.caption,
+        });
+      }
     });
   } else if (listing.primary_image) {
     const url = getImageUrl(listing.primary_image);
-    if (url) imageUrls.push(url);
+    if (url) {
+      mediaItems.push({ type: 'image', url });
+    }
   }
+  
+  // Add videos
+  if (listing.videos && listing.videos.length > 0) {
+    listing.videos.forEach((video) => {
+      const url = getImageUrl(video.video_url);
+      const thumbnailUrl = video.thumbnail_url ? getImageUrl(video.thumbnail_url) : undefined;
+      if (url) {
+        mediaItems.push({
+          type: 'video',
+          url,
+          thumbnailUrl,
+          caption: video.caption,
+        });
+      }
+    });
+  }
+
+  const handlePlayVideo = (videoUrl: string) => {
+    setCurrentVideoUrl(videoUrl);
+    setVideoPaused(false);
+    setVideoModalVisible(true);
+  };
+
+  const handleCloseVideo = () => {
+    setVideoModalVisible(false);
+    setCurrentVideoUrl(null);
+    setVideoPaused(true);
+  };
 
   const price = parseFloat(listing.price_per_night?.toString() || '0');
   const cleaningFee = parseFloat(listing.cleaning_fee?.toString() || '0');
@@ -192,36 +244,81 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Image Gallery */}
+        {/* Media Gallery (Images + Videos) */}
         <View style={styles.imageContainer}>
-          {imageUrls.length > 0 ? (
+          {mediaItems.length > 0 ? (
             <>
               <ScrollView
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
+                snapToInterval={screenWidth}
+                snapToAlignment="start"
+                decelerationRate="fast"
+                bounces={false}
                 onMomentumScrollEnd={(e) => {
                   const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
                   setCurrentImageIndex(index);
                 }}
               >
-                {imageUrls.map((imageUrl: string, index: number) => (
-                  <Image
-                    key={index}
-                    source={{ uri: imageUrl }}
-                    style={styles.image}
-                    resizeMode="cover"
-                  />
+                {mediaItems.map((item: MediaItem, index: number) => (
+                  <View key={index} style={[styles.mediaSlide, { width: screenWidth }]}>
+                    {item.type === 'image' ? (
+                      <Image
+                        source={{ uri: item.url }}
+                        style={[styles.image, { width: screenWidth }]}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.videoContainer}
+                        onPress={() => handlePlayVideo(item.url)}
+                        activeOpacity={0.9}
+                      >
+                        {item.thumbnailUrl ? (
+                          <Image
+                            source={{ uri: item.thumbnailUrl }}
+                            style={[styles.image, { width: screenWidth }]}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={[styles.image, styles.videoPlaceholder, { width: screenWidth }]}>
+                            <Icon name="video-outline" size={64} color="rgba(255,255,255,0.6)" />
+                          </View>
+                        )}
+                        {/* Gradient overlay for better visibility */}
+                        <View style={styles.videoGradientOverlay} />
+                        {/* Play button */}
+                        <View style={styles.playButtonOverlay}>
+                          <View style={styles.playButton}>
+                            <Icon name="play" size={32} color="#fff" />
+                          </View>
+                        </View>
+                        {/* Video badge */}
+                        <View style={styles.videoBadge}>
+                          <Icon name="video" size={14} color="#fff" />
+                          <Text style={styles.videoBadgeText}>VIDEO</Text>
+                        </View>
+                        {/* Caption at bottom */}
+                        {item.caption && (
+                          <View style={styles.videoCaptionOverlay}>
+                            <Text style={styles.videoCaptionText}>{item.caption}</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 ))}
               </ScrollView>
-              {imageUrls.length > 1 && (
+              {mediaItems.length > 1 && (
                 <View style={styles.imagePagination}>
-                  {imageUrls.map((_: string, index: number) => (
+                  {mediaItems.map((item: MediaItem, index: number) => (
                     <View
                       key={index}
                       style={[
                         styles.paginationDot,
                         index === currentImageIndex && styles.paginationDotActive,
+                        item.type === 'video' && styles.paginationDotVideo,
                       ]}
                     />
                   ))}
@@ -381,6 +478,44 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Video Player Modal */}
+      <Modal
+        visible={videoModalVisible}
+        animationType="fade"
+        transparent={false}
+        onRequestClose={handleCloseVideo}
+        supportedOrientations={['portrait', 'landscape']}
+      >
+        <StatusBar hidden={videoModalVisible} />
+        <View style={styles.videoModalContainer}>
+          <TouchableOpacity style={styles.videoCloseButton} onPress={handleCloseVideo}>
+            <Icon name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+          {currentVideoUrl && (
+            <Video
+              ref={videoRef}
+              source={{ uri: currentVideoUrl }}
+              style={styles.fullscreenVideo}
+              controls={true}
+              resizeMode="contain"
+              paused={videoPaused}
+              onEnd={handleCloseVideo}
+              onError={(error: any) => {
+                console.error('Video error:', error);
+                Alert.alert('Error', 'Unable to play video');
+                handleCloseVideo();
+              }}
+            />
+          )}
+          <TouchableOpacity
+            style={styles.videoPlayPauseButton}
+            onPress={() => setVideoPaused(!videoPaused)}
+          >
+            <Icon name={videoPaused ? 'play' : 'pause'} size={32} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -436,12 +571,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   imageContainer: {
-    width: screenWidth,
+    width: '100%',
     height: 300,
     backgroundColor: '#F2F2F7',
+    overflow: 'hidden',
   },
   image: {
-    width: screenWidth,
     height: 300,
   },
   noImage: {
@@ -466,6 +601,85 @@ const styles = StyleSheet.create({
   },
   paginationDotActive: {
     backgroundColor: '#fff',
+  },
+  paginationDotVideo: {
+    backgroundColor: 'rgba(255,59,48,0.7)',
+  },
+  mediaSlide: {
+    height: 300,
+  },
+  videoContainer: {
+    width: '100%',
+    height: 300,
+    position: 'relative',
+  },
+  videoPlaceholder: {
+    backgroundColor: '#2C2C2E',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoGradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  playButtonOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,56,92,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingLeft: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  videoBadge: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  videoBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 4,
+    letterSpacing: 0.5,
+  },
+  videoCaptionOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  videoCaptionText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   favoriteButton: {
     position: 'absolute',
@@ -692,6 +906,39 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  videoModalContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenVideo: {
+    width: '100%',
+    height: '100%',
+  },
+  videoPlayPauseButton: {
+    position: 'absolute',
+    bottom: 100,
+    alignSelf: 'center',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

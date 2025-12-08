@@ -3647,6 +3647,19 @@ const DynamicScreen = ({ route, navigation }: any) => {
           </View>
         );
 
+      case 'media_gallery':
+        // Media gallery for multiple images and videos
+        const MediaGalleryElement = require('../components/elements/MediaGalleryElement').default;
+        return (
+          <MediaGalleryElement
+            key={element.id}
+            element={element}
+            value={Array.isArray(value) ? value : []}
+            onChange={updateValue}
+            disabled={false}
+          />
+        );
+
       case 'icon':
         // Display icon from icon library
         const iconConfig = typeof element.config === 'string' 

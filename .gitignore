@@ -48,3 +48,9 @@ temp/
 # Package manager locks (optional - some teams commit these)
 # package-lock.json
 # yarn.lock
+
+# Large video files (exceed GitHub's 100MB limit)
+*.mp4
+*.mov
+*.avi
+*.mkv

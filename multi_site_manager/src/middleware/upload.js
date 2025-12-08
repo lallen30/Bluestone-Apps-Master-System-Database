@@ -57,12 +57,48 @@ const fileFilter = function (req, file, cb) {
   cb(null, true);
 };
 
+// File filter for videos
+const videoFilter = function (req, file, cb) {
+  // Accept video files only
+  if (!file.mimetype.startsWith('video/')) {
+    return cb(new Error('Only video files are allowed!'), false);
+  }
+  cb(null, true);
+};
+
+// File filter for media (images and videos)
+const mediaFilter = function (req, file, cb) {
+  // Accept images and videos
+  if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
+    return cb(new Error('Only image and video files are allowed!'), false);
+  }
+  cb(null, true);
+};
+
 // Configure multer for images
 const uploadImage = multer({
   storage: storage,
   fileFilter: imageFilter,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
+
+// Configure multer for videos
+const uploadVideo = multer({
+  storage: storage,
+  fileFilter: videoFilter,
+  limits: {
+    fileSize: 100 * 1024 * 1024 // 100MB limit for videos
+  }
+});
+
+// Configure multer for media (images + videos)
+const uploadMedia = multer({
+  storage: storage,
+  fileFilter: mediaFilter,
+  limits: {
+    fileSize: 100 * 1024 * 1024 // 100MB limit
   }
 });
 
@@ -77,5 +113,7 @@ const uploadFile = multer({
 
 module.exports = {
   uploadImage,
+  uploadVideo,
+  uploadMedia,
   uploadFile
 };

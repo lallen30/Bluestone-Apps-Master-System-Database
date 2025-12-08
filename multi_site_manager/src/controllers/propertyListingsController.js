@@ -401,6 +401,12 @@ exports.getListingById = async (req, res) => {
       [listingId]
     );
 
+    // Get videos
+    const videos = await db.query(
+      `SELECT * FROM property_videos WHERE listing_id = ? ORDER BY display_order`,
+      [listingId]
+    );
+
     // Get amenities
     const amenities = await db.query(
       `SELECT pa.* FROM property_amenities pa
@@ -411,6 +417,7 @@ exports.getListingById = async (req, res) => {
     );
 
     listing.images = images || [];
+    listing.videos = videos || [];
     listing.amenities = amenities || [];
     
     // Add primary_image field for form compatibility
