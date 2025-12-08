@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { appsAPI, bookingsAPI, propertyListingsAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { Calendar, DollarSign, Users, Clock, CheckCircle, XCircle, AlertCircle, Filter, Download } from 'lucide-react';
+import { Calendar, DollarSign, Users, Clock, CheckCircle, XCircle, AlertCircle, Filter, Download, RefreshCw } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
 interface Booking {
@@ -81,6 +81,10 @@ export default function BookingsReportPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  
+  // Complete past bookings
+  const [completing, setCompleting] = useState(false);
+  const [completionMessage, setCompletionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -141,6 +145,29 @@ export default function BookingsReportPage() {
     setCurrentPage(1);
   };
 
+  const handleCompletePastBookings = async () => {
+    if (!confirm('This will mark all confirmed bookings with past checkout dates as completed. Continue?')) {
+      return;
+    }
+    
+    try {
+      setCompleting(true);
+      setCompletionMessage(null);
+      const response = await bookingsAPI.completePastBookings(parseInt(appId));
+      const count = response.data?.completed_count || 0;
+      setCompletionMessage(`✓ Marked ${count} booking(s) as completed`);
+      // Refresh the data
+      fetchData();
+    } catch (error) {
+      console.error('Error completing past bookings:', error);
+      setCompletionMessage('✗ Error completing past bookings');
+    } finally {
+      setCompleting(false);
+      // Clear message after 5 seconds
+      setTimeout(() => setCompletionMessage(null), 5000);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed': return 'text-green-600 bg-green-50';
@@ -193,6 +220,22 @@ export default function BookingsReportPage() {
               <p className="mt-1 text-sm text-gray-600">
                 View and manage all bookings for {app?.name || 'your app'}
               </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {completionMessage && (
+                <span className={`text-sm ${completionMessage.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>
+                  {completionMessage}
+                </span>
+              )}
+              <Button
+                onClick={handleCompletePastBookings}
+                disabled={completing}
+                variant="secondary"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${completing ? 'animate-spin' : ''}`} />
+                {completing ? 'Processing...' : 'Complete Past Bookings'}
+              </Button>
             </div>
           </div>
         </div>

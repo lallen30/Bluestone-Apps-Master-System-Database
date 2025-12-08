@@ -219,11 +219,8 @@ const AvailabilityCalendarElement: React.FC<AvailabilityCalendarElementProps> = 
           ]}>
             {day}
           </Text>
-          {hasOverride && !isBlocked && (
+          {hasOverride && !isBlocked && !hasBooking && (
             <Text style={styles.priceOverrideText}>${availData.price_override}</Text>
-          )}
-          {hasBooking && (
-            <Icon name="account" size={12} color="#fff" style={styles.bookingIcon} />
           )}
         </TouchableOpacity>
       );
@@ -604,10 +601,6 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: '#007AFF',
     marginTop: 2,
-  },
-  bookingIcon: {
-    position: 'absolute',
-    bottom: 4,
   },
   legend: {
     flexDirection: 'row',

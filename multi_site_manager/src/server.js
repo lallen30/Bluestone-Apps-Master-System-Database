@@ -4,9 +4,11 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const cron = require('node-cron');
 require('dotenv').config();
 
 const { testConnection } = require('./config/database');
+const bookingsController = require('./controllers/bookingsController');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -44,6 +46,7 @@ const formSubmissionsRoutes = require('./routes/formSubmissions');
 const reportsRoutes = require('./routes/reports');
 const ridesRoutes = require('./routes/rides');
 const driversRoutes = require('./routes/drivers');
+const notificationsRoutes = require('./routes/notifications');
 
 // Initialize Express app
 const app = express();
@@ -148,6 +151,7 @@ app.use(`/api/${API_VERSION}`, formSubmissionsRoutes); // Form submissions (admi
 app.use(`/api/${API_VERSION}`, reportsRoutes); // Reports management
 app.use(`/api/${API_VERSION}/apps/:appId/rides`, ridesRoutes); // Rideshare rides
 app.use(`/api/${API_VERSION}/apps/:appId/drivers`, driversRoutes); // Rideshare drivers
+app.use(`/api/${API_VERSION}`, notificationsRoutes); // Notifications
 
 // Serve uploaded files statically
 app.use('/uploads', express.static('uploads'));
@@ -191,6 +195,25 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Setup scheduled cron jobs
+const setupCronJobs = () => {
+  // Complete past bookings - runs every day at midnight
+  // Cron format: minute hour day-of-month month day-of-week
+  // '0 0 * * *' = At 00:00 every day
+  cron.schedule('0 0 * * *', async () => {
+    console.log('[Cron] Running daily booking completion job...');
+    try {
+      const count = await bookingsController.completePastBookingsAllApps();
+      console.log(`[Cron] Daily job completed. Marked ${count} bookings as completed.`);
+    } catch (error) {
+      console.error('[Cron] Daily booking completion job failed:', error);
+    }
+  });
+
+  console.log('[Cron] Scheduled jobs:');
+  console.log('  - Complete past bookings: Daily at midnight');
+};
+
 // Start server
 const startServer = async () => {
   try {
@@ -215,6 +238,9 @@ const startServer = async () => {
       console.log(`  Health: http://localhost:${PORT}/health`);
       console.log('========================================');
       console.log('');
+
+      // Schedule cron jobs
+      setupCronJobs();
     });
   } catch (error) {
     console.error('Failed to start server:', error);

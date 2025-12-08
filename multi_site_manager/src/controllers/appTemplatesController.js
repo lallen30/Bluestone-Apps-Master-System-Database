@@ -665,10 +665,24 @@ const createAppFromTemplate = async (req, res) => {
 
         const newMenuId = menuIdMap[templateMenu.id];
         for (const item of templateMenuItems) {
+          // Handle sidebar menu items - extract sidebar config from JSON config column
+          let sidebarMenuId = null;
+          let sidebarPosition = null;
+          
+          if (item.item_type === 'sidebar' && item.config) {
+            const config = typeof item.config === 'string' ? JSON.parse(item.config) : item.config;
+            // Map the template sidebar_menu_id to the new menu ID
+            if (config.sidebar_menu_id) {
+              sidebarMenuId = menuIdMap[config.sidebar_menu_id] || null;
+            }
+            sidebarPosition = config.sidebar_position || null;
+          }
+          
           await db.query(
-            `INSERT INTO menu_items (menu_id, screen_id, item_type, display_order, label, icon, is_active)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO menu_items (menu_id, screen_id, item_type, sidebar_menu_id, sidebar_position, display_order, label, icon, is_active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [newMenuId, item.screen_id || null, item.item_type || 'screen',
+             sidebarMenuId, sidebarPosition,
              item.display_order ?? 0, item.label || null, item.icon || null, item.is_active ?? 1]
           );
           stats.menuItems = (stats.menuItems || 0) + 1;
@@ -1008,7 +1022,39 @@ const createAppFromTemplate = async (req, res) => {
         }
       }
 
-      // STEP 16: Clone Driver Profiles from template (for rideshare apps)
+      // STEP 16: Clone Screen Module Assignments from template (header bar configs, etc.)
+      const templateScreenModules = await db.query(
+        'SELECT * FROM app_template_screen_module_assignments WHERE template_id = ?',
+        [template_id]
+      );
+
+      for (const moduleAssign of templateScreenModules) {
+        // Check if assignment already exists (screens share module assignments)
+        const existing = await db.query(
+          'SELECT id FROM screen_module_assignments WHERE screen_id = ? AND module_id = ?',
+          [moduleAssign.screen_id, moduleAssign.module_id]
+        );
+        
+        if (!existing || existing.length === 0) {
+          await db.query(
+            `INSERT INTO screen_module_assignments (screen_id, module_id, config, is_active)
+             VALUES (?, ?, ?, ?)`,
+            [moduleAssign.screen_id, moduleAssign.module_id, 
+             moduleAssign.config || null, moduleAssign.is_active ?? 1]
+          );
+        } else {
+          // Update existing with template config
+          await db.query(
+            `UPDATE screen_module_assignments SET config = ?, is_active = ? 
+             WHERE screen_id = ? AND module_id = ?`,
+            [moduleAssign.config || null, moduleAssign.is_active ?? 1,
+             moduleAssign.screen_id, moduleAssign.module_id]
+          );
+        }
+        stats.screenModuleAssignments = (stats.screenModuleAssignments || 0) + 1;
+      }
+
+      // STEP 17: Clone Driver Profiles from template (for rideshare apps)
       const templateDriverProfiles = await db.query(
         'SELECT * FROM app_template_driver_profiles WHERE template_id = ?',
         [template_id]

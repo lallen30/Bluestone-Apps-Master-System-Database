@@ -6,6 +6,7 @@ export { default as ConversationListElement } from './ConversationListElement';
 export { default as ChatInterfaceElement } from './ChatInterfaceElement';
 export { default as DynamicPricingElement } from './DynamicPricingElement';
 export { default as HostDashboardElement } from './HostDashboardElement';
+export { default as NotificationListElement } from './NotificationListElement';
 export { default as PropertyDetailElement } from './PropertyDetailElement';
 export { default as PropertySearchElement } from './PropertySearchElement';
 export { default as PropertyFormElement } from './PropertyFormElement';

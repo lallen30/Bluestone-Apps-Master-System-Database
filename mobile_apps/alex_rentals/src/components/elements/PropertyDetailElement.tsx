@@ -58,6 +58,7 @@ interface PropertyListing {
   images?: Array<{ id: number; image_url: string; is_primary?: number }>;
   host_first_name?: string;
   host_last_name?: string;
+  host_avatar?: string;
   average_rating?: number;
   total_reviews?: number;
   status: string;
@@ -318,9 +319,28 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
           {listing.host_first_name && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Hosted by</Text>
-              <View style={styles.hostCard}>
+              <TouchableOpacity 
+                style={styles.hostCard}
+                onPress={() => {
+                  // Navigate to host profile screen
+                  navigation.navigate('DynamicScreen', {
+                    screenId: 105, // User Profile screen
+                    screenName: `${listing.host_first_name}'s Profile`,
+                    userId: listing.user_id,
+                    viewingOtherUser: true,
+                  });
+                }}
+                activeOpacity={0.7}
+              >
                 <View style={styles.hostAvatar}>
-                  <Icon name="account" size={32} color="#8E8E93" />
+                  {listing.host_avatar ? (
+                    <Image 
+                      source={{ uri: getImageUrl(listing.host_avatar) }} 
+                      style={styles.hostAvatarImage}
+                    />
+                  ) : (
+                    <Icon name="account" size={32} color="#8E8E93" />
+                  )}
                 </View>
                 <View style={styles.hostInfo}>
                   <Text style={styles.hostName}>
@@ -328,12 +348,14 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
                   </Text>
                   <Text style={styles.hostLabel}>Host</Text>
                 </View>
-                {showContactHost && (
-                  <TouchableOpacity style={styles.messageButton} onPress={handleContactHost}>
-                    <Icon name="message-text" size={20} color="#007AFF" />
-                  </TouchableOpacity>
-                )}
-              </View>
+                <Icon name="chevron-right" size={24} color="#C7C7CC" />
+              </TouchableOpacity>
+              {showContactHost && (
+                <TouchableOpacity style={styles.contactHostButton} onPress={handleContactHost}>
+                  <Icon name="message-text" size={20} color="#007AFF" />
+                  <Text style={styles.contactHostText}>Message Host</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
@@ -573,6 +595,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E5EA',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  hostAvatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   hostInfo: {
     flex: 1,
@@ -587,6 +615,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
     marginTop: 2,
+  },
+  contactHostButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+    paddingVertical: 12,
+    marginTop: 12,
+  },
+  contactHostText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+    marginLeft: 8,
   },
   messageButton: {
     width: 44,

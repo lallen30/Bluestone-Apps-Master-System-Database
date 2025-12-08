@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const { createNotification } = require('./notificationsController');
 
 /**
  * Start or get existing conversation
@@ -364,6 +365,36 @@ exports.sendMessage = async (req, res) => {
       ? messageResult[0] 
       : messageResult;
     const message = messageData[0];
+
+    // Send notification to the other user
+    try {
+      const otherUserId = conversation.user1_id === userId ? conversation.user2_id : conversation.user1_id;
+      
+      // Get sender name
+      const senderResult = await db.query(
+        `SELECT first_name, last_name FROM app_users WHERE id = ?`,
+        [userId]
+      );
+      const senderData = Array.isArray(senderResult) && Array.isArray(senderResult[0]) 
+        ? senderResult[0] 
+        : senderResult;
+      const senderName = senderData[0] 
+        ? `${senderData[0].first_name} ${senderData[0].last_name}`.trim() 
+        : 'Someone';
+      
+      const preview = message_text.trim().substring(0, 50) + (message_text.length > 50 ? '...' : '');
+      
+      await createNotification(
+        appId,
+        otherUserId,
+        'new_message',
+        `New message from ${senderName}`,
+        preview,
+        { conversation_id: parseInt(conversationId), sender_id: userId }
+      );
+    } catch (notifError) {
+      console.error('Error sending message notification:', notifError);
+    }
 
     res.status(201).json({
       success: true,

@@ -33,13 +33,13 @@ export const AppConfig = {
   API_TIMEOUT: parseInt(Config.API_TIMEOUT || '30000', 10),
   
   // App Identification
-  APP_ID: parseInt(Config.APP_ID || '28', 10),
-  APP_NAME: Config.APP_NAME || 'Property Rental',
-  APP_DISPLAY_NAME: Config.APP_DISPLAY_NAME || 'Property Rental',
+  APP_ID: parseInt(Config.APP_ID || '56', 10),
+  APP_NAME: Config.APP_NAME || 'AAAVacationRentals',
+  APP_DISPLAY_NAME: Config.APP_DISPLAY_NAME || 'AAA Vacation Rentals',
   
   // Bundle Identifiers (for reference - actual values set in native projects)
-  IOS_BUNDLE_ID: Config.IOS_BUNDLE_ID || 'com.bluestoneapps.propertyrental',
-  ANDROID_PACKAGE: Config.ANDROID_PACKAGE || 'com.bluestoneapps.propertyrental',
+  IOS_BUNDLE_ID: Config.IOS_BUNDLE_ID || 'com.bluestoneapps.aaavacationrentals',
+  ANDROID_PACKAGE: Config.ANDROID_PACKAGE || 'com.bluestoneapps.aaavacationrentals',
   
   // Feature Flags
   ENABLE_DEBUG_LOGGING: Config.ENABLE_DEBUG_LOGGING === 'true',

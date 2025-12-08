@@ -464,9 +464,11 @@ exports.getScreenWithElements = async (req, res) => {
     // Load data for this user
     let submissionData = null;
     const currentUserId = req.user?.id;
-    console.log(`[Screen ${screenId}] Loading data for user ${currentUserId}`);
+    // Check if viewing another user's profile (e.g., host profile)
+    const targetUserId = req.query.userId ? parseInt(req.query.userId) : currentUserId;
+    console.log(`[Screen ${screenId}] Loading data for user ${targetUserId} (current user: ${currentUserId})`);
     
-    if (currentUserId) {
+    if (targetUserId) {
       // Check if this is a profile screen by screen_key
       const isProfileScreen = screen.screen_key && (
         screen.screen_key.includes('profile') || 
@@ -475,12 +477,19 @@ exports.getScreenWithElements = async (req, res) => {
       
       if (isProfileScreen) {
         // Load user profile data from app_users table
-        console.log(`[Screen ${screenId}] Detected profile screen, loading user data`);
+        // If viewing another user, only load public fields
+        const isViewingOther = targetUserId !== currentUserId;
+        console.log(`[Screen ${screenId}] Detected profile screen, loading user data (viewing other: ${isViewingOther})`);
+        
+        const fields = isViewingOther 
+          ? 'first_name, last_name, bio, avatar_url' // Public fields only
+          : 'first_name, last_name, email, phone, bio, avatar_url, date_of_birth, gender'; // All fields for own profile
+        
         const userResult = await db.query(
-          `SELECT first_name, last_name, email, phone, bio, avatar_url, date_of_birth, gender
+          `SELECT ${fields}
            FROM app_users 
            WHERE id = ? AND app_id = ?`,
-          [currentUserId, appId]
+          [targetUserId, appId]
         );
         
         const users = Array.isArray(userResult) && Array.isArray(userResult[0]) 
@@ -489,6 +498,15 @@ exports.getScreenWithElements = async (req, res) => {
         
         if (users && users.length > 0) {
           submissionData = users[0];
+          // Map avatar_url to profile_photo for display elements
+          if (submissionData.avatar_url) {
+            // Convert relative path to full URL for display
+            const serverUrl = process.env.API_SERVER_URL || 'http://localhost:3000';
+            submissionData.profile_photo = submissionData.avatar_url.startsWith('http') 
+              ? submissionData.avatar_url 
+              : `${serverUrl}${submissionData.avatar_url}`;
+            console.log(`[Screen ${screenId}] Mapped avatar_url to profile_photo:`, submissionData.profile_photo);
+          }
           console.log(`[Screen ${screenId}] Loaded user profile data:`, Object.keys(submissionData));
         }
       } else {
@@ -799,6 +817,22 @@ exports.submitScreenData = async (req, res) => {
       if (submission_data.gender !== undefined) {
         updates.push('gender = ?');
         values.push(submission_data.gender || null);
+      }
+      // Handle profile photo - extract path from full URL if needed
+      if (submission_data.profile_photo !== undefined && submission_data.profile_photo) {
+        let avatarUrl = submission_data.profile_photo;
+        // If it's a full URL, extract just the path
+        if (avatarUrl.startsWith('http')) {
+          try {
+            const url = new URL(avatarUrl);
+            avatarUrl = url.pathname; // e.g., /uploads/general/filename.jpg
+          } catch (e) {
+            console.log(`[Submit Screen ${screenId}] Could not parse profile_photo URL:`, e);
+          }
+        }
+        updates.push('avatar_url = ?');
+        values.push(avatarUrl);
+        console.log(`[Submit Screen ${screenId}] Setting avatar_url to:`, avatarUrl);
       }
       
       if (updates.length > 0) {

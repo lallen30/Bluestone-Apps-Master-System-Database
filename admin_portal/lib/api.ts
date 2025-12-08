@@ -812,6 +812,12 @@ export const bookingsAPI = {
     const response = await api.get(`/apps/${appId}/bookings/all`, { params });
     return response.data;
   },
+
+  // Complete past bookings (mark confirmed bookings with past checkout as completed)
+  completePastBookings: async (appId: number) => {
+    const response = await api.post(`/apps/${appId}/bookings/complete-past`);
+    return response.data;
+  },
 };
 
 // Menu API

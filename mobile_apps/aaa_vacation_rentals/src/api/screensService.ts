@@ -115,10 +115,13 @@ export const screensService = {
   },
 
   // Get screen content (elements and data)
-  getScreenContent: async (screenId: number): Promise<ScreenContent> => {
-    const response = await apiClient.get(
-      `/mobile/apps/${API_CONFIG.APP_ID}/screens/${screenId}`
-    );
+  // Pass userId to load another user's profile (e.g., host profile)
+  getScreenContent: async (screenId: number, options?: { userId?: number }): Promise<ScreenContent> => {
+    let url = `/mobile/apps/${API_CONFIG.APP_ID}/screens/${screenId}`;
+    if (options?.userId) {
+      url += `?userId=${options.userId}`;
+    }
+    const response = await apiClient.get(url);
     return response.data.data;
   },
 

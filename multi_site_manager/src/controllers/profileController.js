@@ -107,7 +107,8 @@ exports.updateProfile = async (req, res) => {
       city,
       state,
       country,
-      zip_code
+      zip_code,
+      avatar_url
     } = req.body;
 
     // Build update query dynamically
@@ -162,6 +163,10 @@ exports.updateProfile = async (req, res) => {
       updates.push('zip_code = ?');
       params.push(zip_code);
     }
+    if (avatar_url !== undefined) {
+      updates.push('avatar_url = ?');
+      params.push(avatar_url);
+    }
 
     if (updates.length === 0) {
       return res.status(400).json({
@@ -213,10 +218,18 @@ exports.updateProfile = async (req, res) => {
  */
 exports.uploadAvatar = async (req, res) => {
   try {
+    console.log('[Avatar Upload] Starting upload...');
+    console.log('[Avatar Upload] req.file:', req.file);
+    console.log('[Avatar Upload] req.body:', req.body);
+    console.log('[Avatar Upload] Content-Type:', req.headers['content-type']);
+    
     const { appId } = req.params;
     const userId = req.user?.id;
 
+    console.log('[Avatar Upload] appId:', appId, 'userId:', userId);
+
     if (!userId) {
+      console.log('[Avatar Upload] No userId - authentication required');
       return res.status(401).json({
         success: false,
         message: 'Authentication required'
@@ -224,6 +237,7 @@ exports.uploadAvatar = async (req, res) => {
     }
 
     if (!req.file) {
+      console.log('[Avatar Upload] No file in request');
       return res.status(400).json({
         success: false,
         message: 'No file uploaded'
@@ -251,7 +265,7 @@ exports.uploadAvatar = async (req, res) => {
 
     // Delete old avatar file if exists
     if (oldAvatarUrl && oldAvatarUrl.startsWith('/uploads/avatars/')) {
-      const oldPath = path.join(__dirname, '../../public', oldAvatarUrl);
+      const oldPath = path.join(__dirname, '../..', oldAvatarUrl);
       try {
         await fs.unlink(oldPath);
       } catch (e) {
@@ -308,7 +322,7 @@ exports.deleteAvatar = async (req, res) => {
 
     // Delete avatar file if exists
     if (avatarUrl && avatarUrl.startsWith('/uploads/avatars/')) {
-      const filePath = path.join(__dirname, '../../public', avatarUrl);
+      const filePath = path.join(__dirname, '../..', avatarUrl);
       try {
         await fs.unlink(filePath);
       } catch (e) {

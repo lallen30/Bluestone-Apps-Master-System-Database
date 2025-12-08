@@ -23,6 +23,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { screensService, menusService, ScreenContent, ScreenElement, Menu, DataSource } from '../api/screensService';
 import { uploadService } from '../api/uploadService';
 import { authService } from '../api/authService';
+import { profileService } from '../api/profileService';
+import { API_CONFIG } from '../api/config';
 import { useAuth } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DynamicSidebar } from '../components/DynamicSidebar';
@@ -36,6 +38,7 @@ import {
   ChatInterfaceElement,
   DynamicPricingElement,
   HostDashboardElement,
+  NotificationListElement,
   PropertyDetailElement,
   PropertySearchElement,
   PropertyFormElement,
@@ -48,7 +51,7 @@ import { ElementRenderer } from '../components/primitives';
 import apiClient from '../api/client';
 
 const DynamicScreen = ({ route, navigation }: any) => {
-  const { screenId, screenName, hideTabBar } = route.params;
+  const { screenId, screenName, hideTabBar, userId, viewingOtherUser } = route.params;
   const { width } = useWindowDimensions();
   const { login: authLogin, logout: authLogout } = useAuth();
   const [content, setContent] = useState<ScreenContent | null>(null);
@@ -82,8 +85,10 @@ const DynamicScreen = ({ route, navigation }: any) => {
 
   const fetchScreenContent = async () => {
     try {
+      // Pass userId if viewing another user's profile (e.g., host profile)
+      const screenOptions = userId ? { userId } : undefined;
       const [screenContent, screenMenus] = await Promise.all([
-        screensService.getScreenContent(screenId),
+        screensService.getScreenContent(screenId, screenOptions),
         screensService.getScreenMenus(screenId),
       ]);
       setContent(screenContent);
@@ -253,12 +258,50 @@ const DynamicScreen = ({ route, navigation }: any) => {
     try {
       await screensService.saveScreenContent(screenId, formData);
       
-      // For profile screens, sync data to related profile screens
-      // This ensures "Edit Profile" and "User Profile" show the same data
+      // For profile screens, also update the user's profile in app_users table
       const screenName = content?.screen?.name?.toLowerCase() || '';
       if (screenName.includes('edit profile') || screenName.includes('profile edit')) {
-        // This is an edit profile screen - find and sync to view profile screen
+        // Update user profile via profile API
         try {
+          const profileData: any = {};
+          
+          // Map form fields to profile fields
+          if (formData.first_name !== undefined) profileData.first_name = formData.first_name;
+          if (formData.last_name !== undefined) profileData.last_name = formData.last_name;
+          if (formData.phone !== undefined) profileData.phone = formData.phone;
+          if (formData.bio !== undefined) profileData.bio = formData.bio;
+          if (formData.date_of_birth !== undefined) profileData.date_of_birth = formData.date_of_birth;
+          if (formData.gender !== undefined) profileData.gender = formData.gender;
+          
+          // Update profile if we have any data
+          if (Object.keys(profileData).length > 0) {
+            await profileService.updateProfile(profileData);
+            console.log('Updated user profile:', profileData);
+          }
+          
+          // Handle profile photo separately - upload to avatar endpoint
+          if (formData.profile_photo && formData.profile_photo.startsWith('http')) {
+            // Photo was already uploaded via uploadService, now update avatar_url
+            try {
+              // The photo URL is already on the server, we just need to update the user record
+              // Extract the path from the full URL (e.g., http://localhost:3000/uploads/general/file.jpg -> /uploads/general/file.jpg)
+              let avatarPath = formData.profile_photo;
+              const serverUrl = API_CONFIG.SERVER_URL || 'http://localhost:3000';
+              if (avatarPath.startsWith(serverUrl)) {
+                avatarPath = avatarPath.replace(serverUrl, '');
+              }
+              
+              // Update avatar via a direct API call
+              await apiClient.put(`/apps/${API_CONFIG.APP_ID}/profile`, {
+                avatar_url: avatarPath
+              });
+              console.log('Updated avatar_url to:', avatarPath);
+            } catch (avatarError) {
+              console.log('Could not update avatar_url:', avatarError);
+            }
+          }
+          
+          // Sync to view profile screen
           const allScreens = await screensService.getAppScreens();
           const viewProfileScreen = allScreens.find((s: any) => 
             s.name?.toLowerCase().includes('user profile') || 
@@ -271,7 +314,7 @@ const DynamicScreen = ({ route, navigation }: any) => {
             console.log(`Synced profile data to screen ${viewProfileScreen.id}`);
           }
         } catch (e) {
-          console.log('Could not sync to view profile screen:', e);
+          console.log('Could not update user profile:', e);
         }
       }
       
@@ -995,6 +1038,15 @@ const DynamicScreen = ({ route, navigation }: any) => {
           />
         );
 
+      case 'notification_list':
+        return (
+          <NotificationListElement
+            key={element.id}
+            element={element}
+            navigation={navigation}
+          />
+        );
+
       case 'chat_interface':
         return (
           <ChatInterfaceElement
@@ -1248,15 +1300,23 @@ const DynamicScreen = ({ route, navigation }: any) => {
   
   // Show back button only if we're NOT on the Home screen AND not at root of stack
   // This ensures the home screen always shows menu icon, not back button
-  const showBackButton = !isHomeScreen && !isAtRoot && navigation.canGoBack();
+  const canShowBackButton = !isHomeScreen && !isAtRoot && navigation.canGoBack();
   
-  // Build header config - override leftIconType to 'back' if we should show back button
-  // Also ensure showLeftIcon is true when showing back button
+  // Build header config:
+  // - showLeftIcon from config controls whether to show the BACK button
+  // - Menu icon should always show if there's a left sidebar menu assigned
+  const configShowBackButton = headerBarModule?.config?.showLeftIcon ?? false;
+  const showBackButton = canShowBackButton && configShowBackButton;
+  const hasLeftMenu = !!leftSidebarMenu;
+  
+  // Show left icon if: we have a menu OR we should show back button
+  const shouldShowLeftIcon = hasLeftMenu || showBackButton;
+  
   const headerConfig = headerBarModule?.config ? {
     ...headerBarModule.config,
-    leftIconType: showBackButton ? 'back' : headerBarModule.config.leftIconType,
-    showLeftIcon: showBackButton ? true : headerBarModule.config.showLeftIcon,
-  } : { leftIconType: showBackButton ? 'back' : 'menu', showLeftIcon: showBackButton };
+    leftIconType: showBackButton ? 'back' : 'menu',
+    showLeftIcon: shouldShowLeftIcon,
+  } : { leftIconType: canShowBackButton ? 'back' : 'menu', showLeftIcon: hasLeftMenu };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1317,7 +1377,7 @@ const DynamicScreen = ({ route, navigation }: any) => {
           /* Check if any element has its own scrolling (like property_list, booking_list) */
           (() => {
             const sortedElements = content.elements.sort((a, b) => a.display_order - b.display_order);
-            const fullScreenElements = ['property_list', 'booking_list', 'favorites_list', 'user_profile', 'chat_interface', 'conversation_list'];
+            const fullScreenElements = ['property_list', 'booking_list', 'favorites_list', 'user_profile', 'chat_interface', 'conversation_list', 'notification_list'];
             const hasFullScreenElement = sortedElements.some(el => fullScreenElements.includes(el.element_type));
             
             if (hasFullScreenElement && sortedElements.length === 1) {
