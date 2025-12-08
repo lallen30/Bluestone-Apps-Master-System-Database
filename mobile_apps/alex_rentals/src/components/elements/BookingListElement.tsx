@@ -306,7 +306,12 @@ const BookingListElement: React.FC<BookingListElementProps> = ({ element, naviga
     <View style={styles.container}>
       {/* Filter Tabs */}
       {filters.length > 1 && (
-        <View style={styles.filterContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScrollView}
+          contentContainerStyle={styles.filterContainer}
+        >
           {filters.map((filterOption: string) => (
             <TouchableOpacity
               key={filterOption}
@@ -318,7 +323,7 @@ const BookingListElement: React.FC<BookingListElementProps> = ({ element, naviga
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
       )}
 
       {/* Bookings List */}
@@ -368,21 +373,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#8E8E93',
   },
-  filterContainer: {
-    flexDirection: 'row',
+  filterScrollView: {
+    flexGrow: 0,
     backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
   },
-  filterTab: {
-    flex: 1,
-    paddingVertical: 8,
+  filterContainer: {
+    flexDirection: 'row',
     paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  filterTab: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     marginHorizontal: 4,
     borderRadius: 8,
     alignItems: 'center',
+    minWidth: 70,
   },
   filterTabActive: {
     backgroundColor: '#007AFF',
