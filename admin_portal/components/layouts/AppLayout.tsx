@@ -1,10 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { LayoutDashboard, Users, UserCog, Monitor, Settings, ArrowLeft, LogOut, Shield, Home, Menu, Calendar, Mail, User, ChevronRight, FileBarChart } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { permissionsAPI, appsAPI, appScreensAPI, reportsAPI } from '@/lib/api';
+
+// Simple cache for app layout data to avoid re-fetching on every navigation
+const layoutCache: Record<string, { data: any; timestamp: number }> = {};
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCached(key: string) {
+  const cached = layoutCache[key];
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCache(key: string, data: any) {
+  layoutCache[key] = { data, timestamp: Date.now() };
+}
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -54,114 +71,112 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
   const [generalPermissions, setGeneralPermissions] = useState<GeneralPermissions>(defaultGeneralPermissions);
 
   useEffect(() => {
-    // Fetch user's app count and permissions to determine menu access
-    if (user?.id) {
-      permissionsAPI.getUserPermissions(user.id)
-        .then((response) => {
-          setUserAppCount(response.data?.length || 0);
-          
-          // Find permissions for this specific app
-          const appPerms = response.data?.find((p: any) => p.app_id === parseInt(appId));
-          
-          // Master Admin has full access
-          if (user.role_level === 1) {
-            setMenuAccess(defaultMenuAccess);
-            setGeneralPermissions({ can_manage_users: true, can_manage_settings: true, can_manage_admins: true });
-          } else if (appPerms) {
-            // Set general permissions from app permissions
-            setGeneralPermissions({
-              can_manage_users: !!appPerms.can_manage_users,
-              can_manage_settings: !!appPerms.can_manage_settings,
-              can_manage_admins: !!appPerms.can_manage_admins,
-            });
-            
-            // Parse custom permissions for menu access
-            if (appPerms.custom_permissions) {
-              try {
-                const customPerms = typeof appPerms.custom_permissions === 'string'
-                  ? JSON.parse(appPerms.custom_permissions)
-                  : appPerms.custom_permissions;
-                
-                if (customPerms?.menu_access) {
-                  setMenuAccess({ ...defaultMenuAccess, ...customPerms.menu_access });
-                }
-              } catch (e) {
-                console.error('Error parsing custom permissions:', e);
-              }
-            }
-          } else {
-            // No permissions - hide everything
-            setGeneralPermissions(defaultGeneralPermissions);
-          }
-        })
-        .catch((error) => {
-          console.error('Error fetching user apps:', error);
-        });
-    }
+    const cacheKey = `layout_${appId}_${user?.id}`;
+    const cached = getCached(cacheKey);
     
-    // Check if app has property listings and contact screen
-    if (appId) {
-      // Try to fetch app details
-      appsAPI.getById(parseInt(appId))
-        .then((response) => {
-          // Check if app was created from Property Rental template (ID: 9)
-          const templateId = response.data?.template_id;
-          if (templateId === 9) {
-            setHasPropertyListings(true);
-          } else {
-            setHasPropertyListings(false);
-          }
-        })
-        .catch((error) => {
-          console.error('Error fetching app details:', error);
-          setHasPropertyListings(false);
-        });
-      
-      // Check if app has Contact Us screen
-      appScreensAPI.getAppScreens(parseInt(appId))
-        .then((response) => {
-          const screens = Array.isArray(response.data) ? response.data : [];
-          // Check if any screen name contains "Contact" (case-insensitive)
-          const hasContact = screens.some((screen: any) => 
-            screen.name?.toLowerCase().includes('contact')
-          );
-          setHasContactScreen(hasContact);
-        })
-        .catch((error) => {
-          console.error('Error fetching app screens:', error);
-          setHasContactScreen(false);
-        });
-      
-      // Check if user has access to any reports
-      reportsAPI.getReportScreens(parseInt(appId))
-        .then((response) => {
-          const reportScreens = Array.isArray(response.data) ? response.data : [];
-          if (reportScreens.length > 0) {
-            // Master Admin always has access
-            if (user?.role_level === 1) {
-              setHasReportAccess(true);
-            } else {
-              // Check if user's role is in any report's allowed_roles
-              // User role_id corresponds to the roles table (Admin=2, Editor=3)
-              const userRoleId = user?.role_id;
-              const hasAccess = reportScreens.some((report: any) => {
-                const allowedRoles = report.allowed_roles || [];
-                // If no roles specified, only Master Admin can access
-                if (allowedRoles.length === 0) return false;
-                return allowedRoles.includes(userRoleId);
-              });
-              setHasReportAccess(hasAccess);
-            }
-          } else {
-            setHasReportAccess(false);
-          }
-        })
-        .catch((error) => {
-          console.error('Error fetching report screens:', error);
-          setHasReportAccess(false);
-        });
+    // If we have cached data, use it immediately
+    if (cached) {
+      setUserAppCount(cached.userAppCount);
+      setMenuAccess(cached.menuAccess);
+      setGeneralPermissions(cached.generalPermissions);
+      setHasPropertyListings(cached.hasPropertyListings);
+      setHasContactScreen(cached.hasContactScreen);
+      setHasReportAccess(cached.hasReportAccess);
+      return;
     }
-  }, [user, appId]);
+
+    // Fetch all data in parallel
+    const fetchLayoutData = async () => {
+      const results = {
+        userAppCount: 0,
+        menuAccess: defaultMenuAccess,
+        generalPermissions: defaultGeneralPermissions,
+        hasPropertyListings: false,
+        hasContactScreen: false,
+        hasReportAccess: false,
+      };
+
+      try {
+        // Run all API calls in parallel
+        const [permissionsRes, appRes, screensRes, reportsRes] = await Promise.all([
+          user?.id ? permissionsAPI.getUserPermissions(user.id).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+          appId ? appsAPI.getById(parseInt(appId)).catch(() => ({ data: null })) : Promise.resolve({ data: null }),
+          appId ? appScreensAPI.getAppScreens(parseInt(appId)).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+          appId ? reportsAPI.getReportScreens(parseInt(appId)).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+        ]);
+
+        // Process permissions
+        results.userAppCount = permissionsRes.data?.length || 0;
+        const appPerms = permissionsRes.data?.find((p: any) => p.app_id === parseInt(appId));
+        
+        if (user?.role_level === 1) {
+          results.menuAccess = defaultMenuAccess;
+          results.generalPermissions = { can_manage_users: true, can_manage_settings: true, can_manage_admins: true };
+        } else if (appPerms) {
+          results.generalPermissions = {
+            can_manage_users: !!appPerms.can_manage_users,
+            can_manage_settings: !!appPerms.can_manage_settings,
+            can_manage_admins: !!appPerms.can_manage_admins,
+          };
+          
+          if (appPerms.custom_permissions) {
+            try {
+              const customPerms = typeof appPerms.custom_permissions === 'string'
+                ? JSON.parse(appPerms.custom_permissions)
+                : appPerms.custom_permissions;
+              if (customPerms?.menu_access) {
+                results.menuAccess = { ...defaultMenuAccess, ...customPerms.menu_access };
+              }
+            } catch (e) {
+              console.error('Error parsing custom permissions:', e);
+            }
+          }
+        }
+
+        // Process app details
+        const templateId = appRes.data?.template_id;
+        results.hasPropertyListings = templateId === 9;
+
+        // Process screens
+        const screens = Array.isArray(screensRes.data) ? screensRes.data : [];
+        results.hasContactScreen = screens.some((screen: any) => 
+          screen.name?.toLowerCase().includes('contact')
+        );
+
+        // Process reports
+        const reportScreens = Array.isArray(reportsRes.data) ? reportsRes.data : [];
+        if (reportScreens.length > 0) {
+          if (user?.role_level === 1) {
+            results.hasReportAccess = true;
+          } else {
+            const userRoleId = user?.role_id;
+            results.hasReportAccess = reportScreens.some((report: any) => {
+              const allowedRoles = report.allowed_roles || [];
+              if (allowedRoles.length === 0) return false;
+              return allowedRoles.includes(userRoleId);
+            });
+          }
+        }
+
+        // Update state
+        setUserAppCount(results.userAppCount);
+        setMenuAccess(results.menuAccess);
+        setGeneralPermissions(results.generalPermissions);
+        setHasPropertyListings(results.hasPropertyListings);
+        setHasContactScreen(results.hasContactScreen);
+        setHasReportAccess(results.hasReportAccess);
+
+        // Cache the results
+        setCache(cacheKey, results);
+      } catch (error) {
+        console.error('Error fetching layout data:', error);
+      }
+    };
+
+    if (user?.id && appId) {
+      fetchLayoutData();
+    }
+  }, [user?.id, user?.role_level, user?.role_id, appId]);
 
   // Build menu items based on permissions
   const baseMenuItems = [
@@ -279,15 +294,16 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
         <div className="p-6 border-b">
           {/* Only show back button if user is master admin OR has multiple apps */}
           {(user?.role_level === 1 || userAppCount > 1) && (
-            <button
-              onClick={() => router.push(user?.role_level === 1 ? '/master' : '/dashboard')}
+            <Link
+              href={user?.role_level === 1 ? '/master' : '/dashboard'}
+              prefetch={true}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="text-sm">
                 {user?.role_level === 1 ? 'Back to Master' : 'Back to Dashboard'}
               </span>
-            </button>
+            </Link>
           )}
           <h1 className="text-xl font-bold text-gray-900">{appName}</h1>
           <p className="text-sm text-gray-500 mt-1">Application Dashboard</p>
@@ -302,8 +318,9 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
               
               return (
                 <li key={item.href}>
-                  <button
-                    onClick={() => router.push(item.href)}
+                  <Link
+                    href={item.href}
+                    prefetch={true}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                       active
                         ? 'bg-primary text-white'
@@ -312,7 +329,7 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
                   >
                     <Icon className="w-5 h-5" />
                     <span className="font-small">{item.name}</span>
-                  </button>
+                  </Link>
                 </li>
               );
             })}
@@ -321,8 +338,9 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
 
         {/* User Info */}
         <div className="p-4 border-t">
-          <button
-            onClick={() => router.push('/profile')}
+          <Link
+            href="/profile"
+            prefetch={true}
             className="w-full flex items-center justify-between p-3 mb-3 rounded-lg hover:bg-gray-100 transition-colors group"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -337,7 +355,7 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-          </button>
+          </Link>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"

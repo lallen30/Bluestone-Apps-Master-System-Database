@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { appsAPI, usersAPI, appScreensAPI, screenElementsAPI, modulesAPI } from '@/lib/api';
+import { appsAPI, usersAPI, appScreensAPI, screenElementsAPI, modulesAPI, formsAPI, appTemplatesAPI } from '@/lib/api';
 import { Users, Globe, Activity, LogOut, Monitor, Layers, Sparkles, Package, FileText, User } from 'lucide-react';
 import Icon from '@mdi/react';
 import * as mdiIcons from '@mdi/js';
@@ -54,6 +54,8 @@ export default function MasterDashboard() {
   const [screens, setScreens] = useState<any[]>([]);
   const [screenElements, setScreenElements] = useState<any[]>([]);
   const [modules, setModules] = useState<any[]>([]);
+  const [forms, setForms] = useState<any[]>([]);
+  const [appTemplates, setAppTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -82,29 +84,35 @@ export default function MasterDashboard() {
       appScreensAPI.getAll(),
       screenElementsAPI.getAll(),
       modulesAPI.getAll(),
+      formsAPI.getAll(),
+      appTemplatesAPI.getAll(),
     ])
-      .then(([appsResponse, usersResponse, screensResponse, elementsResponse, modulesResponse]) => {
+      .then(([appsResponse, usersResponse, screensResponse, elementsResponse, modulesResponse, formsResponse, templatesResponse]) => {
         const appsData = Array.isArray(appsResponse.data) ? appsResponse.data : [];
         const usersData = Array.isArray(usersResponse.data) ? usersResponse.data : [];
         const screensData = Array.isArray(screensResponse.data) ? screensResponse.data : [];
         const elementsData = Array.isArray(elementsResponse.data) ? elementsResponse.data : [];
         const modulesData = Array.isArray(modulesResponse.data) ? modulesResponse.data : [];
+        const formsData = formsResponse.success ? (formsResponse.data || []) : [];
+        const templatesData = Array.isArray(templatesResponse.data) ? templatesResponse.data : [];
         
         console.log('Dashboard data loaded:', {
           apps: appsData.length,
           users: usersData.length,
           screens: screensData.length,
           elements: elementsData.length,
-          modules: modulesData.length
+          modules: modulesData.length,
+          forms: formsData.length,
+          templates: templatesData.length
         });
-        console.log('Apps data:', appsData);
-        console.log('Users data:', usersData);
         
         setApps(appsData);
         setUsers(usersData);
         setScreens(screensData);
         setScreenElements(elementsData);
         setModules(modulesData);
+        setForms(formsData);
+        setAppTemplates(templatesData);
         setLoading(false);
       })
       .catch((error) => {
@@ -294,6 +302,21 @@ export default function MasterDashboard() {
               </div>
             </div>
           </button>
+
+          <button
+            onClick={() => router.push('/master/users')}
+            className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Administrators</h3>
+                <p className="text-sm text-gray-500">Manage admin users</p>
+              </div>
+            </div>
+          </button>
         </div>
 
         {/* Stats Grid */}
@@ -350,7 +373,7 @@ export default function MasterDashboard() {
                     </td>
                   </tr>
                 ) : (
-                  apps.slice(0, 10).map((app) => (
+                  apps.slice(0, 5).map((app) => (
                     <tr 
                       key={app.id} 
                       className="hover:bg-gray-50 cursor-pointer"
@@ -383,7 +406,7 @@ export default function MasterDashboard() {
               </tbody>
             </table>
           </div>
-          {apps.length > 10 && (
+          {apps.length > 5 && (
             <div className="px-6 py-4 border-t border-gray-200 text-center">
               <button
                 onClick={() => router.push('/master/apps')}
@@ -425,7 +448,7 @@ export default function MasterDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {users.slice(0, 10).map((u) => (
+                {users.slice(0, 5).map((u) => (
                   <tr key={u.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -464,7 +487,7 @@ export default function MasterDashboard() {
               </tbody>
             </table>
           </div>
-          {users.length > 10 && (
+          {users.length > 5 && (
             <div className="px-6 py-4 border-t border-gray-200 text-center">
               <button
                 onClick={() => router.push('/master/users')}
@@ -506,7 +529,7 @@ export default function MasterDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {screens.slice(0, 10).map((screen) => (
+                {screens.slice(0, 5).map((screen) => (
                   <tr key={screen.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/master/screens/${screen.id}`)}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
@@ -543,7 +566,7 @@ export default function MasterDashboard() {
               </tbody>
             </table>
           </div>
-          {screens.length > 10 && (
+          {screens.length > 5 && (
             <div className="px-6 py-4 border-t border-gray-200 text-center">
               <button
                 onClick={() => router.push('/master/screens')}
@@ -566,37 +589,79 @@ export default function MasterDashboard() {
               View Library →
             </button>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Array.isArray(screenElements) && Object.entries(
-                screenElements.reduce((acc: any, element: any) => {
-                  acc[element.category] = (acc[element.category] || 0) + 1;
-                  return acc;
-                }, {})
-              ).map(([category, count]) => {
-                const categoryIconPath = getMdiPath(getCategoryIcon(category));
-                return (
-                  <div key={category} className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      {categoryIconPath ? (
-                        <Icon path={categoryIconPath} size={0.7} className="text-gray-500" />
-                      ) : (
-                        <Layers className="w-4 h-4 text-gray-400" />
-                      )}
-                      <span className="text-sm font-medium text-gray-900">{category}</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900">{count as number}</p>
-                    <p className="text-xs text-gray-500 mt-1">elements</p>
-                  </div>
-                );
-              })}
-            </div>
-            {(!Array.isArray(screenElements) || screenElements.length === 0) && (
-              <p className="text-center text-sm text-gray-500 py-8">
-                No screen elements available
-              </p>
-            )}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Element Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Category
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {screenElements.slice(0, 5).map((element) => {
+                  const categoryIconPath = getMdiPath(getCategoryIcon(element.category));
+                  return (
+                    <tr key={element.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                            {categoryIconPath ? (
+                              <Icon path={categoryIconPath} size={0.6} className="text-green-600" />
+                            ) : (
+                              <Layers className="w-4 h-4 text-green-600" />
+                            )}
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{element.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900">{element.element_type}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                          {element.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          element.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {element.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {screenElements.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                      No screen elements available
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
+          {screenElements.length > 5 && (
+            <div className="px-6 py-4 border-t border-gray-200 text-center">
+              <button
+                onClick={() => router.push('/master/screen-elements')}
+                className="text-sm text-primary hover:text-primary/80 font-medium"
+              >
+                View All ({screenElements.length} total)
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Modules Summary */}
@@ -610,34 +675,242 @@ export default function MasterDashboard() {
               View Library →
             </button>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Array.isArray(modules) && Object.entries(
-                modules.reduce((acc: any, module: any) => {
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Module Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {modules.slice(0, 5).map((module) => {
                   const typeLabel = module.module_type === 'header_bar' ? 'Header Bar' : 
                                    module.module_type === 'footer_bar' ? 'Footer Bar' : 
                                    module.module_type === 'floating_action_button' ? 'FAB' : 
                                    module.module_type;
-                  acc[typeLabel] = (acc[typeLabel] || 0) + 1;
-                  return acc;
-                }, {})
-              ).map(([type, count]) => (
-                <div key={type} className="bg-purple-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Package className="w-4 h-4 text-purple-400" />
-                    <span className="text-sm font-medium text-gray-900">{type}</span>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{count as number}</p>
-                  <p className="text-xs text-gray-500 mt-1">modules</p>
-                </div>
-              ))}
-            </div>
-            {(!Array.isArray(modules) || modules.length === 0) && (
-              <p className="text-center text-sm text-gray-500 py-8">
-                No modules available
-              </p>
-            )}
+                  return (
+                    <tr key={module.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <Package className="w-4 h-4 text-purple-600" />
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{module.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                          {typeLabel}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-500">{module.description?.substring(0, 50)}{module.description?.length > 50 ? '...' : ''}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          module.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {module.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {modules.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                      No modules available
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
+          {modules.length > 5 && (
+            <div className="px-6 py-4 border-t border-gray-200 text-center">
+              <button
+                onClick={() => router.push('/master/modules')}
+                className="text-sm text-primary hover:text-primary/80 font-medium"
+              >
+                View All ({modules.length} total)
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Forms Summary */}
+        <div className="bg-white rounded-lg shadow mt-8">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Forms</h2>
+            <button
+              onClick={() => router.push('/master/forms')}
+              className="text-sm text-primary hover:text-primary/80 font-medium"
+            >
+              Manage Forms →
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Form Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Fields
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {forms.slice(0, 5).map((form) => (
+                  <tr key={form.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/master/forms/${form.id}`)}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
+                          <FileText className="w-4 h-4 text-cyan-600" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">{form.name}</span>
+                          <div className="text-xs text-gray-500">{form.form_key}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {form.form_type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {form.element_count || 0} fields
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        form.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {form.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {forms.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                      No forms created yet
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {forms.length > 5 && (
+            <div className="px-6 py-4 border-t border-gray-200 text-center">
+              <button
+                onClick={() => router.push('/master/forms')}
+                className="text-sm text-primary hover:text-primary/80 font-medium"
+              >
+                View All ({forms.length} total)
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* App Templates Summary */}
+        <div className="bg-white rounded-lg shadow mt-8">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">App Templates</h2>
+            <button
+              onClick={() => router.push('/master/app-templates')}
+              className="text-sm text-primary hover:text-primary/80 font-medium"
+            >
+              Manage Templates →
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Template Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Category
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Screens
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {appTemplates.slice(0, 5).map((template) => (
+                  <tr key={template.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/master/app-templates/${template.id}`)}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                          <Sparkles className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">{template.name}</span>
+                          <div className="text-xs text-gray-500">{template.description?.substring(0, 40)}{template.description?.length > 40 ? '...' : ''}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
+                        {template.category || 'General'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {template.screen_count || 0} screens
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        template.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {template.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {appTemplates.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                      No templates created yet
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {appTemplates.length > 5 && (
+            <div className="px-6 py-4 border-t border-gray-200 text-center">
+              <button
+                onClick={() => router.push('/master/app-templates')}
+                className="text-sm text-primary hover:text-primary/80 font-medium"
+              >
+                View All ({appTemplates.length} total)
+              </button>
+            </div>
+          )}
         </div>
       </main>
     </div>

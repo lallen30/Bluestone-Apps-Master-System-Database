@@ -187,4 +187,72 @@ router.post(
   propertyListingsController.calculatePrice
 );
 
+// ============================================
+// IMAGE MANAGEMENT ROUTES
+// ============================================
+
+/**
+ * POST /api/v1/apps/:appId/listings/:listingId/images
+ * Add image to listing
+ */
+router.post(
+  '/apps/:appId/listings/:listingId/images',
+  authenticateDual,
+  propertyListingsController.addImage
+);
+
+/**
+ * PUT /api/v1/apps/:appId/listings/:listingId/images/:imageId
+ * Update image
+ */
+router.put(
+  '/apps/:appId/listings/:listingId/images/:imageId',
+  authenticateDual,
+  propertyListingsController.updateImage
+);
+
+/**
+ * DELETE /api/v1/apps/:appId/listings/:listingId/images/:imageId
+ * Delete image
+ */
+router.delete(
+  '/apps/:appId/listings/:listingId/images/:imageId',
+  authenticateDual,
+  propertyListingsController.deleteImage
+);
+
+// ============================================
+// VIDEO MANAGEMENT ROUTES
+// ============================================
+
+/**
+ * POST /api/v1/apps/:appId/listings/:listingId/videos
+ * Add video to listing
+ */
+router.post(
+  '/apps/:appId/listings/:listingId/videos',
+  authenticateDual,
+  propertyListingsController.addVideo
+);
+
+/**
+ * PUT /api/v1/apps/:appId/listings/:listingId/videos/:videoId
+ * Update video
+ */
+router.put(
+  '/apps/:appId/listings/:listingId/videos/:videoId',
+  authenticateDual,
+  propertyListingsController.updateVideo
+);
+
+/**
+ * DELETE /api/v1/apps/:appId/listings/:listingId/videos/:videoId
+ * Delete video
+ */
+router.delete(
+  '/apps/:appId/listings/:listingId/videos/:videoId',
+  authenticateDual,
+  propertyListingsController.deleteVideo
+);
+
 module.exports = router;

@@ -1349,3 +1349,233 @@ exports.calculatePrice = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to calculate price', error: error.message });
   }
 };
+
+// ============================================
+// IMAGE MANAGEMENT
+// ============================================
+
+/**
+ * Add image to listing
+ * POST /api/v1/apps/:appId/listings/:listingId/images
+ */
+exports.addImage = async (req, res) => {
+  try {
+    const { appId, listingId } = req.params;
+    const { image_url, image_key, caption, is_primary } = req.body;
+
+    if (!image_url) {
+      return res.status(400).json({ success: false, message: 'image_url is required' });
+    }
+
+    // Get max display_order
+    const orderResult = await db.query(
+      'SELECT MAX(display_order) as max_order FROM property_images WHERE listing_id = ?',
+      [listingId]
+    );
+    const nextOrder = (orderResult[0]?.max_order || 0) + 1;
+
+    // If setting as primary, unset other primaries
+    if (is_primary) {
+      await db.query(
+        'UPDATE property_images SET is_primary = 0 WHERE listing_id = ?',
+        [listingId]
+      );
+    }
+
+    const result = await db.query(
+      `INSERT INTO property_images (listing_id, image_url, image_key, caption, display_order, is_primary) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [listingId, image_url, image_key || null, caption || null, nextOrder, is_primary ? 1 : 0]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Image added successfully',
+      data: { id: result.insertId, image_url, caption, display_order: nextOrder, is_primary: is_primary ? 1 : 0 }
+    });
+  } catch (error) {
+    console.error('Add image error:', error);
+    res.status(500).json({ success: false, message: 'Failed to add image', error: error.message });
+  }
+};
+
+/**
+ * Delete image from listing
+ * DELETE /api/v1/apps/:appId/listings/:listingId/images/:imageId
+ */
+exports.deleteImage = async (req, res) => {
+  try {
+    const { appId, listingId, imageId } = req.params;
+
+    const result = await db.query(
+      'DELETE FROM property_images WHERE id = ? AND listing_id = ?',
+      [imageId, listingId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Image not found' });
+    }
+
+    res.json({ success: true, message: 'Image deleted successfully' });
+  } catch (error) {
+    console.error('Delete image error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete image', error: error.message });
+  }
+};
+
+/**
+ * Update image (caption, is_primary, display_order)
+ * PUT /api/v1/apps/:appId/listings/:listingId/images/:imageId
+ */
+exports.updateImage = async (req, res) => {
+  try {
+    const { appId, listingId, imageId } = req.params;
+    const { caption, is_primary, display_order } = req.body;
+
+    // If setting as primary, unset other primaries
+    if (is_primary) {
+      await db.query(
+        'UPDATE property_images SET is_primary = 0 WHERE listing_id = ?',
+        [listingId]
+      );
+    }
+
+    const updates = [];
+    const values = [];
+
+    if (caption !== undefined) {
+      updates.push('caption = ?');
+      values.push(caption);
+    }
+    if (is_primary !== undefined) {
+      updates.push('is_primary = ?');
+      values.push(is_primary ? 1 : 0);
+    }
+    if (display_order !== undefined) {
+      updates.push('display_order = ?');
+      values.push(display_order);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, message: 'No fields to update' });
+    }
+
+    values.push(imageId, listingId);
+    await db.query(
+      `UPDATE property_images SET ${updates.join(', ')} WHERE id = ? AND listing_id = ?`,
+      values
+    );
+
+    res.json({ success: true, message: 'Image updated successfully' });
+  } catch (error) {
+    console.error('Update image error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update image', error: error.message });
+  }
+};
+
+// ============================================
+// VIDEO MANAGEMENT
+// ============================================
+
+/**
+ * Add video to listing
+ * POST /api/v1/apps/:appId/listings/:listingId/videos
+ */
+exports.addVideo = async (req, res) => {
+  try {
+    const { appId, listingId } = req.params;
+    const { video_url, video_key, thumbnail_url, caption } = req.body;
+
+    if (!video_url) {
+      return res.status(400).json({ success: false, message: 'video_url is required' });
+    }
+
+    // Get max display_order
+    const orderResult = await db.query(
+      'SELECT MAX(display_order) as max_order FROM property_videos WHERE listing_id = ?',
+      [listingId]
+    );
+    const nextOrder = (orderResult[0]?.max_order || 0) + 1;
+
+    const result = await db.query(
+      `INSERT INTO property_videos (listing_id, video_url, video_key, thumbnail_url, caption, display_order) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [listingId, video_url, video_key || null, thumbnail_url || null, caption || null, nextOrder]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Video added successfully',
+      data: { id: result.insertId, video_url, thumbnail_url, caption, display_order: nextOrder }
+    });
+  } catch (error) {
+    console.error('Add video error:', error);
+    res.status(500).json({ success: false, message: 'Failed to add video', error: error.message });
+  }
+};
+
+/**
+ * Delete video from listing
+ * DELETE /api/v1/apps/:appId/listings/:listingId/videos/:videoId
+ */
+exports.deleteVideo = async (req, res) => {
+  try {
+    const { appId, listingId, videoId } = req.params;
+
+    const result = await db.query(
+      'DELETE FROM property_videos WHERE id = ? AND listing_id = ?',
+      [videoId, listingId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Video not found' });
+    }
+
+    res.json({ success: true, message: 'Video deleted successfully' });
+  } catch (error) {
+    console.error('Delete video error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete video', error: error.message });
+  }
+};
+
+/**
+ * Update video (caption, thumbnail_url, display_order)
+ * PUT /api/v1/apps/:appId/listings/:listingId/videos/:videoId
+ */
+exports.updateVideo = async (req, res) => {
+  try {
+    const { appId, listingId, videoId } = req.params;
+    const { caption, thumbnail_url, display_order } = req.body;
+
+    const updates = [];
+    const values = [];
+
+    if (caption !== undefined) {
+      updates.push('caption = ?');
+      values.push(caption);
+    }
+    if (thumbnail_url !== undefined) {
+      updates.push('thumbnail_url = ?');
+      values.push(thumbnail_url);
+    }
+    if (display_order !== undefined) {
+      updates.push('display_order = ?');
+      values.push(display_order);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, message: 'No fields to update' });
+    }
+
+    values.push(videoId, listingId);
+    await db.query(
+      `UPDATE property_videos SET ${updates.join(', ')} WHERE id = ? AND listing_id = ?`,
+      values
+    );
+
+    res.json({ success: true, message: 'Video updated successfully' });
+  } catch (error) {
+    console.error('Update video error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update video', error: error.message });
+  }
+};

@@ -794,6 +794,50 @@ export const propertyListingsAPI = {
     const response = await api.put(`/apps/${appId}/listings/${listingId}/publish`, { is_published: isPublished });
     return response.data;
   },
+
+  // ============================================
+  // IMAGE MANAGEMENT
+  // ============================================
+  
+  // Add image to listing
+  addImage: async (appId: number, listingId: number, data: { image_url: string; image_key?: string; caption?: string; is_primary?: boolean }) => {
+    const response = await api.post(`/apps/${appId}/listings/${listingId}/images`, data);
+    return response.data;
+  },
+  
+  // Update image
+  updateImage: async (appId: number, listingId: number, imageId: number, data: { caption?: string; is_primary?: boolean; display_order?: number }) => {
+    const response = await api.put(`/apps/${appId}/listings/${listingId}/images/${imageId}`, data);
+    return response.data;
+  },
+  
+  // Delete image
+  deleteImage: async (appId: number, listingId: number, imageId: number) => {
+    const response = await api.delete(`/apps/${appId}/listings/${listingId}/images/${imageId}`);
+    return response.data;
+  },
+
+  // ============================================
+  // VIDEO MANAGEMENT
+  // ============================================
+  
+  // Add video to listing
+  addVideo: async (appId: number, listingId: number, data: { video_url: string; video_key?: string; thumbnail_url?: string; caption?: string }) => {
+    const response = await api.post(`/apps/${appId}/listings/${listingId}/videos`, data);
+    return response.data;
+  },
+  
+  // Update video
+  updateVideo: async (appId: number, listingId: number, videoId: number, data: { caption?: string; thumbnail_url?: string; display_order?: number }) => {
+    const response = await api.put(`/apps/${appId}/listings/${listingId}/videos/${videoId}`, data);
+    return response.data;
+  },
+  
+  // Delete video
+  deleteVideo: async (appId: number, listingId: number, videoId: number) => {
+    const response = await api.delete(`/apps/${appId}/listings/${listingId}/videos/${videoId}`);
+    return response.data;
+  },
 };
 
 // Bookings API (Admin)
