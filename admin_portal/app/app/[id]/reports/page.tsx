@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { reportsAPI, appsAPI } from '@/lib/api';
 import AppLayout from '@/components/layouts/AppLayout';
-import { FileBarChart, Settings, Eye, AlertCircle } from 'lucide-react';
+import { FileBarChart, Settings, Eye, AlertCircle, LayoutDashboard, ArrowRight } from 'lucide-react';
 
 interface ReportScreen {
   id: number;
@@ -84,6 +84,25 @@ export default function ReportsPage() {
           <p className="text-gray-600 mt-1">
             View and configure reports for screens marked as "Report"
           </p>
+        </div>
+
+        {/* Dashboard Reports Card */}
+        <div 
+          onClick={() => router.push(`/app/${appId}/reports/dashboard`)}
+          className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-6 mb-6 cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                <LayoutDashboard className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-white">Dashboard Reports</h2>
+                <p className="text-blue-100">View analytics, listings, users, and inquiry reports</p>
+              </div>
+            </div>
+            <ArrowRight className="w-6 h-6 text-white" />
+          </div>
         </div>
 
         {/* Error State */}

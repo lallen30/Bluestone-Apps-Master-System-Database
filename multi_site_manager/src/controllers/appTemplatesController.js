@@ -542,6 +542,95 @@ const createAppFromTemplate = async (req, res) => {
             stats.propertyAmenities++;
           }
         }
+
+        // ========================================
+        // STEP 14b: Clone Property Inquiries (Real Estate apps)
+        // ========================================
+        stats.propertyInquiries = 0;
+        const sourceInquiries = await db.query(
+          `SELECT * FROM property_inquiries WHERE listing_id IN (${sourceListingIds})`
+        );
+
+        for (const inquiry of sourceInquiries) {
+          const newListingId = listingIdMap[inquiry.listing_id];
+          const newBuyerId = appUserIdMap[inquiry.buyer_id] || inquiry.buyer_id;
+          const newAgentId = inquiry.agent_id ? (appUserIdMap[inquiry.agent_id] || inquiry.agent_id) : null;
+          
+          if (newListingId) {
+            await db.query(
+              `INSERT INTO property_inquiries 
+               (app_id, listing_id, buyer_id, agent_id, inquiry_type, subject, message,
+                preferred_contact, status, response, responded_at, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [newAppId, newListingId, newBuyerId, newAgentId, inquiry.inquiry_type,
+               inquiry.subject, inquiry.message, inquiry.preferred_contact,
+               inquiry.status, inquiry.response, inquiry.responded_at, inquiry.created_at]
+            );
+            stats.propertyInquiries++;
+          }
+        }
+
+        // ========================================
+        // STEP 14c: Clone Property Showings (Real Estate apps)
+        // ========================================
+        stats.propertyShowings = 0;
+        const sourceShowings = await db.query(
+          `SELECT * FROM property_showings WHERE listing_id IN (${sourceListingIds})`
+        );
+
+        for (const showing of sourceShowings) {
+          const newListingId = listingIdMap[showing.listing_id];
+          const newBuyerId = appUserIdMap[showing.buyer_id] || showing.buyer_id;
+          const newAgentId = showing.agent_id ? (appUserIdMap[showing.agent_id] || showing.agent_id) : null;
+          
+          if (newListingId) {
+            await db.query(
+              `INSERT INTO property_showings 
+               (app_id, listing_id, buyer_id, agent_id, showing_date, showing_time,
+                showing_type, status, buyer_notes, agent_notes, feedback, buyer_interest_level,
+                created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [newAppId, newListingId, newBuyerId, newAgentId, showing.showing_date,
+               showing.showing_time, showing.showing_type, showing.status,
+               showing.buyer_notes, showing.agent_notes, showing.feedback,
+               showing.buyer_interest_level, showing.created_at]
+            );
+            stats.propertyShowings++;
+          }
+        }
+
+        // ========================================
+        // STEP 14d: Clone Property Offers (Real Estate apps)
+        // ========================================
+        stats.propertyOffers = 0;
+        const sourceOffers = await db.query(
+          `SELECT * FROM property_offers WHERE listing_id IN (${sourceListingIds})`
+        );
+
+        for (const offer of sourceOffers) {
+          const newListingId = listingIdMap[offer.listing_id];
+          const newBuyerId = appUserIdMap[offer.buyer_id] || offer.buyer_id;
+          const newAgentId = offer.agent_id ? (appUserIdMap[offer.agent_id] || offer.agent_id) : null;
+          
+          if (newListingId) {
+            await db.query(
+              `INSERT INTO property_offers 
+               (app_id, listing_id, buyer_id, agent_id, offer_amount, earnest_money,
+                down_payment_percent, financing_type, inspection_contingency, financing_contingency,
+                appraisal_contingency, sale_contingency, other_contingencies,
+                closing_date, status, counter_amount, counter_terms, response_notes,
+                submitted_at, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [newAppId, newListingId, newBuyerId, newAgentId, offer.offer_amount,
+               offer.earnest_money, offer.down_payment_percent, offer.financing_type,
+               offer.inspection_contingency, offer.financing_contingency,
+               offer.appraisal_contingency, offer.sale_contingency, offer.other_contingencies,
+               offer.closing_date, offer.status, offer.counter_amount, offer.counter_terms,
+               offer.response_notes, offer.submitted_at, offer.created_at]
+            );
+            stats.propertyOffers++;
+          }
+        }
       }
 
       // ========================================
@@ -842,6 +931,100 @@ const createAppFromTemplate = async (req, res) => {
             [newListingId, amenity.amenity_id]
           );
           stats.propertyAmenities = (stats.propertyAmenities || 0) + 1;
+        }
+      }
+
+      // STEP 11b: Clone Property Inquiries from template (Real Estate apps)
+      const templateInquiries = await db.query(
+        'SELECT * FROM app_template_property_inquiries WHERE template_id = ?',
+        [template_id]
+      );
+
+      for (const inquiry of templateInquiries) {
+        const newListingId = listingIdMap[inquiry.listing_ref];
+        const newBuyerId = userIdMap[inquiry.buyer_ref];
+        const newAgentId = inquiry.agent_ref ? userIdMap[inquiry.agent_ref] : null;
+        
+        if (newListingId && newBuyerId) {
+          await db.query(
+            `INSERT INTO property_inquiries 
+             (app_id, listing_id, buyer_id, agent_id, inquiry_type, subject, message,
+              preferred_contact, status, response, responded_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? DAY))`,
+            [newAppId, newListingId, newBuyerId, newAgentId, inquiry.inquiry_type || 'general',
+             inquiry.subject || null, inquiry.message || null, inquiry.preferred_contact || 'either',
+             inquiry.status || 'new', inquiry.response || null, 
+             inquiry.status === 'responded' ? new Date() : null, inquiry.days_ago || 0]
+          );
+          stats.propertyInquiries = (stats.propertyInquiries || 0) + 1;
+        }
+      }
+
+      // STEP 11c: Clone Property Showings from template (Real Estate apps)
+      const templateShowings = await db.query(
+        'SELECT * FROM app_template_property_showings WHERE template_id = ?',
+        [template_id]
+      );
+
+      for (const showing of templateShowings) {
+        const newListingId = listingIdMap[showing.listing_ref];
+        const newBuyerId = userIdMap[showing.buyer_ref];
+        const newAgentId = showing.agent_ref ? userIdMap[showing.agent_ref] : null;
+        
+        if (newListingId && newBuyerId) {
+          // Calculate showing date based on days_from_now
+          const showingDate = showing.days_from_now >= 0 
+            ? `DATE_ADD(CURDATE(), INTERVAL ${showing.days_from_now} DAY)`
+            : `DATE_SUB(CURDATE(), INTERVAL ${Math.abs(showing.days_from_now)} DAY)`;
+          
+          await db.query(
+            `INSERT INTO property_showings 
+             (app_id, listing_id, buyer_id, agent_id, showing_date, showing_time,
+              showing_type, status, buyer_notes, agent_notes, feedback, buyer_interest_level,
+              created_at)
+             VALUES (?, ?, ?, ?, ${showingDate}, '14:00:00', ?, ?, ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? DAY))`,
+            [newAppId, newListingId, newBuyerId, newAgentId,
+             showing.showing_type || 'in_person', showing.status || 'requested',
+             showing.buyer_notes || null, showing.agent_notes || null,
+             showing.feedback || null, showing.buyer_interest_level || null,
+             showing.days_ago || 0]
+          );
+          stats.propertyShowings = (stats.propertyShowings || 0) + 1;
+        }
+      }
+
+      // STEP 11d: Clone Property Offers from template (Real Estate apps)
+      const templateOffers = await db.query(
+        'SELECT * FROM app_template_property_offers WHERE template_id = ?',
+        [template_id]
+      );
+
+      for (const offer of templateOffers) {
+        const newListingId = listingIdMap[offer.listing_ref];
+        const newBuyerId = userIdMap[offer.buyer_ref];
+        const newAgentId = offer.agent_ref ? userIdMap[offer.agent_ref] : null;
+        
+        if (newListingId && newBuyerId) {
+          await db.query(
+            `INSERT INTO property_offers 
+             (app_id, listing_id, buyer_id, agent_id, offer_amount, earnest_money,
+              down_payment_percent, financing_type, inspection_contingency, financing_contingency,
+              appraisal_contingency, sale_contingency, other_contingencies,
+              closing_date, status, counter_amount, counter_terms, response_notes,
+              submitted_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+                     DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, ?, ?, NOW(), 
+                     DATE_SUB(NOW(), INTERVAL ? DAY))`,
+            [newAppId, newListingId, newBuyerId, newAgentId, offer.offer_amount,
+             offer.earnest_money || null, offer.down_payment_percent || null,
+             offer.financing_type || 'conventional', offer.inspection_contingency ?? 1,
+             offer.financing_contingency ?? 1, offer.appraisal_contingency ?? 1,
+             offer.sale_contingency ?? 0, offer.other_contingencies || null,
+             offer.closing_days || 45, offer.status || 'submitted',
+             offer.counter_amount || null, offer.counter_terms || null,
+             offer.response_notes || null, offer.days_ago || 0]
+          );
+          stats.propertyOffers = (stats.propertyOffers || 0) + 1;
         }
       }
 

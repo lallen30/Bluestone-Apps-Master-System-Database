@@ -1211,4 +1211,173 @@ export const reportsAPI = {
   },
 };
 
+// Dashboard Reports API
+export const dashboardReportsAPI = {
+  // Get dashboard summary (all stats combined)
+  getSummary: async (appId: number) => {
+    const response = await api.get(`/app/${appId}/dashboard/summary`);
+    return response.data;
+  },
+
+  // Get listings overview report
+  getListingsOverview: async (appId: number) => {
+    const response = await api.get(`/app/${appId}/dashboard/listings`);
+    return response.data;
+  },
+
+  // Get users overview report
+  getUsersOverview: async (appId: number) => {
+    const response = await api.get(`/app/${appId}/dashboard/users`);
+    return response.data;
+  },
+
+  // Get inquiries overview report
+  getInquiriesOverview: async (appId: number) => {
+    const response = await api.get(`/app/${appId}/dashboard/inquiries`);
+    return response.data;
+  },
+
+  // Get popular listings report
+  getPopularListings: async (appId: number, limit?: number) => {
+    const response = await api.get(`/app/${appId}/dashboard/popular-listings`, {
+      params: { limit }
+    });
+    return response.data;
+  },
+};
+
+// Real Estate API (Inquiries & Showings)
+export const realEstateAPI = {
+  // Dashboard overview
+  getDashboardOverview: async (appId: number) => {
+    const response = await api.get(`/app/${appId}/real-estate/dashboard`);
+    return response.data;
+  },
+
+  // Inquiries
+  getInquiries: async (appId: number, params?: { status?: string; listing_id?: number; buyer_id?: number; agent_id?: number; page?: number; per_page?: number }) => {
+    const response = await api.get(`/app/${appId}/inquiries`, { params });
+    return response.data;
+  },
+
+  getInquiry: async (appId: number, inquiryId: number) => {
+    const response = await api.get(`/app/${appId}/inquiries/${inquiryId}`);
+    return response.data;
+  },
+
+  updateInquiryStatus: async (appId: number, inquiryId: number, status: string, response_message?: string) => {
+    const response = await api.put(`/app/${appId}/inquiries/${inquiryId}/status`, { status, response_message });
+    return response.data;
+  },
+
+  respondToInquiry: async (appId: number, inquiryId: number, response_message: string) => {
+    const response = await api.post(`/app/${appId}/inquiries/${inquiryId}/respond`, { response_message });
+    return response.data;
+  },
+
+  // Showings
+  getShowings: async (appId: number, params?: { status?: string; listing_id?: number; buyer_id?: number; agent_id?: number; date_from?: string; date_to?: string; page?: number; per_page?: number }) => {
+    const response = await api.get(`/app/${appId}/showings`, { params });
+    return response.data;
+  },
+
+  getShowing: async (appId: number, showingId: number) => {
+    const response = await api.get(`/app/${appId}/showings/${showingId}`);
+    return response.data;
+  },
+
+  updateShowingStatus: async (appId: number, showingId: number, data: { status: string; scheduled_date?: string; scheduled_time?: string; agent_notes?: string; cancellation_reason?: string; feedback?: string; buyer_interest_level?: string }) => {
+    const response = await api.put(`/app/${appId}/showings/${showingId}/status`, data);
+    return response.data;
+  },
+
+  confirmShowing: async (appId: number, showingId: number, data?: { scheduled_date?: string; scheduled_time?: string }) => {
+    const response = await api.post(`/app/${appId}/showings/${showingId}/confirm`, data || {});
+    return response.data;
+  },
+
+  cancelShowing: async (appId: number, showingId: number, cancellation_reason?: string) => {
+    const response = await api.post(`/app/${appId}/showings/${showingId}/cancel`, { cancellation_reason });
+    return response.data;
+  },
+
+  completeShowing: async (appId: number, showingId: number, data?: { feedback?: string; buyer_interest_level?: string; agent_notes?: string }) => {
+    const response = await api.post(`/app/${appId}/showings/${showingId}/complete`, data || {});
+    return response.data;
+  },
+
+  // Offers (Transactions)
+  getOffers: async (appId: number, params?: { status?: string; listing_id?: number; buyer_id?: number; agent_id?: number; page?: number; per_page?: number }) => {
+    const response = await api.get(`/app/${appId}/offers`, { params });
+    return response.data;
+  },
+
+  getOffer: async (appId: number, offerId: number) => {
+    const response = await api.get(`/app/${appId}/offers/${offerId}`);
+    return response.data;
+  },
+
+  createOffer: async (appId: number, data: {
+    listing_id: number;
+    buyer_id: number;
+    agent_id?: number;
+    offer_amount: number;
+    earnest_money?: number;
+    down_payment_percent?: number;
+    financing_type?: string;
+    inspection_contingency?: boolean;
+    financing_contingency?: boolean;
+    appraisal_contingency?: boolean;
+    sale_contingency?: boolean;
+    other_contingencies?: string;
+    closing_date?: string;
+    possession_date?: string;
+    offer_expiration?: string;
+  }) => {
+    const response = await api.post(`/app/${appId}/offers`, data);
+    return response.data;
+  },
+
+  updateOfferStatus: async (appId: number, offerId: number, status: string, response_notes?: string) => {
+    const response = await api.put(`/app/${appId}/offers/${offerId}/status`, { status, response_notes });
+    return response.data;
+  },
+
+  submitOffer: async (appId: number, offerId: number) => {
+    const response = await api.post(`/app/${appId}/offers/${offerId}/submit`);
+    return response.data;
+  },
+
+  counterOffer: async (appId: number, offerId: number, counter_amount: number, counter_terms?: string) => {
+    const response = await api.post(`/app/${appId}/offers/${offerId}/counter`, { counter_amount, counter_terms });
+    return response.data;
+  },
+
+  acceptOffer: async (appId: number, offerId: number, response_notes?: string) => {
+    const response = await api.post(`/app/${appId}/offers/${offerId}/accept`, { response_notes });
+    return response.data;
+  },
+
+  rejectOffer: async (appId: number, offerId: number, response_notes?: string) => {
+    const response = await api.post(`/app/${appId}/offers/${offerId}/reject`, { response_notes });
+    return response.data;
+  },
+
+  withdrawOffer: async (appId: number, offerId: number, reason?: string) => {
+    const response = await api.post(`/app/${appId}/offers/${offerId}/withdraw`, { reason });
+    return response.data;
+  },
+
+  // Analytics
+  getAgentPerformance: async (appId: number, params?: { agent_id?: number; date_from?: string; date_to?: string }) => {
+    const response = await api.get(`/app/${appId}/analytics/agents`, { params });
+    return response.data;
+  },
+
+  getMarketAnalytics: async (appId: number, params?: { date_from?: string; date_to?: string }) => {
+    const response = await api.get(`/app/${appId}/analytics/market`, { params });
+    return response.data;
+  },
+};
+
 export default api;
