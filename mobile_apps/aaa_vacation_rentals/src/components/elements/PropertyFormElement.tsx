@@ -147,6 +147,52 @@ export const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ elemen
         updatedData['primary_image'] = listing.primary_image;
       }
       
+      // Handle images and videos arrays for media_gallery field
+      const mediaItems: any[] = [];
+      
+      // Add images
+      if (listing.images && Array.isArray(listing.images)) {
+        listing.images.forEach((img: any, index: number) => {
+          mediaItems.push({
+            id: img.id,
+            uri: img.image_url,
+            url: img.image_url,
+            type: 'image',
+            isPrimary: img.is_primary || (index === 0 && mediaItems.length === 0),
+            caption: img.caption || '',
+          });
+        });
+      }
+      
+      // Add videos
+      if (listing.videos && Array.isArray(listing.videos)) {
+        listing.videos.forEach((vid: any) => {
+          mediaItems.push({
+            id: vid.id,
+            uri: vid.video_url,
+            url: vid.video_url,
+            thumbnailUrl: vid.thumbnail_url,
+            type: 'video',
+            isPrimary: false,
+            caption: vid.caption || '',
+            duration: vid.duration,
+          });
+        });
+      }
+      
+      if (mediaItems.length > 0) {
+        updatedData['media_gallery'] = mediaItems;
+        console.log('[PropertyFormElement] Media gallery items:', mediaItems);
+        
+        // Also set primary_image if not already set
+        if (!updatedData['primary_image']) {
+          const primaryImg = mediaItems.find((item: any) => item.isPrimary && item.type === 'image');
+          if (primaryImg) {
+            updatedData['primary_image'] = primaryImg.url;
+          }
+        }
+      }
+      
       console.log('[PropertyFormElement] Populated form data:', updatedData);
       setFormData(updatedData);
     } catch (error) {
@@ -186,6 +232,22 @@ export const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ elemen
       // Convert form data to listing data
       const listingData: any = { ...formData };
       listingData.status = 'draft'; // Start as draft
+      
+      // Sanitize numeric fields - convert empty strings to null
+      const numericFields = [
+        'square_feet', 'bedrooms', 'bathrooms', 'beds', 'guests_max',
+        'price_per_night', 'cleaning_fee', 'service_fee_percentage',
+        'min_nights', 'max_nights', 'latitude', 'longitude'
+      ];
+      
+      numericFields.forEach(field => {
+        if (listingData[field] === '' || listingData[field] === undefined) {
+          listingData[field] = null;
+        } else if (typeof listingData[field] === 'string') {
+          const parsed = parseFloat(listingData[field]);
+          listingData[field] = isNaN(parsed) ? null : parsed;
+        }
+      });
       
       // Handle primary_image - convert to images array for backend
       if (listingData.primary_image) {
@@ -254,7 +316,7 @@ export const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ elemen
       case 'text_area':
         return (
           <View key={element.id} style={{ marginBottom: 16 }}>
-            <Text style={styles.label}>{label} {isRequired && '*'}</Text>
+            <Text style={styles.label}>{label} {isRequired ? '*' : ''}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={value}
@@ -270,7 +332,7 @@ export const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ elemen
       case 'number_input':
         return (
           <View key={element.id} style={{ marginBottom: 16 }}>
-            <Text style={styles.label}>{label} {isRequired && '*'}</Text>
+            <Text style={styles.label}>{label} {isRequired ? '*' : ''}</Text>
             <TextInput
               style={styles.input}
               value={value?.toString() || ''}
@@ -285,7 +347,7 @@ export const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ elemen
       case 'currency_input':
         return (
           <View key={element.id} style={{ marginBottom: 16 }}>
-            <Text style={styles.label}>{label} {isRequired && '*'}</Text>
+            <Text style={styles.label}>{label} {isRequired ? '*' : ''}</Text>
             <View style={styles.currencyInputContainer}>
               <Text style={styles.currencySymbol}>$</Text>
               <TextInput
@@ -359,7 +421,7 @@ export const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ elemen
 
         return (
           <View key={element.id} style={{ marginBottom: 16 }}>
-            <Text style={styles.label}>{label} {isRequired && '*'}</Text>
+            <Text style={styles.label}>{label} {isRequired ? '*' : ''}</Text>
             <TouchableOpacity 
               style={styles.timePickerButton}
               onPress={openTimePicker}
@@ -497,7 +559,7 @@ export const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ elemen
 
         return (
           <View key={element.id} style={{ marginBottom: 16 }}>
-            <Text style={styles.label}>{label} {isRequired && '*'}</Text>
+            <Text style={styles.label}>{label} {isRequired ? '*' : ''}</Text>
             
             {value ? (
               <View style={styles.imagePreviewContainer}>
@@ -588,7 +650,7 @@ export const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ elemen
         if (options.length === 0) {
           return (
             <View key={element.id} style={{ marginBottom: 16 }}>
-              <Text style={styles.label}>{label} {isRequired && '*'}</Text>
+              <Text style={styles.label}>{label} {isRequired ? '*' : ''}</Text>
               <View style={[styles.input, { justifyContent: 'center' }]}>
                 <Text style={{ color: '#999' }}>No options configured</Text>
               </View>
@@ -598,7 +660,7 @@ export const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ elemen
         
         return (
           <View key={element.id} style={{ marginBottom: 16 }}>
-            <Text style={styles.label}>{label} {isRequired && '*'}</Text>
+            <Text style={styles.label}>{label} {isRequired ? '*' : ''}</Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={value || ''}
@@ -624,7 +686,7 @@ export const PropertyFormElement: React.FC<PropertyFormElementProps> = ({ elemen
       default: // text_field, etc.
         return (
           <View key={element.id} style={{ marginBottom: 16 }}>
-            <Text style={styles.label}>{label} {isRequired && '*'}</Text>
+            <Text style={styles.label}>{label} {isRequired ? '*' : ''}</Text>
             <TextInput
               style={styles.input}
               value={value?.toString() || ''}

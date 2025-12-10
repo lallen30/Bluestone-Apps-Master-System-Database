@@ -11,10 +11,29 @@ const transformImageUrl = (url: string | undefined): string | undefined => {
 
 // Helper function to transform listing image URLs
 const transformListing = (listing: PropertyListing): PropertyListing => {
-  return {
+  const transformed: PropertyListing = {
     ...listing,
     primary_image: transformImageUrl(listing.primary_image),
   };
+  
+  // Transform images array if present
+  if (listing.images && Array.isArray(listing.images)) {
+    transformed.images = listing.images.map((img: any) => ({
+      ...img,
+      image_url: transformImageUrl(img.image_url),
+    }));
+  }
+  
+  // Transform videos array if present
+  if (listing.videos && Array.isArray(listing.videos)) {
+    transformed.videos = listing.videos.map((vid: any) => ({
+      ...vid,
+      video_url: transformImageUrl(vid.video_url),
+      thumbnail_url: transformImageUrl(vid.thumbnail_url),
+    }));
+  }
+  
+  return transformed;
 };
 
 export const listingsService = {

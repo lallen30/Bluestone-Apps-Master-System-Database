@@ -68,6 +68,29 @@ export interface PropertyListing {
   primary_image?: string;
   image_count?: number;
   amenities?: string;
+  // Related arrays
+  images?: PropertyImage[];
+  videos?: PropertyVideo[];
+}
+
+export interface PropertyImage {
+  id: number;
+  listing_id: number;
+  image_url: string;
+  caption?: string;
+  is_primary?: boolean;
+  display_order?: number;
+  media_type?: string;
+}
+
+export interface PropertyVideo {
+  id: number;
+  listing_id: number;
+  video_url: string;
+  thumbnail_url?: string;
+  caption?: string;
+  duration?: number;
+  display_order?: number;
 }
 
 export type PropertyType = 

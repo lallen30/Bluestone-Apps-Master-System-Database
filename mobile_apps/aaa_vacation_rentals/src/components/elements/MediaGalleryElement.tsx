@@ -256,6 +256,8 @@ const MediaGalleryElement: React.FC<MediaGalleryElementProps> = ({
   const renderMediaItem = (item: MediaItem, index: number) => {
     const isVideo = item.type === 'video';
     const imageUri = item.url || item.uri;
+    
+    console.log('[MediaGallery] Rendering item:', index, 'uri:', imageUri);
 
     return (
       <View key={index} style={styles.mediaItem}>
@@ -264,11 +266,18 @@ const MediaGalleryElement: React.FC<MediaGalleryElementProps> = ({
           onPress={() => handleSetPrimary(index)}
           disabled={!show_primary_selector || disabled}
         >
-          <Image
-            source={{ uri: imageUri }}
-            style={styles.mediaImage}
-            resizeMode="cover"
-          />
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.mediaImage}
+              resizeMode="cover"
+              onError={(e) => console.log('[MediaGallery] Image load error:', e.nativeEvent.error, 'uri:', imageUri)}
+            />
+          ) : (
+            <View style={[styles.mediaImage, { backgroundColor: '#E5E5EA', justifyContent: 'center', alignItems: 'center' }]}>
+              <Icon name="image-off" size={24} color="#8E8E93" />
+            </View>
+          )}
           
           {isVideo && (
             <View style={styles.videoOverlay}>
@@ -334,7 +343,7 @@ const MediaGalleryElement: React.FC<MediaGalleryElementProps> = ({
     <View style={styles.container}>
       <Text style={styles.label}>
         {label}
-        {isRequired && <Text style={styles.required}> *</Text>}
+        {isRequired ? <Text style={styles.required}> *</Text> : null}
       </Text>
 
       {mediaItems.length > 0 && (
