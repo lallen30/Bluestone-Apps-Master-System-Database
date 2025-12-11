@@ -81,6 +81,13 @@ router.post('/:appId/users/:userId/roles', authenticate, rolesController.assignR
 router.delete('/:appId/users/:userId/roles/:roleId', authenticate, rolesController.removeRoleFromUser);
 
 /**
+ * @route   GET /api/v1/roles
+ * @desc    Get all administrator roles (Admin, Editor, etc.)
+ * @access  Private (Admin)
+ */
+router.get('/roles', authenticate, rolesController.getAdminRoles);
+
+/**
  * @route   GET /api/v1/permissions
  * @desc    Get all available permissions
  * @access  Private (Admin)

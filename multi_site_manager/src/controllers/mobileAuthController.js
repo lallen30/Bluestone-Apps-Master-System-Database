@@ -194,11 +194,26 @@ async function login(req, res) {
       });
     }
     
-    // Generate tokens
+    // Get user's roles
+    const roleResult = await db.query(
+      `SELECT aura.app_role_id as role_id, ar.name as role_name
+       FROM app_user_role_assignments aura
+       JOIN app_roles ar ON aura.app_role_id = ar.id
+       WHERE aura.user_id = ?`,
+      [user.id]
+    );
+    const userRoles = Array.isArray(roleResult) && Array.isArray(roleResult[0]) 
+      ? roleResult[0] 
+      : roleResult;
+    const role_ids = userRoles.map(r => r.role_id);
+    const role_names = userRoles.map(r => r.role_name);
+    
+    // Generate tokens (include role_ids for role-based access)
     const accessToken = generateAccessToken({ 
       user_id: user.id, 
       app_id: user.app_id, 
-      email: user.email 
+      email: user.email,
+      role_ids: role_ids
     });
     const refreshToken = generateRefreshToken({ 
       user_id: user.id, 
@@ -235,6 +250,10 @@ async function login(req, res) {
     
     // Remove sensitive data
     delete user.password_hash;
+    
+    // Add roles to user object
+    user.role_ids = role_ids;
+    user.roles = role_names;
     
     res.json({
       success: true,

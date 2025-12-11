@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const { createNotification } = require('./notificationsController');
 
 /**
  * Start or get existing conversation
@@ -96,25 +97,10 @@ exports.getConversations = async (req, res) => {
     // Pagination
     const page = parseInt(req.query.page) || 1;
     const per_page = parseInt(req.query.per_page) || 20;
-    
-    // Temporary: Return empty conversations until we fix the query
-    return res.json({
-      success: true,
-      data: {
-        conversations: [],
-        pagination: {
-          page: page,
-          per_page: per_page,
-          total: 0,
-          total_pages: 0
-        }
-      }
-    });
-    
-    /* ORIGINAL CODE - COMMENTED OUT UNTIL WE FIX THE QUERY ISSUE
     const limit = per_page;
     const offset = (page - 1) * limit;
 
+    // Get conversations with other user info and unread count
     const conversationsResult = await db.query(
       `SELECT 
         c.id,
@@ -125,8 +111,8 @@ exports.getConversations = async (req, res) => {
         l.title as listing_title,
         l.city as listing_city,
         CASE 
-          WHEN c.user1_id = ? THEN u2.id
-          ELSE u1.id
+          WHEN c.user1_id = ? THEN c.user2_id
+          ELSE c.user1_id
         END as other_user_id,
         CASE 
           WHEN c.user1_id = ? THEN u2.first_name
@@ -136,7 +122,14 @@ exports.getConversations = async (req, res) => {
           WHEN c.user1_id = ? THEN u2.last_name
           ELSE u1.last_name
         END as other_user_last_name,
-        0 as unread_count
+        CASE 
+          WHEN c.user1_id = ? THEN u2.avatar_url
+          ELSE u1.avatar_url
+        END as other_user_avatar,
+        (SELECT COUNT(*) FROM messages m 
+         WHERE m.conversation_id = c.id 
+         AND m.sender_id != ? 
+         AND m.is_read = 0) as unread_count
        FROM conversations c
        LEFT JOIN property_listings l ON c.listing_id = l.id
        LEFT JOIN app_users u1 ON c.user1_id = u1.id
@@ -147,9 +140,9 @@ exports.getConversations = async (req, res) => {
            (c.user1_id = ? AND c.is_archived_user1 = 0) OR
            (c.user2_id = ? AND c.is_archived_user2 = 0)
          )
-       ORDER BY c.last_message_at DESC
+       ORDER BY COALESCE(c.last_message_at, c.created_at) DESC
        LIMIT ? OFFSET ?`,
-      [userId, userId, userId, appId, userId, userId, userId, userId, limit, offset]
+      [userId, userId, userId, userId, userId, appId, userId, userId, userId, userId, limit, offset]
     );
 
     const conversations = Array.isArray(conversationsResult) && Array.isArray(conversationsResult[0]) 
@@ -159,26 +152,33 @@ exports.getConversations = async (req, res) => {
     // Get total count
     const countResult = await db.query(
       `SELECT COUNT(*) as total 
-       FROM conversations 
-       WHERE app_id = ? AND (user1_id = ? OR user2_id = ?)`,
-      [appId, userId, userId]
+       FROM conversations c
+       WHERE c.app_id = ? 
+         AND (c.user1_id = ? OR c.user2_id = ?)
+         AND (
+           (c.user1_id = ? AND c.is_archived_user1 = 0) OR
+           (c.user2_id = ? AND c.is_archived_user2 = 0)
+         )`,
+      [appId, userId, userId, userId, userId]
     );
 
-    const total = countResult[0]?.total || 0;
+    const countData = Array.isArray(countResult) && Array.isArray(countResult[0]) 
+      ? countResult[0] 
+      : countResult;
+    const total = countData[0]?.total || 0;
 
     res.json({
       success: true,
       data: {
         conversations: conversations || [],
         pagination: {
-          page: parseInt(page),
+          page: page,
           per_page: limit,
-          total,
+          total: total,
           total_pages: Math.ceil(total / limit)
         }
       }
     });
-    */
   } catch (error) {
     console.error('Error fetching conversations:', error);
     res.status(500).json({
@@ -340,6 +340,15 @@ exports.sendMessage = async (req, res) => {
 
     const messageId = result.insertId;
 
+    // Update conversation's last_message_at and last_message_preview
+    const preview = message_text.trim().substring(0, 100);
+    await db.query(
+      `UPDATE conversations 
+       SET last_message_at = NOW(), last_message_preview = ?
+       WHERE id = ?`,
+      [preview, conversationId]
+    );
+
     // Get the created message
     const messageResult = await db.query(
       `SELECT 
@@ -352,7 +361,40 @@ exports.sendMessage = async (req, res) => {
       [messageId]
     );
 
-    const message = messageResult[0];
+    const messageData = Array.isArray(messageResult) && Array.isArray(messageResult[0]) 
+      ? messageResult[0] 
+      : messageResult;
+    const message = messageData[0];
+
+    // Send notification to the other user
+    try {
+      const otherUserId = conversation.user1_id === userId ? conversation.user2_id : conversation.user1_id;
+      
+      // Get sender name
+      const senderResult = await db.query(
+        `SELECT first_name, last_name FROM app_users WHERE id = ?`,
+        [userId]
+      );
+      const senderData = Array.isArray(senderResult) && Array.isArray(senderResult[0]) 
+        ? senderResult[0] 
+        : senderResult;
+      const senderName = senderData[0] 
+        ? `${senderData[0].first_name} ${senderData[0].last_name}`.trim() 
+        : 'Someone';
+      
+      const preview = message_text.trim().substring(0, 50) + (message_text.length > 50 ? '...' : '');
+      
+      await createNotification(
+        appId,
+        otherUserId,
+        'new_message',
+        `New message from ${senderName}`,
+        preview,
+        { conversation_id: parseInt(conversationId), sender_id: userId }
+      );
+    } catch (notifError) {
+      console.error('Error sending message notification:', notifError);
+    }
 
     res.status(201).json({
       success: true,

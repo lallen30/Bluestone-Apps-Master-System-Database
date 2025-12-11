@@ -9,7 +9,8 @@ const fs = require('fs');
 // Configure multer for avatar uploads
 const avatarStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../public/uploads/avatars');
+    // Save to uploads/avatars (same folder served by express.static)
+    const uploadDir = path.join(__dirname, '../../uploads/avatars');
     // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });

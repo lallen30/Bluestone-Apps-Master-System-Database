@@ -478,6 +478,13 @@ export default function MenuDetailPage() {
                 <Plus className="w-5 h-5" />
                 Manage Menu Items
               </button>
+              <button
+                onClick={() => setShowSidebarModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                <MenuIcon className="w-5 h-5" />
+                Add Sidebar Item
+              </button>
             </div>
           </div>
         </div>

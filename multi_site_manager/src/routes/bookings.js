@@ -89,4 +89,16 @@ router.put(
   bookingsController.rejectBooking
 );
 
+/**
+ * POST /api/v1/apps/:appId/bookings/complete-past
+ * Mark all confirmed bookings with past check_out_date as completed
+ * Can be called manually for testing or by admin
+ */
+router.post(
+  '/apps/:appId/bookings/complete-past',
+  authenticate,
+  hasAppAccess,
+  bookingsController.completePastBookings
+);
+
 module.exports = router;

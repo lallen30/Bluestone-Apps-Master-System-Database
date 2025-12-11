@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const { createNotification } = require('./notificationsController');
 
 /**
  * Create a new booking
@@ -168,6 +169,24 @@ exports.createBooking = async (req, res) => {
     // If instant book, update availability
     if (initialStatus === 'confirmed') {
       await blockDatesForBooking(listing_id, check_in_date, check_out_date);
+    }
+
+    // Send notification to host
+    try {
+      const checkInFormatted = new Date(check_in_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const checkOutFormatted = new Date(check_out_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      
+      await createNotification(
+        appId,
+        hostUserId,
+        'booking_request',
+        initialStatus === 'confirmed' ? 'New Booking Confirmed' : 'New Booking Request',
+        `${guest_first_name} ${guest_last_name} ${initialStatus === 'confirmed' ? 'booked' : 'requested to book'} ${listing.title} for ${checkInFormatted} - ${checkOutFormatted}`,
+        { booking_id: bookingId, listing_id, guest_user_id: guestUserId }
+      );
+    } catch (notifError) {
+      console.error('Error sending booking notification:', notifError);
+      // Don't fail the booking if notification fails
     }
 
     res.status(201).json({
@@ -383,24 +402,6 @@ exports.getMyBookings = async (req, res) => {
       });
     }
 
-    // Temporary: Return empty bookings until we fix the query
-    const pageNum = parseInt(page);
-    const perPage = parseInt(per_page);
-    
-    return res.json({
-      success: true,
-      data: {
-        bookings: [],
-        pagination: {
-          page: pageNum,
-          per_page: perPage,
-          total: 0,
-          total_pages: 0
-        }
-      }
-    });
-
-    /* ORIGINAL CODE - COMMENTED OUT
     let query = `
       SELECT 
         b.id, b.listing_id, b.check_in_date, b.check_out_date,
@@ -444,7 +445,10 @@ exports.getMyBookings = async (req, res) => {
     }
 
     const countResult = await db.query(countQuery, countParams);
-    const total = countResult[0]?.total || 0;
+    const countData = Array.isArray(countResult) && Array.isArray(countResult[0]) 
+      ? countResult[0] 
+      : countResult;
+    const total = countData[0]?.total || 0;
 
     res.json({
       success: true,
@@ -458,7 +462,6 @@ exports.getMyBookings = async (req, res) => {
         }
       }
     });
-    */
   } catch (error) {
     console.error('Error fetching bookings:', error);
     res.status(500).json({
@@ -791,6 +794,33 @@ exports.confirmBooking = async (req, res) => {
     // Block dates
     await blockDatesForBooking(booking.listing_id, booking.check_in_date, booking.check_out_date);
 
+    // Send notification to guest
+    try {
+      const checkInFormatted = new Date(booking.check_in_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const checkOutFormatted = new Date(booking.check_out_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      
+      // Get listing title
+      const listingResult = await db.query(
+        `SELECT title FROM property_listings WHERE id = ?`,
+        [booking.listing_id]
+      );
+      const listingData = Array.isArray(listingResult) && Array.isArray(listingResult[0]) 
+        ? listingResult[0] 
+        : listingResult;
+      const listingTitle = listingData[0]?.title || 'your booking';
+      
+      await createNotification(
+        appId,
+        booking.guest_user_id,
+        'booking_confirmed',
+        'Booking Confirmed!',
+        `Your booking for ${listingTitle} (${checkInFormatted} - ${checkOutFormatted}) has been confirmed.`,
+        { booking_id: parseInt(bookingId), listing_id: booking.listing_id }
+      );
+    } catch (notifError) {
+      console.error('Error sending confirmation notification:', notifError);
+    }
+
     res.json({
       success: true,
       message: 'Booking confirmed successfully'
@@ -872,6 +902,30 @@ exports.rejectBooking = async (req, res) => {
       [bookingId, userId, rejection_reason]
     );
 
+    // Send notification to guest
+    try {
+      // Get listing title
+      const listingResult = await db.query(
+        `SELECT title FROM property_listings WHERE id = ?`,
+        [booking.listing_id]
+      );
+      const listingData = Array.isArray(listingResult) && Array.isArray(listingResult[0]) 
+        ? listingResult[0] 
+        : listingResult;
+      const listingTitle = listingData[0]?.title || 'your booking';
+      
+      await createNotification(
+        appId,
+        booking.guest_user_id,
+        'booking_rejected',
+        'Booking Request Declined',
+        `Your booking request for ${listingTitle} was not approved.${rejection_reason ? ' Reason: ' + rejection_reason : ''}`,
+        { booking_id: parseInt(bookingId), listing_id: booking.listing_id }
+      );
+    } catch (notifError) {
+      console.error('Error sending rejection notification:', notifError);
+    }
+
     res.json({
       success: true,
       message: 'Booking rejected'
@@ -883,6 +937,72 @@ exports.rejectBooking = async (req, res) => {
       message: 'Error rejecting booking',
       error: error.message
     });
+  }
+};
+
+/**
+ * Complete past bookings
+ * POST /api/v1/apps/:appId/bookings/complete-past
+ * Marks all confirmed bookings with check_out_date in the past as completed
+ */
+exports.completePastBookings = async (req, res) => {
+  try {
+    const { appId } = req.params;
+    const today = new Date().toISOString().split('T')[0];
+
+    // Find all confirmed bookings where check_out_date has passed
+    const result = await db.query(
+      `UPDATE property_bookings 
+       SET status = 'completed', updated_at = NOW()
+       WHERE app_id = ? 
+         AND status = 'confirmed' 
+         AND check_out_date < ?`,
+      [appId, today]
+    );
+
+    const affectedRows = result.affectedRows || 0;
+
+    console.log(`[App ${appId}] Completed ${affectedRows} past bookings`);
+
+    res.json({
+      success: true,
+      message: `Marked ${affectedRows} booking(s) as completed`,
+      data: {
+        completed_count: affectedRows
+      }
+    });
+  } catch (error) {
+    console.error('Error completing past bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error completing past bookings',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Complete past bookings for ALL apps (used by cron job)
+ * This is not an API endpoint, called internally
+ */
+exports.completePastBookingsAllApps = async () => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    const result = await db.query(
+      `UPDATE property_bookings 
+       SET status = 'completed', updated_at = NOW()
+       WHERE status = 'confirmed' 
+         AND check_out_date < ?`,
+      [today]
+    );
+
+    const affectedRows = result.affectedRows || 0;
+    console.log(`[Cron] Completed ${affectedRows} past bookings across all apps`);
+    return affectedRows;
+  } catch (error) {
+    console.error('[Cron] Error completing past bookings:', error);
+    throw error;
   }
 };
 

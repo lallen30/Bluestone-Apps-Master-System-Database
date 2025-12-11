@@ -4,9 +4,11 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
+const cron = require("node-cron");
 require("dotenv").config();
 
 const { testConnection } = require("./config/database");
+const bookingsController = require("./controllers/bookingsController");
 
 // Import routes
 const authRoutes = require("./routes/authRoutes");
@@ -16,32 +18,47 @@ const permissionRoutes = require("./routes/permissionRoutes");
 const screenRoutes = require("./routes/screenRoutes");
 const screenElementRoutes = require("./routes/screenElementRoutes");
 const appScreenRoutes = require("./routes/appScreenRoutes");
+
 const mobileRoutes = require("./routes/mobileRoutes");
 const mobileAuthRoutes = require("./routes/mobileAuth");
 const mobileProfileRoutes = require("./routes/mobileProfile");
 const mobileSettingsRoutes = require("./routes/mobileSettings");
 const mobileUploadRoutes = require("./routes/mobileUpload");
+const mobileScreenRoutes = require("./routes/mobileScreenRoutes");
+
 const appUsersRoutes = require("./routes/appUsers");
 const rolesRoutes = require("./routes/roles");
 const templateRoutes = require("./routes/templateRoutes");
 const appTemplatesRoutes = require("./routes/appTemplates");
 const uploadRoutes = require("./routes/upload");
 const appScreenElementsRoutes = require("./routes/appScreenElements");
-const mobileScreenRoutes = require("./routes/mobileScreenRoutes");
+
 const submissionsRoutes = require("./routes/submissions");
 const screenRolesRoutes = require("./routes/screenRoles");
+
 const propertyListingsRoutes = require("./routes/propertyListings");
 const bookingsRoutes = require("./routes/bookings");
 const messagesRoutes = require("./routes/messages");
 const reviewsRoutes = require("./routes/reviews");
+
 const menuRoutes = require("./routes/menuRoutes");
 const modulesRoutes = require("./routes/modulesRoutes");
+
 const appFormsRoutes = require("./routes/appForms");
 const appFormElementsRoutes = require("./routes/appFormElements");
 const favoritesRoutes = require("./routes/favorites");
 const profileRoutes = require("./routes/profile");
 const formSubmissionsRoutes = require("./routes/formSubmissions");
+
 const appServicesRoutes = require("./routes/appServices");
+
+const reportsRoutes = require("./routes/reports");
+const dashboardReportsRoutes = require("./routes/dashboardReports");
+
+const ridesRoutes = require("./routes/rides");
+const driversRoutes = require("./routes/drivers");
+const notificationsRoutes = require("./routes/notifications");
+const realEstateRoutes = require("./routes/realEstate");
 
 // Initialize Express app
 const app = express();
@@ -146,6 +163,12 @@ app.use(`/api/${API_VERSION}`, appFormElementsRoutes); // Form element overrides
 app.use(`/api/${API_VERSION}`, favoritesRoutes); // Favorites/wishlist
 app.use(`/api/${API_VERSION}`, profileRoutes); // User profile management
 app.use(`/api/${API_VERSION}`, formSubmissionsRoutes); // Form submissions (admin)
+app.use(`/api/${API_VERSION}`, reportsRoutes); // Reports management
+app.use(`/api/${API_VERSION}`, dashboardReportsRoutes); // Dashboard reports
+app.use(`/api/${API_VERSION}/apps/:appId/rides`, ridesRoutes); // Rideshare rides
+app.use(`/api/${API_VERSION}/apps/:appId/drivers`, driversRoutes); // Rideshare drivers
+app.use(`/api/${API_VERSION}`, notificationsRoutes); // Notifications
+app.use(`/api/${API_VERSION}`, realEstateRoutes); // Real estate inquiries & showings
 
 // Serve uploaded files statically
 app.use("/uploads", express.static("uploads"));
@@ -189,6 +212,27 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Setup scheduled cron jobs
+const setupCronJobs = () => {
+  // Complete past bookings - runs every day at midnight
+  // Cron format: minute hour day-of-month month day-of-week
+  // '0 0 * * *' = At 00:00 every day
+  cron.schedule("0 0 * * *", async () => {
+    console.log("[Cron] Running daily booking completion job...");
+    try {
+      const count = await bookingsController.completePastBookingsAllApps();
+      console.log(
+        `[Cron] Daily job completed. Marked ${count} bookings as completed.`
+      );
+    } catch (error) {
+      console.error("[Cron] Daily booking completion job failed:", error);
+    }
+  });
+
+  console.log("[Cron] Scheduled jobs:");
+  console.log("  - Complete past bookings: Daily at midnight");
+};
+
 // Start server
 const startServer = async () => {
   try {
@@ -215,6 +259,9 @@ const startServer = async () => {
       console.log(`  Health: http://localhost:${PORT}/health`);
       console.log("========================================");
       console.log("");
+
+      // Schedule cron jobs
+      setupCronJobs();
     });
   } catch (error) {
     console.error("Failed to start server:", error);

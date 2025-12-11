@@ -679,8 +679,38 @@ async function removeScreenFromRole(req, res) {
   }
 }
 
+/**
+ * Get all administrator roles (Admin, Editor, etc.)
+ * GET /api/v1/roles
+ */
+async function getAdminRoles(req, res) {
+  try {
+    const result = await db.query(
+      'SELECT id, name, description, level FROM roles ORDER BY level ASC'
+    );
+    
+    // Handle both array and array-of-arrays result formats
+    const roles = Array.isArray(result) && Array.isArray(result[0]) 
+      ? result[0] 
+      : result;
+    
+    res.json({
+      success: true,
+      data: roles || []
+    });
+    
+  } catch (error) {
+    console.error('Get admin roles error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch admin roles'
+    });
+  }
+}
+
 module.exports = {
   getAppRoles,
+  getAdminRoles,
   getRoleDetails,
   getUserRoles,
   assignRoleToUser,
