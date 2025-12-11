@@ -4224,25 +4224,46 @@ const DynamicScreen = ({ route, navigation }: any) => {
   const navigationState = navigation.getState();
   const isAtRoot = navigationState?.index === 0;
   
-  // Show back button only if we're NOT on the Home screen AND not at root of stack
-  // This ensures the home screen always shows menu icon, not back button
-  const canShowBackButton = !isHomeScreen && !isAtRoot && navigation.canGoBack();
+  // Check if navigation allows going back
+  const canGoBack = !isHomeScreen && !isAtRoot && navigation.canGoBack();
   
-  // Build header config:
-  // - showLeftIcon from config controls whether to show the BACK button
-  // - Menu icon should always show if there's a left sidebar menu assigned
-  const configShowBackButton = headerBarModule?.config?.showLeftIcon ?? false;
-  const showBackButton = canShowBackButton && configShowBackButton;
+  // Check module configuration
   const hasLeftMenu = !!leftSidebarMenu;
+  const moduleConfig = headerBarModule?.config || {};
   
-  // Show left icon if: we have a menu OR we should show back button
-  const shouldShowLeftIcon = hasLeftMenu || showBackButton;
+  // Determine what to show on the left side:
+  // Priority 1: If left sidebar menu is assigned, always show menu icon (overrides back button)
+  // Priority 2: If module has leftIconType: "back" AND we can go back, show back button
+  // Priority 3: If module has showLeftIcon: true but no leftIconType, show menu icon
+  // Priority 4: If showLeftIcon: false, show nothing
   
-  const headerConfig = headerBarModule?.config ? {
-    ...headerBarModule.config,
-    leftIconType: showBackButton ? 'back' : 'menu',
-    showLeftIcon: shouldShowLeftIcon,
-  } : { leftIconType: canShowBackButton ? 'back' : 'menu', showLeftIcon: hasLeftMenu };
+  const moduleWantsBackButton = moduleConfig.leftIconType === 'back';
+  const moduleShowsLeftIcon = moduleConfig.showLeftIcon ?? false;
+  
+  let leftIconType: 'menu' | 'back' | 'none' = 'none';
+  let showLeftIcon = false;
+  
+  if (hasLeftMenu) {
+    // Left sidebar menu overrides everything - show menu icon
+    leftIconType = 'menu';
+    showLeftIcon = true;
+  } else if (moduleWantsBackButton && canGoBack) {
+    // Module is "Header Bar with Back Button" and we can go back
+    leftIconType = 'back';
+    showLeftIcon = true;
+  } else if (moduleShowsLeftIcon) {
+    // Module wants to show left icon but it's not a back button type
+    // This is for "Header Bar with Sidebar Icons" without a menu assigned
+    leftIconType = 'menu';
+    showLeftIcon = true;
+  }
+  // else: "Simple Header Bar" with showLeftIcon: false - no left icon
+  
+  const headerConfig = {
+    ...moduleConfig,
+    leftIconType,
+    showLeftIcon,
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -4254,7 +4275,13 @@ const DynamicScreen = ({ route, navigation }: any) => {
             config={headerConfig}
             leftMenu={leftSidebarMenu}
             rightMenu={rightSidebarMenu}
-            onLeftIconPress={() => setLeftSidebarVisible(true)}
+            onLeftIconPress={() => {
+              if (leftIconType === 'back') {
+                navigation.goBack();
+              } else {
+                setLeftSidebarVisible(true);
+              }
+            }}
             onRightIconPress={() => setRightSidebarVisible(true)}
           />
         )}
@@ -4647,7 +4674,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 8,
+    minHeight: 44,
   },
   tabLabel: {
     fontSize: 10,

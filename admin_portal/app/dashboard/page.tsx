@@ -134,31 +134,31 @@ export default function Dashboard() {
                 
                 {/* Permissions Badges */}
                 <div className="flex flex-wrap gap-2">
-                  {app.can_view && (
+                  {app.can_view === 1 || app.can_view === true ? (
                     <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
                       View
                     </span>
-                  )}
-                  {app.can_edit && (
+                  ) : null}
+                  {app.can_edit === 1 || app.can_edit === true ? (
                     <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
                       Edit
                     </span>
-                  )}
-                  {app.can_delete && (
+                  ) : null}
+                  {app.can_delete === 1 || app.can_delete === true ? (
                     <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">
                       Delete
                     </span>
-                  )}
-                  {app.can_manage_users && (
+                  ) : null}
+                  {app.can_manage_users === 1 || app.can_manage_users === true ? (
                     <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
                       Users
                     </span>
-                  )}
-                  {app.can_manage_settings && (
+                  ) : null}
+                  {app.can_manage_settings === 1 || app.can_manage_settings === true ? (
                     <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
                       Settings
                     </span>
-                  )}
+                  ) : null}
                 </div>
               </div>
             ))}

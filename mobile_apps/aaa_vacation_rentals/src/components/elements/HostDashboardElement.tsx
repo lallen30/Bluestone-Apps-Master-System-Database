@@ -18,6 +18,8 @@ interface ScreenElement {
   element_type: string;
   config?: any;
   default_config?: any;
+  options?: any; // Content options saved from admin portal
+  content_options?: any; // Content options from API (same as options)
 }
 
 interface HostDashboardElementProps {
@@ -60,13 +62,33 @@ interface RecentBooking {
 }
 
 const HostDashboardElement: React.FC<HostDashboardElementProps> = ({ element, navigation }) => {
+  // Merge config with options (options from admin portal content settings take precedence)
+  // API returns content_options, so check both options and content_options
   const config = element.config || element.default_config || {};
-  const {
-    showListings = true,
-    showBookings = true,
-    showEarnings = true,
-    showReviews = true,
-  } = config;
+  const rawOptions = element.options || element.content_options;
+  
+  // Parse options if it's a string
+  let options: any = {};
+  if (rawOptions) {
+    if (typeof rawOptions === 'string') {
+      try {
+        options = JSON.parse(rawOptions);
+      } catch (e) {
+        console.error('[HostDashboard] Failed to parse options:', e);
+      }
+    } else {
+      options = rawOptions;
+    }
+  }
+  
+  // Check both config and options for visibility settings
+  const showListings = options.showListings !== undefined ? options.showListings : (config.showListings !== undefined ? config.showListings : true);
+  const showBookings = options.showBookings !== undefined ? options.showBookings : (config.showBookings !== undefined ? config.showBookings : true);
+  const showEarnings = options.showEarnings !== undefined ? options.showEarnings : (config.showEarnings !== undefined ? config.showEarnings : true);
+  const showReviews = options.showReviews !== undefined ? options.showReviews : (config.showReviews !== undefined ? config.showReviews : true);
+  
+  console.log('[HostDashboard] Config:', config, 'Raw options:', rawOptions, 'Parsed options:', options);
+  console.log('[HostDashboard] Show settings:', { showListings, showBookings, showEarnings, showReviews });
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

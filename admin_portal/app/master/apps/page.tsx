@@ -446,9 +446,9 @@ export default function AppsManagement() {
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => router.push(`/app/${app.id}`)}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{app.name}</div>
-                      <div className="text-sm text-gray-500">{app.description}</div>
+                    <td className="px-6 py-4 max-w-xs">
+                      <div className="text-sm font-medium text-gray-900 truncate" title={app.name}>{app.name}</div>
+                      <div className="text-sm text-gray-500 truncate" title={app.description}>{app.description}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span

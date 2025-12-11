@@ -1218,19 +1218,28 @@ const createAppFromTemplate = async (req, res) => {
           [moduleAssign.screen_id, moduleAssign.module_id]
         );
         
+        // Ensure config is properly stringified for SQL
+        let configValue = moduleAssign.config;
+        if (configValue && typeof configValue === 'object') {
+          configValue = JSON.stringify(configValue);
+        }
+        if (!configValue) {
+          configValue = '{}';
+        }
+        
         if (!existing || existing.length === 0) {
           await db.query(
             `INSERT INTO screen_module_assignments (screen_id, module_id, config, is_active)
              VALUES (?, ?, ?, ?)`,
             [moduleAssign.screen_id, moduleAssign.module_id, 
-             moduleAssign.config || null, moduleAssign.is_active ?? 1]
+             configValue, moduleAssign.is_active ?? 1]
           );
         } else {
           // Update existing with template config
           await db.query(
             `UPDATE screen_module_assignments SET config = ?, is_active = ? 
              WHERE screen_id = ? AND module_id = ?`,
-            [moduleAssign.config || null, moduleAssign.is_active ?? 1,
+            [configValue, moduleAssign.is_active ?? 1,
              moduleAssign.screen_id, moduleAssign.module_id]
           );
         }
