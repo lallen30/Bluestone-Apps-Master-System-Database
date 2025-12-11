@@ -65,7 +65,7 @@ class StripeKeyManager {
   /**
    * Get Stripe instance for a specific project
    */
-  getStripeInstance(appId) {
+  async getStripeInstance(appId) {
     if (!appId) {
       // Return default Stripe instance
       if (!this.defaultStripe) {
@@ -77,6 +77,19 @@ class StripeKeyManager {
     const projectData = this.stripeInstances.get(appId.toString());
 
     if (!projectData) {
+      // Try to load from database
+      console.log(
+        `⚠️  No Stripe keys found in memory for project ${appId}, checking database...`
+      );
+      const { loadStripeKeysFromDB } = require("./loadKeysFromDB");
+      const dbKeys = await loadStripeKeysFromDB(appId);
+
+      if (dbKeys && dbKeys.secretKey) {
+        console.log(`✅ Loaded Stripe keys from database for project ${appId}`);
+        this.setProjectKeys(appId, dbKeys);
+        return this.stripeInstances.get(appId.toString()).stripe;
+      }
+
       console.warn(
         `⚠️  No Stripe keys found for project ${appId}, using default keys`
       );

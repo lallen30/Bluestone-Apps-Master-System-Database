@@ -77,6 +77,7 @@ services:
       RATE_LIMIT_WINDOW_MS: 900000
       RATE_LIMIT_MAX_REQUESTS: 100
       LOG_LEVEL: debug
+      STRIPE_SERVICE_URL: http://stripe_service:4001
     volumes:
       - ./multi_site_manager/src:/app/src
       - ./multi_site_manager/package.json:/app/package.json
@@ -135,6 +136,7 @@ services:
       SERVICE_NAME: stripe-service
       SERVICE_PORT: 4001
       SERVICE_URL: http://stripe_service:4001
+      API_URL: http://api:3000
       BODYGUARD_URL: http://host.docker.internal:3032
       JWT_SECRET: dev-secret-key-change-in-production
       CORS_ORIGIN: "*"

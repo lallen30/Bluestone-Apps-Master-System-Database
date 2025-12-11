@@ -34,7 +34,7 @@ router.get("/config", optionalAuth, (req, res) => {
 router.post("/checkout-session", optionalAuth, async (req, res) => {
   try {
     const appId = req.body.app_id || req.auth?.appId;
-    const stripe = stripeKeyManager.getStripeInstance(appId);
+    const stripe = await stripeKeyManager.getStripeInstance(appId);
 
     const {
       price_id,
@@ -71,14 +71,42 @@ router.post("/checkout-session", optionalAuth, async (req, res) => {
       user_email: req.auth?.email,
     };
 
-    const session = await stripe.checkout.sessions.create({
+    // Support optional Stripe Connect parameters
+    const { connected_account, application_fee_amount } = req.body;
+
+    const sessionOptions = {
       line_items: sessionLineItems,
       mode: mode || "payment",
       success_url,
       cancel_url,
       metadata: sessionMetadata,
       customer_email: req.auth?.email,
-    });
+    };
+
+    // If a connected_account is provided and we are using the platform default
+    // keys (i.e. no per-project key configured), attach transfer_data so
+    // funds are routed to the connected account. If this project has its own
+    // Stripe secret key configured, we assume the key is for the connected
+    // account and do not add transfer_data.
+    const hasProjectKey = stripeKeyManager
+      .listProjects()
+      .includes(String(appId));
+
+    if (connected_account && !hasProjectKey) {
+      sessionOptions.payment_intent_data = {
+        transfer_data: { destination: connected_account },
+      };
+
+      if (application_fee_amount) {
+        // application_fee_amount should be provided in cents
+        sessionOptions.payment_intent_data.application_fee_amount = parseInt(
+          application_fee_amount,
+          10
+        );
+      }
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionOptions);
 
     res.json({
       success: true,
@@ -101,7 +129,7 @@ router.post("/checkout-session", optionalAuth, async (req, res) => {
 router.post("/payment-intent", optionalAuth, async (req, res) => {
   try {
     const appId = req.body.app_id || req.auth?.appId;
-    const stripe = stripeKeyManager.getStripeInstance(appId);
+    const stripe = await stripeKeyManager.getStripeInstance(appId);
 
     const { amount, currency, metadata } = req.body;
 
@@ -149,7 +177,7 @@ router.post("/payment-intent", optionalAuth, async (req, res) => {
 router.post("/customer", optionalAuth, async (req, res) => {
   try {
     const appId = req.body.app_id || req.auth?.appId;
-    const stripe = stripeKeyManager.getStripeInstance(appId);
+    const stripe = await stripeKeyManager.getStripeInstance(appId);
 
     const { email, name, metadata } = req.body;
 
@@ -186,7 +214,7 @@ router.post("/customer", optionalAuth, async (req, res) => {
 router.get("/customer/:customerId", authenticate, async (req, res) => {
   try {
     const appId = req.auth.appId;
-    const stripe = stripeKeyManager.getStripeInstance(appId);
+    const stripe = await stripeKeyManager.getStripeInstance(appId);
     const { customerId } = req.params;
 
     const customer = await stripe.customers.retrieve(customerId);
@@ -211,7 +239,7 @@ router.get("/customer/:customerId", authenticate, async (req, res) => {
 router.post("/create-subscription", authenticate, async (req, res) => {
   try {
     const appId = req.auth.appId;
-    const stripe = stripeKeyManager.getStripeInstance(appId);
+    const stripe = await stripeKeyManager.getStripeInstance(appId);
 
     const { customerId, priceId, metadata } = req.body;
 
@@ -262,7 +290,7 @@ router.post(
   async (req, res) => {
     try {
       const appId = req.auth.appId;
-      const stripe = stripeKeyManager.getStripeInstance(appId);
+      const stripe = await stripeKeyManager.getStripeInstance(appId);
       const { subscriptionId } = req.params;
 
       const subscription = await stripe.subscriptions.cancel(subscriptionId);
@@ -288,7 +316,7 @@ router.post(
 router.post("/products", optionalAuth, async (req, res) => {
   try {
     const appId = req.body.app_id || req.auth?.appId;
-    const stripe = stripeKeyManager.getStripeInstance(appId);
+    const stripe = await stripeKeyManager.getStripeInstance(appId);
 
     const { name, description, metadata } = req.body;
 
@@ -328,7 +356,7 @@ router.post("/products", optionalAuth, async (req, res) => {
 router.get("/products", optionalAuth, async (req, res) => {
   try {
     const appId = req.auth?.appId;
-    const stripe = stripeKeyManager.getStripeInstance(appId);
+    const stripe = await stripeKeyManager.getStripeInstance(appId);
 
     const products = await stripe.products.list({
       active: true,
@@ -355,7 +383,7 @@ router.get("/products", optionalAuth, async (req, res) => {
 router.post("/prices", optionalAuth, async (req, res) => {
   try {
     const appId = req.body.app_id || req.auth?.appId;
-    const stripe = stripeKeyManager.getStripeInstance(appId);
+    const stripe = await stripeKeyManager.getStripeInstance(appId);
 
     const { product_id, unit_amount, currency, recurring, metadata } = req.body;
 
@@ -402,7 +430,7 @@ router.post("/prices", optionalAuth, async (req, res) => {
 router.get("/prices", optionalAuth, async (req, res) => {
   try {
     const appId = req.auth?.appId;
-    const stripe = stripeKeyManager.getStripeInstance(appId);
+    const stripe = await stripeKeyManager.getStripeInstance(appId);
 
     const prices = await stripe.prices.list({
       active: true,

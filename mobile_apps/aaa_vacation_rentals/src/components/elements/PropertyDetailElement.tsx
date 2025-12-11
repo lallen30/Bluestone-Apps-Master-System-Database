@@ -58,8 +58,18 @@ interface PropertyListing {
   guests_max?: number;
   amenities: string[];
   primary_image?: string;
-  images?: Array<{ id: number; image_url: string; is_primary?: number; caption?: string }>;
-  videos?: Array<{ id: number; video_url: string; thumbnail_url?: string; caption?: string }>;
+  images?: Array<{
+    id: number;
+    image_url: string;
+    is_primary?: number;
+    caption?: string;
+  }>;
+  videos?: Array<{
+    id: number;
+    video_url: string;
+    thumbnail_url?: string;
+    caption?: string;
+  }>;
   host_first_name?: string;
   host_last_name?: string;
   host_avatar?: string;
@@ -68,7 +78,11 @@ interface PropertyListing {
   status: string;
 }
 
-const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, navigation, route }) => {
+const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({
+  element,
+  navigation,
+  route,
+}) => {
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const listingId = route.params?.listingId;
@@ -136,7 +150,10 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
         screenId: 117, // Chat screen
         screenName: 'Chat',
         conversationId: response.data.conversation_id,
-        otherUserName: `${listing.host_first_name || ''} ${listing.host_last_name || ''}`.trim() || 'Host',
+        otherUserName:
+          `${listing.host_first_name || ''} ${
+            listing.host_last_name || ''
+          }`.trim() || 'Host',
         listingTitle: listing.title,
       });
     } catch (error) {
@@ -172,8 +189,13 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
       <View style={styles.errorContainer}>
         <Icon name="home-alert" size={64} color="#C7C7CC" />
         <Text style={styles.errorTitle}>Property Not Found</Text>
-        <Text style={styles.errorSubtitle}>This property may no longer be available</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={styles.errorSubtitle}>
+          This property may no longer be available
+        </Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -187,12 +209,12 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
     thumbnailUrl?: string;
     caption?: string;
   }
-  
+
   const mediaItems: MediaItem[] = [];
-  
+
   // Add images
   if (listing.images && listing.images.length > 0) {
-    listing.images.forEach((img) => {
+    listing.images.forEach(img => {
       const url = getImageUrl(img.image_url);
       if (url) {
         mediaItems.push({
@@ -208,12 +230,14 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
       mediaItems.push({ type: 'image', url });
     }
   }
-  
+
   // Add videos
   if (listing.videos && listing.videos.length > 0) {
-    listing.videos.forEach((video) => {
+    listing.videos.forEach(video => {
       const url = getImageUrl(video.video_url);
-      const thumbnailUrl = video.thumbnail_url ? getImageUrl(video.thumbnail_url) : undefined;
+      const thumbnailUrl = video.thumbnail_url
+        ? getImageUrl(video.thumbnail_url)
+        : undefined;
       if (url) {
         mediaItems.push({
           type: 'video',
@@ -239,11 +263,16 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
 
   const price = parseFloat(listing.price_per_night?.toString() || '0');
   const cleaningFee = parseFloat(listing.cleaning_fee?.toString() || '0');
-  const location = [listing.city, listing.state, listing.country].filter(Boolean).join(', ');
+  const location = [listing.city, listing.state, listing.country]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Media Gallery (Images + Videos) */}
         <View style={styles.imageContainer}>
           {mediaItems.length > 0 ? (
@@ -256,13 +285,18 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
                 snapToAlignment="start"
                 decelerationRate="fast"
                 bounces={false}
-                onMomentumScrollEnd={(e) => {
-                  const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+                onMomentumScrollEnd={e => {
+                  const index = Math.round(
+                    e.nativeEvent.contentOffset.x / screenWidth,
+                  );
                   setCurrentImageIndex(index);
                 }}
               >
                 {mediaItems.map((item: MediaItem, index: number) => (
-                  <View key={index} style={[styles.mediaSlide, { width: screenWidth }]}>
+                  <View
+                    key={index}
+                    style={[styles.mediaSlide, { width: screenWidth }]}
+                  >
                     {item.type === 'image' ? (
                       <Image
                         source={{ uri: item.url }}
@@ -282,8 +316,18 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
                             resizeMode="cover"
                           />
                         ) : (
-                          <View style={[styles.image, styles.videoPlaceholder, { width: screenWidth }]}>
-                            <Icon name="video-outline" size={64} color="rgba(255,255,255,0.6)" />
+                          <View
+                            style={[
+                              styles.image,
+                              styles.videoPlaceholder,
+                              { width: screenWidth },
+                            ]}
+                          >
+                            <Icon
+                              name="video-outline"
+                              size={64}
+                              color="rgba(255,255,255,0.6)"
+                            />
                           </View>
                         )}
                         {/* Gradient overlay for better visibility */}
@@ -302,7 +346,9 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
                         {/* Caption at bottom */}
                         {item.caption && (
                           <View style={styles.videoCaptionOverlay}>
-                            <Text style={styles.videoCaptionText}>{item.caption}</Text>
+                            <Text style={styles.videoCaptionText}>
+                              {item.caption}
+                            </Text>
                           </View>
                         )}
                       </TouchableOpacity>
@@ -317,7 +363,8 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
                       key={index}
                       style={[
                         styles.paginationDot,
-                        index === currentImageIndex && styles.paginationDotActive,
+                        index === currentImageIndex &&
+                          styles.paginationDotActive,
                         item.type === 'video' && styles.paginationDotVideo,
                       ]}
                     />
@@ -330,9 +377,12 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
               <Icon name="image-off" size={64} color="#C7C7CC" />
             </View>
           )}
-          
+
           {/* Favorite Button */}
-          <TouchableOpacity style={styles.favoriteButton} onPress={handleToggleFavorite}>
+          <TouchableOpacity
+            style={styles.favoriteButton}
+            onPress={handleToggleFavorite}
+          >
             <Icon
               name={isFavorite ? 'heart' : 'heart-outline'}
               size={24}
@@ -351,16 +401,23 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
           </View>
 
           {/* Rating */}
-          {listing.average_rating !== undefined && listing.average_rating > 0 && (
-            <TouchableOpacity style={styles.ratingRow} onPress={handleViewReviews}>
-              <Icon name="star" size={18} color="#FFD700" />
-              <Text style={styles.rating}>{listing.average_rating.toFixed(1)}</Text>
-              <Text style={styles.reviewCount}>
-                ({listing.total_reviews || 0} review{listing.total_reviews !== 1 ? 's' : ''})
-              </Text>
-              <Icon name="chevron-right" size={18} color="#8E8E93" />
-            </TouchableOpacity>
-          )}
+          {listing.average_rating !== undefined &&
+            listing.average_rating > 0 && (
+              <TouchableOpacity
+                style={styles.ratingRow}
+                onPress={handleViewReviews}
+              >
+                <Icon name="star" size={18} color="#FFD700" />
+                <Text style={styles.rating}>
+                  {listing.average_rating.toFixed(1)}
+                </Text>
+                <Text style={styles.reviewCount}>
+                  ({listing.total_reviews || 0} review
+                  {listing.total_reviews !== 1 ? 's' : ''})
+                </Text>
+                <Icon name="chevron-right" size={18} color="#8E8E93" />
+              </TouchableOpacity>
+            )}
 
           {/* Property Type & Details */}
           <View style={styles.detailsCard}>
@@ -378,7 +435,9 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
               </View>
               <View style={styles.detailItem}>
                 <Icon name="account-group" size={20} color="#007AFF" />
-                <Text style={styles.detailValue}>{listing.guests_max || listing.max_guests || 0}</Text>
+                <Text style={styles.detailValue}>
+                  {listing.guests_max || listing.max_guests || 0}
+                </Text>
                 <Text style={styles.detailLabel}>Guests</Text>
               </View>
             </View>
@@ -391,32 +450,34 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
           </View>
 
           {/* Amenities */}
-          {showAmenities && listing.amenities && listing.amenities.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>What this place offers</Text>
-              <View style={styles.amenitiesGrid}>
-                {listing.amenities.slice(0, 8).map((amenity, index) => (
-                  <View key={index} style={styles.amenityItem}>
-                    <Icon name="check-circle" size={18} color="#34C759" />
-                    <Text style={styles.amenityText}>{amenity}</Text>
-                  </View>
-                ))}
+          {showAmenities &&
+            listing.amenities &&
+            listing.amenities.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>What this place offers</Text>
+                <View style={styles.amenitiesGrid}>
+                  {listing.amenities.slice(0, 8).map((amenity, index) => (
+                    <View key={index} style={styles.amenityItem}>
+                      <Icon name="check-circle" size={18} color="#34C759" />
+                      <Text style={styles.amenityText}>{amenity}</Text>
+                    </View>
+                  ))}
+                </View>
+                {listing.amenities.length > 8 && (
+                  <TouchableOpacity style={styles.showMoreButton}>
+                    <Text style={styles.showMoreText}>
+                      Show all {listing.amenities.length} amenities
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
-              {listing.amenities.length > 8 && (
-                <TouchableOpacity style={styles.showMoreButton}>
-                  <Text style={styles.showMoreText}>
-                    Show all {listing.amenities.length} amenities
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
+            )}
 
           {/* Host Info */}
           {listing.host_first_name && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Hosted by</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.hostCard}
                 onPress={() => {
                   // Navigate to host profile screen
@@ -431,8 +492,8 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
               >
                 <View style={styles.hostAvatar}>
                   {listing.host_avatar ? (
-                    <Image 
-                      source={{ uri: getImageUrl(listing.host_avatar) }} 
+                    <Image
+                      source={{ uri: getImageUrl(listing.host_avatar) }}
                       style={styles.hostAvatarImage}
                     />
                   ) : (
@@ -448,7 +509,10 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
                 <Icon name="chevron-right" size={24} color="#C7C7CC" />
               </TouchableOpacity>
               {showContactHost && (
-                <TouchableOpacity style={styles.contactHostButton} onPress={handleContactHost}>
+                <TouchableOpacity
+                  style={styles.contactHostButton}
+                  onPress={handleContactHost}
+                >
                   <Icon name="message-text" size={20} color="#007AFF" />
                   <Text style={styles.contactHostText}>Message Host</Text>
                 </TouchableOpacity>
@@ -462,14 +526,21 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
       </ScrollView>
 
       {/* Bottom Bar */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View
+        style={[
+          styles.bottomBar,
+          { paddingBottom: Math.max(insets.bottom, 12) },
+        ]}
+      >
         <View style={styles.priceContainer}>
           <View style={styles.priceRow}>
             <Text style={styles.price}>${price.toFixed(0)}</Text>
             <Text style={styles.priceLabel}>/night</Text>
           </View>
           {cleaningFee > 0 && (
-            <Text style={styles.cleaningFee}>+${cleaningFee.toFixed(0)} cleaning</Text>
+            <Text style={styles.cleaningFee}>
+              +${cleaningFee.toFixed(0)} cleaning
+            </Text>
           )}
         </View>
         {showBookButton && (
@@ -489,7 +560,10 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
       >
         <StatusBar hidden={videoModalVisible} />
         <View style={styles.videoModalContainer}>
-          <TouchableOpacity style={styles.videoCloseButton} onPress={handleCloseVideo}>
+          <TouchableOpacity
+            style={styles.videoCloseButton}
+            onPress={handleCloseVideo}
+          >
             <Icon name="close" size={28} color="#fff" />
           </TouchableOpacity>
           {currentVideoUrl && (
@@ -512,7 +586,11 @@ const PropertyDetailElement: React.FC<PropertyDetailElementProps> = ({ element, 
             style={styles.videoPlayPauseButton}
             onPress={() => setVideoPaused(!videoPaused)}
           >
-            <Icon name={videoPaused ? 'play' : 'pause'} size={32} color="#fff" />
+            <Icon
+              name={videoPaused ? 'play' : 'pause'}
+              size={32}
+              color="#fff"
+            />
           </TouchableOpacity>
         </View>
       </Modal>

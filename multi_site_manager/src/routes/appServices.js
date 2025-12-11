@@ -6,10 +6,14 @@ const { authenticate } = require("../middleware/auth");
 /**
  * Get enabled services for an app
  * GET /api/v1/apps/:appId/services/enabled
+ * Note: This endpoint does not require authentication as it's used by mobile apps
+ * to determine which features are available before user login
  */
-router.get("/:appId/services/enabled", authenticate, async (req, res) => {
+router.get("/:appId/services/enabled", async (req, res) => {
   try {
     const { appId } = req.params;
+
+    console.log(`[appServices] Fetching enabled services for app ${appId}`);
 
     const services = await db.query(
       `SELECT id, app_id, service_name, service_id, enabled, created_at, updated_at
@@ -19,12 +23,19 @@ router.get("/:appId/services/enabled", authenticate, async (req, res) => {
       [appId]
     );
 
+    const serviceList = Array.isArray(services[0]) ? services[0] : services;
+    console.log(
+      `[appServices] Found ${serviceList.length} enabled services:`,
+      serviceList.map((s) => s.service_name)
+    );
+
     res.json({
       success: true,
-      services: Array.isArray(services[0]) ? services[0] : services,
+      services: serviceList,
     });
   } catch (error) {
     console.error("Error fetching enabled services:", error);
+    console.error("Error stack:", error.stack);
     res.status(500).json({
       success: false,
       message: "Failed to fetch enabled services",
@@ -173,6 +184,14 @@ router.put(
       const { appId, serviceName } = req.params;
       const { config } = req.body;
 
+      console.log(
+        `[appServices] Updating config for app ${appId}, service ${serviceName}`
+      );
+      console.log(
+        `[appServices] Config data:`,
+        JSON.stringify(config, null, 2)
+      );
+
       if (!config) {
         return res.status(400).json({
           success: false,
@@ -181,12 +200,14 @@ router.put(
       }
 
       // Store config as JSON
-      await db.query(
+      const result = await db.query(
         `UPDATE app_services 
        SET config = ?, updated_at = NOW()
        WHERE app_id = ? AND service_name = ?`,
         [JSON.stringify(config), appId, serviceName]
       );
+
+      console.log(`[appServices] Update result:`, result);
 
       res.json({
         success: true,
@@ -206,47 +227,70 @@ router.put(
 /**
  * Get service configuration
  * GET /api/v1/apps/:appId/services/:serviceName/config
+ * Note: No authentication required for internal service-to-service communication
  */
-router.get(
-  "/:appId/services/:serviceName/config",
-  authenticate,
-  async (req, res) => {
-    try {
-      const { appId, serviceName } = req.params;
+router.get("/:appId/services/:serviceName/config", async (req, res) => {
+  try {
+    const { appId, serviceName } = req.params;
 
-      const result = await db.query(
-        `SELECT config FROM app_services 
+    console.log(
+      `[appServices] Fetching config for app ${appId}, service ${serviceName}`
+    );
+
+    const result = await db.query(
+      `SELECT config FROM app_services 
        WHERE app_id = ? AND service_name = ?`,
-        [appId, serviceName]
+      [appId, serviceName]
+    );
+
+    const service =
+      Array.isArray(result[0]) && result[0].length > 0
+        ? result[0][0]
+        : Array.isArray(result) && result.length > 0
+        ? result[0]
+        : null;
+
+    if (!service) {
+      console.log(
+        `[appServices] Service not found: ${serviceName} for app ${appId}`
       );
-
-      const service =
-        Array.isArray(result[0]) && result[0].length > 0
-          ? result[0][0]
-          : Array.isArray(result) && result.length > 0
-          ? result[0]
-          : null;
-
-      if (!service) {
-        return res.status(404).json({
-          success: false,
-          message: "Service not found",
-        });
-      }
-
-      res.json({
-        success: true,
-        config: service.config ? JSON.parse(service.config) : null,
-      });
-    } catch (error) {
-      console.error("Error fetching service config:", error);
-      res.status(500).json({
+      return res.status(404).json({
         success: false,
-        message: "Failed to fetch service configuration",
-        error: error.message,
+        message: "Service not found",
       });
     }
+
+    console.log(`[appServices] Raw config from DB:`, service.config);
+
+    let parsedConfig = null;
+    if (service.config) {
+      try {
+        // Config might already be an object (MySQL JSON type) or a string
+        parsedConfig =
+          typeof service.config === "string"
+            ? JSON.parse(service.config)
+            : service.config;
+      } catch (parseError) {
+        console.error(`[appServices] Failed to parse config:`, parseError);
+        parsedConfig = null;
+      }
+    }
+
+    console.log(`[appServices] Parsed config:`, parsedConfig);
+
+    res.json({
+      success: true,
+      config: parsedConfig,
+    });
+  } catch (error) {
+    console.error("Error fetching service config:", error);
+    console.error("Error stack:", error.stack);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch service configuration",
+      error: error.message,
+    });
   }
-);
+});
 
 module.exports = router;

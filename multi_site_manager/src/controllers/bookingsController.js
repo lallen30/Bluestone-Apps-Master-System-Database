@@ -1,5 +1,5 @@
-const db = require('../config/database');
-const { createNotification } = require('./notificationsController');
+const db = require("../config/database");
+const { createNotification } = require("./notificationsController");
 
 /**
  * Create a new booking
@@ -13,7 +13,7 @@ exports.createBooking = async (req, res) => {
     if (!guestUserId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       });
     }
 
@@ -26,14 +26,15 @@ exports.createBooking = async (req, res) => {
       guest_last_name,
       guest_email,
       guest_phone,
-      special_requests
+      special_requests,
     } = req.body;
 
     // Validation
     if (!listing_id || !check_in_date || !check_out_date || !guests_count) {
       return res.status(400).json({
         success: false,
-        message: 'Listing ID, check-in date, check-out date, and guest count are required'
+        message:
+          "Listing ID, check-in date, check-out date, and guest count are required",
       });
     }
 
@@ -46,14 +47,15 @@ exports.createBooking = async (req, res) => {
       [listing_id, appId]
     );
 
-    const listings = Array.isArray(listingResult) && Array.isArray(listingResult[0]) 
-      ? listingResult[0] 
-      : listingResult;
+    const listings =
+      Array.isArray(listingResult) && Array.isArray(listingResult[0])
+        ? listingResult[0]
+        : listingResult;
 
     if (!listings || listings.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Listing not found or not available'
+        message: "Listing not found or not available",
       });
     }
 
@@ -64,7 +66,7 @@ exports.createBooking = async (req, res) => {
     if (hostUserId === guestUserId) {
       return res.status(400).json({
         success: false,
-        message: 'You cannot book your own listing'
+        message: "You cannot book your own listing",
       });
     }
 
@@ -76,7 +78,7 @@ exports.createBooking = async (req, res) => {
     if (nights < 1) {
       return res.status(400).json({
         success: false,
-        message: 'Check-out date must be after check-in date'
+        message: "Check-out date must be after check-in date",
       });
     }
 
@@ -84,14 +86,14 @@ exports.createBooking = async (req, res) => {
     if (nights < listing.min_nights) {
       return res.status(400).json({
         success: false,
-        message: `Minimum stay is ${listing.min_nights} nights`
+        message: `Minimum stay is ${listing.min_nights} nights`,
       });
     }
 
     if (nights > listing.max_nights) {
       return res.status(400).json({
         success: false,
-        message: `Maximum stay is ${listing.max_nights} nights`
+        message: `Maximum stay is ${listing.max_nights} nights`,
       });
     }
 
@@ -99,7 +101,7 @@ exports.createBooking = async (req, res) => {
     if (guests_count > listing.guests_max) {
       return res.status(400).json({
         success: false,
-        message: `Maximum ${listing.guests_max} guests allowed`
+        message: `Maximum ${listing.guests_max} guests allowed`,
       });
     }
 
@@ -113,31 +115,41 @@ exports.createBooking = async (req, res) => {
            (check_in_date < ? AND check_out_date >= ?) OR
            (check_in_date >= ? AND check_out_date <= ?)
          )`,
-      [listing_id, check_in_date, check_in_date, check_out_date, check_out_date, check_in_date, check_out_date]
+      [
+        listing_id,
+        check_in_date,
+        check_in_date,
+        check_out_date,
+        check_out_date,
+        check_in_date,
+        check_out_date,
+      ]
     );
 
-    const conflicts = Array.isArray(conflictResult) && Array.isArray(conflictResult[0]) 
-      ? conflictResult[0] 
-      : conflictResult;
+    const conflicts =
+      Array.isArray(conflictResult) && Array.isArray(conflictResult[0])
+        ? conflictResult[0]
+        : conflictResult;
 
     if (conflicts && conflicts.length > 0) {
       return res.status(409).json({
         success: false,
-        message: 'Property is not available for selected dates'
+        message: "Property is not available for selected dates",
       });
     }
 
     // Calculate pricing
     const pricePerNight = parseFloat(listing.price_per_night);
     const cleaningFee = parseFloat(listing.cleaning_fee) || 0;
-    const serviceFeePercentage = parseFloat(listing.service_fee_percentage) || 0;
-    
+    const serviceFeePercentage =
+      parseFloat(listing.service_fee_percentage) || 0;
+
     const subtotal = pricePerNight * nights;
     const serviceFee = (subtotal * serviceFeePercentage) / 100;
     const totalPrice = subtotal + cleaningFee + serviceFee;
 
     // Determine initial status
-    const initialStatus = listing.is_instant_book ? 'confirmed' : 'pending';
+    const initialStatus = listing.is_instant_book ? "confirmed" : "pending";
 
     // Create booking
     const result = await db.query(
@@ -149,11 +161,25 @@ exports.createBooking = async (req, res) => {
         confirmed_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        appId, listing_id, guestUserId, hostUserId,
-        check_in_date, check_out_date, guests_count, nights,
-        pricePerNight, cleaningFee, serviceFee, totalPrice,
-        initialStatus, guest_first_name, guest_last_name, guest_email, guest_phone, special_requests,
-        initialStatus === 'confirmed' ? new Date() : null
+        appId,
+        listing_id,
+        guestUserId,
+        hostUserId,
+        check_in_date,
+        check_out_date,
+        guests_count,
+        nights,
+        pricePerNight,
+        cleaningFee,
+        serviceFee,
+        totalPrice,
+        initialStatus,
+        guest_first_name,
+        guest_last_name,
+        guest_email,
+        guest_phone,
+        special_requests,
+        initialStatus === "confirmed" ? new Date() : null,
       ]
     );
 
@@ -167,48 +193,59 @@ exports.createBooking = async (req, res) => {
     );
 
     // If instant book, update availability
-    if (initialStatus === 'confirmed') {
+    if (initialStatus === "confirmed") {
       await blockDatesForBooking(listing_id, check_in_date, check_out_date);
     }
 
     // Send notification to host
     try {
-      const checkInFormatted = new Date(check_in_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const checkOutFormatted = new Date(check_out_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      
+      const checkInFormatted = new Date(check_in_date).toLocaleDateString(
+        "en-US",
+        { month: "short", day: "numeric" }
+      );
+      const checkOutFormatted = new Date(check_out_date).toLocaleDateString(
+        "en-US",
+        { month: "short", day: "numeric" }
+      );
+
       await createNotification(
         appId,
         hostUserId,
-        'booking_request',
-        initialStatus === 'confirmed' ? 'New Booking Confirmed' : 'New Booking Request',
-        `${guest_first_name} ${guest_last_name} ${initialStatus === 'confirmed' ? 'booked' : 'requested to book'} ${listing.title} for ${checkInFormatted} - ${checkOutFormatted}`,
+        "booking_request",
+        initialStatus === "confirmed"
+          ? "New Booking Confirmed"
+          : "New Booking Request",
+        `${guest_first_name} ${guest_last_name} ${
+          initialStatus === "confirmed" ? "booked" : "requested to book"
+        } ${listing.title} for ${checkInFormatted} - ${checkOutFormatted}`,
         { booking_id: bookingId, listing_id, guest_user_id: guestUserId }
       );
     } catch (notifError) {
-      console.error('Error sending booking notification:', notifError);
+      console.error("Error sending booking notification:", notifError);
       // Don't fail the booking if notification fails
     }
 
     res.status(201).json({
       success: true,
-      message: initialStatus === 'confirmed' 
-        ? 'Booking confirmed!' 
-        : 'Booking request sent to host',
+      message:
+        initialStatus === "confirmed"
+          ? "Booking confirmed!"
+          : "Booking request sent to host",
       data: {
         booking_id: bookingId,
         status: initialStatus,
         check_in_date,
         check_out_date,
         nights,
-        total_price: totalPrice
-      }
+        total_price: totalPrice,
+      },
     });
   } catch (error) {
-    console.error('Error creating booking:', error);
+    console.error("Error creating booking:", error);
     res.status(500).json({
       success: false,
-      message: 'Error creating booking',
-      error: error.message
+      message: "Error creating booking",
+      error: error.message,
     });
   }
 };
@@ -220,15 +257,15 @@ exports.createBooking = async (req, res) => {
 exports.getAllBookings = async (req, res) => {
   try {
     const appId = parseInt(req.params.appId);
-    const { 
-      status, 
+    const {
+      status,
       host_id,
       guest_id,
       listing_id,
       date_from,
       date_to,
-      page = 1, 
-      per_page = 20 
+      page = 1,
+      per_page = 20,
     } = req.query;
 
     let query = `
@@ -317,9 +354,10 @@ exports.getAllBookings = async (req, res) => {
     }
 
     const countResult = await db.query(countQuery, countParams);
-    const countData = Array.isArray(countResult) && Array.isArray(countResult[0]) 
-      ? countResult[0] 
-      : countResult;
+    const countData =
+      Array.isArray(countResult) && Array.isArray(countResult[0])
+        ? countResult[0]
+        : countResult;
     const total = countData[0]?.total || 0;
 
     // Add pagination
@@ -329,9 +367,10 @@ exports.getAllBookings = async (req, res) => {
     params.push(limit, offset);
 
     const bookingsResult = await db.query(query, params);
-    const bookings = Array.isArray(bookingsResult) && Array.isArray(bookingsResult[0]) 
-      ? bookingsResult[0] 
-      : bookingsResult;
+    const bookings =
+      Array.isArray(bookingsResult) && Array.isArray(bookingsResult[0])
+        ? bookingsResult[0]
+        : bookingsResult;
 
     // Get stats
     const statsResult = await db.query(
@@ -348,9 +387,10 @@ exports.getAllBookings = async (req, res) => {
        WHERE app_id = ?`,
       [appId]
     );
-    const statsData = Array.isArray(statsResult) && Array.isArray(statsResult[0]) 
-      ? statsResult[0] 
-      : statsResult;
+    const statsData =
+      Array.isArray(statsResult) && Array.isArray(statsResult[0])
+        ? statsResult[0]
+        : statsResult;
     const stats = statsData[0] || {};
 
     res.json({
@@ -365,22 +405,22 @@ exports.getAllBookings = async (req, res) => {
           cancelled: parseInt(stats.cancelled) || 0,
           rejected: parseInt(stats.rejected) || 0,
           total_revenue: parseFloat(stats.total_revenue) || 0,
-          total_nights: parseInt(stats.total_nights) || 0
+          total_nights: parseInt(stats.total_nights) || 0,
         },
         pagination: {
           page: parseInt(page),
           per_page: limit,
           total,
-          total_pages: Math.ceil(total / limit)
-        }
-      }
+          total_pages: Math.ceil(total / limit),
+        },
+      },
     });
   } catch (error) {
-    console.error('Error fetching all bookings:', error);
+    console.error("Error fetching all bookings:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching bookings',
-      error: error.message
+      message: "Error fetching bookings",
+      error: error.message,
     });
   }
 };
@@ -398,7 +438,7 @@ exports.getMyBookings = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       });
     }
 
@@ -428,9 +468,10 @@ exports.getMyBookings = async (req, res) => {
     params.push(limit, offset);
 
     const bookingsResult = await db.query(query, params);
-    const bookings = Array.isArray(bookingsResult) && Array.isArray(bookingsResult[0]) 
-      ? bookingsResult[0] 
-      : bookingsResult;
+    const bookings =
+      Array.isArray(bookingsResult) && Array.isArray(bookingsResult[0])
+        ? bookingsResult[0]
+        : bookingsResult;
 
     // Get total count
     let countQuery = `
@@ -445,9 +486,10 @@ exports.getMyBookings = async (req, res) => {
     }
 
     const countResult = await db.query(countQuery, countParams);
-    const countData = Array.isArray(countResult) && Array.isArray(countResult[0]) 
-      ? countResult[0] 
-      : countResult;
+    const countData =
+      Array.isArray(countResult) && Array.isArray(countResult[0])
+        ? countResult[0]
+        : countResult;
     const total = countData[0]?.total || 0;
 
     res.json({
@@ -458,16 +500,16 @@ exports.getMyBookings = async (req, res) => {
           page: parseInt(page),
           per_page: limit,
           total,
-          total_pages: Math.ceil(total / limit)
-        }
-      }
+          total_pages: Math.ceil(total / limit),
+        },
+      },
     });
   } catch (error) {
-    console.error('Error fetching bookings:', error);
+    console.error("Error fetching bookings:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching bookings',
-      error: error.message
+      message: "Error fetching bookings",
+      error: error.message,
     });
   }
 };
@@ -485,7 +527,7 @@ exports.getMyReservations = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       });
     }
 
@@ -514,9 +556,10 @@ exports.getMyReservations = async (req, res) => {
     params.push(limit, offset);
 
     const reservationsResult = await db.query(query, params);
-    const reservations = Array.isArray(reservationsResult) && Array.isArray(reservationsResult[0]) 
-      ? reservationsResult[0] 
-      : reservationsResult;
+    const reservations =
+      Array.isArray(reservationsResult) && Array.isArray(reservationsResult[0])
+        ? reservationsResult[0]
+        : reservationsResult;
 
     // Get total count
     let countQuery = `
@@ -541,16 +584,16 @@ exports.getMyReservations = async (req, res) => {
           page: parseInt(page),
           per_page: limit,
           total,
-          total_pages: Math.ceil(total / limit)
-        }
-      }
+          total_pages: Math.ceil(total / limit),
+        },
+      },
     });
   } catch (error) {
-    console.error('Error fetching reservations:', error);
+    console.error("Error fetching reservations:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching reservations',
-      error: error.message
+      message: "Error fetching reservations",
+      error: error.message,
     });
   }
 };
@@ -567,7 +610,7 @@ exports.getBookingById = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       });
     }
 
@@ -588,14 +631,15 @@ exports.getBookingById = async (req, res) => {
       [bookingId, appId]
     );
 
-    const bookings = Array.isArray(bookingResult) && Array.isArray(bookingResult[0]) 
-      ? bookingResult[0] 
-      : bookingResult;
+    const bookings =
+      Array.isArray(bookingResult) && Array.isArray(bookingResult[0])
+        ? bookingResult[0]
+        : bookingResult;
 
     if (!bookings || bookings.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found'
+        message: "Booking not found",
       });
     }
 
@@ -605,20 +649,20 @@ exports.getBookingById = async (req, res) => {
     if (booking.guest_user_id !== userId && booking.host_user_id !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'You do not have permission to view this booking'
+        message: "You do not have permission to view this booking",
       });
     }
 
     res.json({
       success: true,
-      data: { booking }
+      data: { booking },
     });
   } catch (error) {
-    console.error('Error fetching booking:', error);
+    console.error("Error fetching booking:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching booking',
-      error: error.message
+      message: "Error fetching booking",
+      error: error.message,
     });
   }
 };
@@ -636,7 +680,7 @@ exports.cancelBooking = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       });
     }
 
@@ -646,14 +690,15 @@ exports.cancelBooking = async (req, res) => {
       [bookingId, appId]
     );
 
-    const bookings = Array.isArray(bookingResult) && Array.isArray(bookingResult[0]) 
-      ? bookingResult[0] 
-      : bookingResult;
+    const bookings =
+      Array.isArray(bookingResult) && Array.isArray(bookingResult[0])
+        ? bookingResult[0]
+        : bookingResult;
 
     if (!bookings || bookings.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found'
+        message: "Booking not found",
       });
     }
 
@@ -663,23 +708,23 @@ exports.cancelBooking = async (req, res) => {
     if (booking.guest_user_id !== userId && booking.host_user_id !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'You do not have permission to cancel this booking'
+        message: "You do not have permission to cancel this booking",
       });
     }
 
     // Check if already cancelled
-    if (booking.status === 'cancelled') {
+    if (booking.status === "cancelled") {
       return res.status(400).json({
         success: false,
-        message: 'Booking is already cancelled'
+        message: "Booking is already cancelled",
       });
     }
 
     // Check if already completed
-    if (booking.status === 'completed') {
+    if (booking.status === "completed") {
       return res.status(400).json({
         success: false,
-        message: 'Cannot cancel completed booking'
+        message: "Cannot cancel completed booking",
       });
     }
 
@@ -699,20 +744,24 @@ exports.cancelBooking = async (req, res) => {
     );
 
     // Unblock dates if was confirmed
-    if (booking.status === 'confirmed') {
-      await unblockDatesForBooking(booking.listing_id, booking.check_in_date, booking.check_out_date);
+    if (booking.status === "confirmed") {
+      await unblockDatesForBooking(
+        booking.listing_id,
+        booking.check_in_date,
+        booking.check_out_date
+      );
     }
 
     res.json({
       success: true,
-      message: 'Booking cancelled successfully'
+      message: "Booking cancelled successfully",
     });
   } catch (error) {
-    console.error('Error cancelling booking:', error);
+    console.error("Error cancelling booking:", error);
     res.status(500).json({
       success: false,
-      message: 'Error cancelling booking',
-      error: error.message
+      message: "Error cancelling booking",
+      error: error.message,
     });
   }
 };
@@ -729,7 +778,7 @@ exports.confirmBooking = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       });
     }
 
@@ -739,14 +788,15 @@ exports.confirmBooking = async (req, res) => {
       [bookingId, appId]
     );
 
-    const bookings = Array.isArray(bookingResult) && Array.isArray(bookingResult[0]) 
-      ? bookingResult[0] 
-      : bookingResult;
+    const bookings =
+      Array.isArray(bookingResult) && Array.isArray(bookingResult[0])
+        ? bookingResult[0]
+        : bookingResult;
 
     if (!bookings || bookings.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found'
+        message: "Booking not found",
       });
     }
 
@@ -756,23 +806,23 @@ exports.confirmBooking = async (req, res) => {
     if (booking.host_user_id !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'Only the host can confirm bookings'
+        message: "Only the host can confirm bookings",
       });
     }
 
     // Check if already confirmed
-    if (booking.status === 'confirmed') {
+    if (booking.status === "confirmed") {
       return res.status(400).json({
         success: false,
-        message: 'Booking is already confirmed'
+        message: "Booking is already confirmed",
       });
     }
 
     // Check if pending
-    if (booking.status !== 'pending') {
+    if (booking.status !== "pending") {
       return res.status(400).json({
         success: false,
-        message: 'Only pending bookings can be confirmed'
+        message: "Only pending bookings can be confirmed",
       });
     }
 
@@ -792,46 +842,144 @@ exports.confirmBooking = async (req, res) => {
     );
 
     // Block dates
-    await blockDatesForBooking(booking.listing_id, booking.check_in_date, booking.check_out_date);
+    await blockDatesForBooking(
+      booking.listing_id,
+      booking.check_in_date,
+      booking.check_out_date
+    );
 
     // Send notification to guest
     try {
-      const checkInFormatted = new Date(booking.check_in_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const checkOutFormatted = new Date(booking.check_out_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      
+      const checkInFormatted = new Date(
+        booking.check_in_date
+      ).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const checkOutFormatted = new Date(
+        booking.check_out_date
+      ).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
       // Get listing title
       const listingResult = await db.query(
         `SELECT title FROM property_listings WHERE id = ?`,
         [booking.listing_id]
       );
-      const listingData = Array.isArray(listingResult) && Array.isArray(listingResult[0]) 
-        ? listingResult[0] 
-        : listingResult;
-      const listingTitle = listingData[0]?.title || 'your booking';
-      
+      const listingData =
+        Array.isArray(listingResult) && Array.isArray(listingResult[0])
+          ? listingResult[0]
+          : listingResult;
+      const listingTitle = listingData[0]?.title || "your booking";
+
       await createNotification(
         appId,
         booking.guest_user_id,
-        'booking_confirmed',
-        'Booking Confirmed!',
+        "booking_confirmed",
+        "Booking Confirmed!",
         `Your booking for ${listingTitle} (${checkInFormatted} - ${checkOutFormatted}) has been confirmed.`,
         { booking_id: parseInt(bookingId), listing_id: booking.listing_id }
       );
     } catch (notifError) {
-      console.error('Error sending confirmation notification:', notifError);
+      console.error("Error sending confirmation notification:", notifError);
     }
 
     res.json({
       success: true,
-      message: 'Booking confirmed successfully'
+      message: "Booking confirmed successfully",
     });
   } catch (error) {
-    console.error('Error confirming booking:', error);
+    console.error("Error confirming booking:", error);
     res.status(500).json({
       success: false,
-      message: 'Error confirming booking',
-      error: error.message
+      message: "Error confirming booking",
+      error: error.message,
     });
+  }
+};
+
+/**
+ * System-confirm a booking by booking ID (used by internal webhook processors)
+ * This does not require a host user — acts as the system actor.
+ * Returns an object { success: boolean, message: string }
+ */
+exports.confirmBookingBySystem = async (bookingId) => {
+  try {
+    // Get booking
+    const bookingResult = await db.query(
+      `SELECT * FROM property_bookings WHERE id = ?`,
+      [bookingId]
+    );
+
+    const bookings =
+      Array.isArray(bookingResult) && Array.isArray(bookingResult[0])
+        ? bookingResult[0]
+        : bookingResult;
+
+    if (!bookings || bookings.length === 0) {
+      return { success: false, message: "Booking not found" };
+    }
+
+    const booking = bookings[0];
+
+    // Only transition pending or pending_payment bookings to confirmed
+    if (booking.status === "confirmed") {
+      return { success: true, message: "Already confirmed" };
+    }
+
+    if (!["pending", "pending_payment"].includes(booking.status)) {
+      return {
+        success: false,
+        message: `Cannot confirm booking from status ${booking.status}`,
+      };
+    }
+
+    // Update booking status
+    await db.query(
+      `UPDATE property_bookings SET status = 'confirmed', confirmed_at = NOW() WHERE id = ?`,
+      [bookingId]
+    );
+
+    // Log status change
+    await db.query(
+      `INSERT INTO booking_status_history (booking_id, old_status, new_status, changed_by)
+       VALUES (?, ?, 'confirmed', ?)`,
+      [bookingId, booking.status, 0]
+    );
+
+    // Block dates
+    await blockDatesForBooking(
+      booking.listing_id,
+      booking.check_in_date,
+      booking.check_out_date
+    );
+
+    // Notify guest and host
+    try {
+      await createNotification(
+        booking.app_id,
+        booking.guest_user_id,
+        "booking_confirmed",
+        "Booking confirmed",
+        `Your booking for listing ${booking.listing_id} has been confirmed.`,
+        { booking_id: bookingId }
+      );
+
+      await createNotification(
+        booking.app_id,
+        booking.host_user_id,
+        "booking_confirmed",
+        "Booking confirmed",
+        `A booking has been confirmed for listing ${booking.listing_id}.`,
+        { booking_id: bookingId }
+      );
+    } catch (notifErr) {
+      console.error(
+        "Error sending booking confirmation notifications:",
+        notifErr.message || notifErr
+      );
+    }
+
+    return { success: true, message: "Booking confirmed" };
+  } catch (error) {
+    console.error("Error in confirmBookingBySystem:", error);
+    return { success: false, message: error.message };
   }
 };
 
@@ -848,7 +996,7 @@ exports.rejectBooking = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       });
     }
 
@@ -858,14 +1006,15 @@ exports.rejectBooking = async (req, res) => {
       [bookingId, appId]
     );
 
-    const bookings = Array.isArray(bookingResult) && Array.isArray(bookingResult[0]) 
-      ? bookingResult[0] 
-      : bookingResult;
+    const bookings =
+      Array.isArray(bookingResult) && Array.isArray(bookingResult[0])
+        ? bookingResult[0]
+        : bookingResult;
 
     if (!bookings || bookings.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found'
+        message: "Booking not found",
       });
     }
 
@@ -875,15 +1024,15 @@ exports.rejectBooking = async (req, res) => {
     if (booking.host_user_id !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'Only the host can reject bookings'
+        message: "Only the host can reject bookings",
       });
     }
 
     // Check if pending
-    if (booking.status !== 'pending') {
+    if (booking.status !== "pending") {
       return res.status(400).json({
         success: false,
-        message: 'Only pending bookings can be rejected'
+        message: "Only pending bookings can be rejected",
       });
     }
 
@@ -909,33 +1058,36 @@ exports.rejectBooking = async (req, res) => {
         `SELECT title FROM property_listings WHERE id = ?`,
         [booking.listing_id]
       );
-      const listingData = Array.isArray(listingResult) && Array.isArray(listingResult[0]) 
-        ? listingResult[0] 
-        : listingResult;
-      const listingTitle = listingData[0]?.title || 'your booking';
-      
+      const listingData =
+        Array.isArray(listingResult) && Array.isArray(listingResult[0])
+          ? listingResult[0]
+          : listingResult;
+      const listingTitle = listingData[0]?.title || "your booking";
+
       await createNotification(
         appId,
         booking.guest_user_id,
-        'booking_rejected',
-        'Booking Request Declined',
-        `Your booking request for ${listingTitle} was not approved.${rejection_reason ? ' Reason: ' + rejection_reason : ''}`,
+        "booking_rejected",
+        "Booking Request Declined",
+        `Your booking request for ${listingTitle} was not approved.${
+          rejection_reason ? " Reason: " + rejection_reason : ""
+        }`,
         { booking_id: parseInt(bookingId), listing_id: booking.listing_id }
       );
     } catch (notifError) {
-      console.error('Error sending rejection notification:', notifError);
+      console.error("Error sending rejection notification:", notifError);
     }
 
     res.json({
       success: true,
-      message: 'Booking rejected'
+      message: "Booking rejected",
     });
   } catch (error) {
-    console.error('Error rejecting booking:', error);
+    console.error("Error rejecting booking:", error);
     res.status(500).json({
       success: false,
-      message: 'Error rejecting booking',
-      error: error.message
+      message: "Error rejecting booking",
+      error: error.message,
     });
   }
 };
@@ -948,7 +1100,7 @@ exports.rejectBooking = async (req, res) => {
 exports.completePastBookings = async (req, res) => {
   try {
     const { appId } = req.params;
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
 
     // Find all confirmed bookings where check_out_date has passed
     const result = await db.query(
@@ -968,15 +1120,15 @@ exports.completePastBookings = async (req, res) => {
       success: true,
       message: `Marked ${affectedRows} booking(s) as completed`,
       data: {
-        completed_count: affectedRows
-      }
+        completed_count: affectedRows,
+      },
     });
   } catch (error) {
-    console.error('Error completing past bookings:', error);
+    console.error("Error completing past bookings:", error);
     res.status(500).json({
       success: false,
-      message: 'Error completing past bookings',
-      error: error.message
+      message: "Error completing past bookings",
+      error: error.message,
     });
   }
 };
@@ -987,7 +1139,7 @@ exports.completePastBookings = async (req, res) => {
  */
 exports.completePastBookingsAllApps = async () => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
 
     const result = await db.query(
       `UPDATE property_bookings 
@@ -998,10 +1150,12 @@ exports.completePastBookingsAllApps = async () => {
     );
 
     const affectedRows = result.affectedRows || 0;
-    console.log(`[Cron] Completed ${affectedRows} past bookings across all apps`);
+    console.log(
+      `[Cron] Completed ${affectedRows} past bookings across all apps`
+    );
     return affectedRows;
   } catch (error) {
-    console.error('[Cron] Error completing past bookings:', error);
+    console.error("[Cron] Error completing past bookings:", error);
     throw error;
   }
 };
@@ -1010,12 +1164,12 @@ exports.completePastBookingsAllApps = async () => {
 async function blockDatesForBooking(listingId, checkInDate, checkOutDate) {
   const checkIn = new Date(checkInDate);
   const checkOut = new Date(checkOutDate);
-  
+
   const dates = [];
   for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
-    dates.push(new Date(d).toISOString().split('T')[0]);
+    dates.push(new Date(d).toISOString().split("T")[0]);
   }
-  
+
   for (const date of dates) {
     await db.query(
       `INSERT INTO property_availability (listing_id, date, is_available, notes)
@@ -1029,12 +1183,12 @@ async function blockDatesForBooking(listingId, checkInDate, checkOutDate) {
 async function unblockDatesForBooking(listingId, checkInDate, checkOutDate) {
   const checkIn = new Date(checkInDate);
   const checkOut = new Date(checkOutDate);
-  
+
   const dates = [];
   for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
-    dates.push(new Date(d).toISOString().split('T')[0]);
+    dates.push(new Date(d).toISOString().split("T")[0]);
   }
-  
+
   for (const date of dates) {
     await db.query(
       `UPDATE property_availability 

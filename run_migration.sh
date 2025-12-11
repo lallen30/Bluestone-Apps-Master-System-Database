@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🔧 Running database migration..."
+echo "🔧 Running database migrations..."
 
 # Check if MySQL container is running
 if ! docker ps | grep -q multi_app_mysql; then
@@ -8,13 +8,34 @@ if ! docker ps | grep -q multi_app_mysql; then
   exit 1
 fi
 
-# Run the migration through Docker
-docker exec -i multi_app_mysql mysql -uroot -prootpassword multi_site_manager < multi_site_manager/migrations/create_app_services.sql
+CONTAINER_NAME=multi_app_mysql
+DB_NAME=multi_site_manager
+MYSQL_USER=root
+MYSQL_PASS=rootpassword
 
-if [ $? -eq 0 ]; then
-  echo "✅ Migration completed successfully!"
-  echo "   Table 'app_services' has been created."
-else
-  echo "❌ Migration failed!"
-  exit 1
+run_sql_file() {
+  local file="$1"
+  echo "➡️ Applying $file"
+  docker exec -i "$CONTAINER_NAME" mysql -u"$MYSQL_USER" -p"$MYSQL_PASS" "$DB_NAME" < "$file"
+  if [ $? -ne 0 ]; then
+    echo "❌ Failed to apply $file"
+    exit 1
+  fi
+}
+
+# Keep existing legacy migration if present
+LEGACY_FILE="multi_site_manager/migrations/create_app_services.sql"
+if [ -f "$LEGACY_FILE" ]; then
+  run_sql_file "$LEGACY_FILE"
 fi
+
+# Apply any migrations in src/migrations (sorted)
+MIG_DIR="multi_site_manager/src/migrations"
+if [ -d "$MIG_DIR" ]; then
+  for f in $(ls "$MIG_DIR"/*.sql 2>/dev/null | sort); do
+    [ -f "$f" ] || continue
+    run_sql_file "$f"
+  done
+fi
+
+echo "✅ All migrations applied successfully."

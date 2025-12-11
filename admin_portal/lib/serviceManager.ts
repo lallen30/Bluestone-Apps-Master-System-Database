@@ -84,16 +84,30 @@ export const serviceManager = {
    * Update configuration for a service and app
    */
   async updateServiceConfig(serviceName: string, appId: string, config: any) {
-    const auth = getAuthContext();
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
 
     try {
-      const response = await bodyguardClient.updateServiceConfig(
-        serviceName,
-        appId,
-        config,
-        auth || undefined
+      // Call API directly to update database
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/apps/${appId}/services/${serviceName}/config`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ config }),
+        }
       );
-      return response.payload;
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update configuration");
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error(`Failed to update config for ${serviceName}:`, error);
       throw error;

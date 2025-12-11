@@ -40,6 +40,7 @@ const propertyListingsRoutes = require("./routes/propertyListings");
 const bookingsRoutes = require("./routes/bookings");
 const messagesRoutes = require("./routes/messages");
 const reviewsRoutes = require("./routes/reviews");
+const paymentsRoutes = require("./routes/payments");
 
 const menuRoutes = require("./routes/menuRoutes");
 const modulesRoutes = require("./routes/modulesRoutes");
@@ -51,6 +52,7 @@ const profileRoutes = require("./routes/profile");
 const formSubmissionsRoutes = require("./routes/formSubmissions");
 
 const appServicesRoutes = require("./routes/appServices");
+const internalWebhooksRoutes = require("./routes/internalWebhooks");
 
 const reportsRoutes = require("./routes/reports");
 const dashboardReportsRoutes = require("./routes/dashboardReports");
@@ -134,12 +136,15 @@ app.use(`/api/${API_VERSION}`, propertyListingsRoutes); // Property listings (MU
 app.use(`/api/${API_VERSION}`, bookingsRoutes); // Property bookings
 app.use(`/api/${API_VERSION}`, messagesRoutes); // Messaging system
 app.use(`/api/${API_VERSION}`, reviewsRoutes); // Reviews and reports
+app.use(`/api/${API_VERSION}`, paymentsRoutes); // Payment provisional endpoints
 app.use(`/api/${API_VERSION}/apps`, appUsersRoutes); // App users management
 app.use(`/api/${API_VERSION}/apps`, rolesRoutes); // Roles management
 app.use(`/api/${API_VERSION}/apps`, appServicesRoutes); // App services management
 app.use(`/api/${API_VERSION}/apps`, appRoutes);
 app.use(`/api/${API_VERSION}`, rolesRoutes); // Permissions endpoint
 app.use(`/api/${API_VERSION}/permissions`, permissionRoutes);
+// Internal webhook endpoint for forwarded events from internal services
+app.use(`/api/${API_VERSION}/internal-webhooks`, internalWebhooksRoutes);
 app.use(`/api/${API_VERSION}/screens`, screenRoutes);
 app.use(`/api/${API_VERSION}/screen-elements`, screenElementRoutes);
 app.use(`/api/${API_VERSION}/app-screens`, appScreenRoutes);

@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const stripeKeyManager = require("../config/stripeKeys");
+const { getTargetsFor } = require("../config/webhookTargets");
+const forwardEvent = require("../lib/forwardEvent");
 
 /**
  * Webhook handler for Stripe events
@@ -78,6 +80,33 @@ router.post(
           console.log(`Unhandled event type: ${event.type}`);
       }
 
+      // Dynamically forward the event to any configured internal targets
+      try {
+        const targets = getTargetsFor(appId, event.type);
+        if (targets && targets.length > 0) {
+          console.log(
+            `Forwarding event ${event.type} to ${targets.length} target(s)`
+          );
+          // fire-and-forget but log results; run serially so logs are ordered
+          for (const t of targets) {
+            try {
+              const result = await forwardEvent(t, event);
+              console.log(`Forwarded to ${t.url}: ${result.status}`);
+            } catch (err) {
+              console.error(
+                `Failed forwarding to ${t.url}:`,
+                err.message || err
+              );
+            }
+          }
+        }
+      } catch (fwdErr) {
+        console.error(
+          "Error while forwarding webhook to internal targets:",
+          fwdErr.message || fwdErr
+        );
+      }
+
       res.json({ received: true, event: event.type });
     } catch (error) {
       console.error("Error processing webhook:", error);
@@ -87,6 +116,8 @@ router.post(
 );
 
 // Webhook event handlers
+
+const axios = require("axios");
 
 async function handleCheckoutSessionCompleted(session) {
   console.log("✅ Checkout session completed:", session.id);
