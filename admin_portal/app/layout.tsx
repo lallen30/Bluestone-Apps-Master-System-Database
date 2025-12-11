@@ -1,12 +1,13 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { ServiceSocketProvider } from "./providers/ServiceSocketProvider";
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Multi-App Admin Portal',
-  description: 'Manage multiple applications from one portal',
+  title: "Multi-App Admin Portal",
+  description: "Manage multiple applications from one portal",
 };
 
 export default function RootLayout({
@@ -16,7 +17,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <ServiceSocketProvider />
+        {children}
+      </body>
     </html>
   );
 }

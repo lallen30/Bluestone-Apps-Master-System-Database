@@ -1,10 +1,25 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, UserCog, Monitor, Settings, ArrowLeft, LogOut, Shield, Home, Menu, Calendar, Mail, User, ChevronRight } from 'lucide-react';
-import { useAuthStore } from '@/lib/store';
-import { permissionsAPI, appsAPI, appScreensAPI } from '@/lib/api';
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Users,
+  UserCog,
+  Monitor,
+  Settings,
+  ArrowLeft,
+  LogOut,
+  Shield,
+  Home,
+  Menu,
+  Calendar,
+  Mail,
+  User,
+  ChevronRight,
+} from "lucide-react";
+import { useAuthStore } from "@/lib/store";
+import { permissionsAPI, appsAPI, appScreensAPI } from "@/lib/api";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -42,30 +57,43 @@ const defaultGeneralPermissions: GeneralPermissions = {
   can_manage_admins: false,
 };
 
-export default function AppLayout({ children, appId, appName }: AppLayoutProps) {
+export default function AppLayout({
+  children,
+  appId,
+  appName,
+}: AppLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const [userAppCount, setUserAppCount] = useState<number>(0);
-  const [hasPropertyListings, setHasPropertyListings] = useState<boolean>(false);
+  const [hasPropertyListings, setHasPropertyListings] =
+    useState<boolean>(false);
   const [hasContactScreen, setHasContactScreen] = useState<boolean>(false);
   const [menuAccess, setMenuAccess] = useState<MenuAccess>(defaultMenuAccess);
-  const [generalPermissions, setGeneralPermissions] = useState<GeneralPermissions>(defaultGeneralPermissions);
+  const [generalPermissions, setGeneralPermissions] =
+    useState<GeneralPermissions>(defaultGeneralPermissions);
 
   useEffect(() => {
     // Fetch user's app count and permissions to determine menu access
     if (user?.id) {
-      permissionsAPI.getUserPermissions(user.id)
+      permissionsAPI
+        .getUserPermissions(user.id)
         .then((response) => {
           setUserAppCount(response.data?.length || 0);
-          
+
           // Find permissions for this specific app
-          const appPerms = response.data?.find((p: any) => p.app_id === parseInt(appId));
-          
+          const appPerms = response.data?.find(
+            (p: any) => p.app_id === parseInt(appId)
+          );
+
           // Master Admin has full access
           if (user.role_level === 1) {
             setMenuAccess(defaultMenuAccess);
-            setGeneralPermissions({ can_manage_users: true, can_manage_settings: true, can_manage_admins: true });
+            setGeneralPermissions({
+              can_manage_users: true,
+              can_manage_settings: true,
+              can_manage_admins: true,
+            });
           } else if (appPerms) {
             // Set general permissions from app permissions
             setGeneralPermissions({
@@ -73,19 +101,23 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
               can_manage_settings: !!appPerms.can_manage_settings,
               can_manage_admins: !!appPerms.can_manage_admins,
             });
-            
+
             // Parse custom permissions for menu access
             if (appPerms.custom_permissions) {
               try {
-                const customPerms = typeof appPerms.custom_permissions === 'string'
-                  ? JSON.parse(appPerms.custom_permissions)
-                  : appPerms.custom_permissions;
-                
+                const customPerms =
+                  typeof appPerms.custom_permissions === "string"
+                    ? JSON.parse(appPerms.custom_permissions)
+                    : appPerms.custom_permissions;
+
                 if (customPerms?.menu_access) {
-                  setMenuAccess({ ...defaultMenuAccess, ...customPerms.menu_access });
+                  setMenuAccess({
+                    ...defaultMenuAccess,
+                    ...customPerms.menu_access,
+                  });
                 }
               } catch (e) {
-                console.error('Error parsing custom permissions:', e);
+                console.error("Error parsing custom permissions:", e);
               }
             }
           } else {
@@ -94,14 +126,15 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
           }
         })
         .catch((error) => {
-          console.error('Error fetching user apps:', error);
+          console.error("Error fetching user apps:", error);
         });
     }
-    
+
     // Check if app has property listings and contact screen
     if (appId) {
       // Try to fetch app details
-      appsAPI.getById(parseInt(appId))
+      appsAPI
+        .getById(parseInt(appId))
         .then((response) => {
           // Check if app was created from Property Rental template (ID: 9)
           const templateId = response.data?.template_id;
@@ -112,22 +145,23 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
           }
         })
         .catch((error) => {
-          console.error('Error fetching app details:', error);
+          console.error("Error fetching app details:", error);
           setHasPropertyListings(false);
         });
-      
+
       // Check if app has Contact Us screen
-      appScreensAPI.getAppScreens(parseInt(appId))
+      appScreensAPI
+        .getAppScreens(parseInt(appId))
         .then((response) => {
           const screens = Array.isArray(response.data) ? response.data : [];
           // Check if any screen name contains "Contact" (case-insensitive)
-          const hasContact = screens.some((screen: any) => 
-            screen.name?.toLowerCase().includes('contact')
+          const hasContact = screens.some((screen: any) =>
+            screen.name?.toLowerCase().includes("contact")
           );
           setHasContactScreen(hasContact);
         })
         .catch((error) => {
-          console.error('Error fetching app screens:', error);
+          console.error("Error fetching app screens:", error);
           setHasContactScreen(false);
         });
     }
@@ -136,42 +170,48 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
   // Build menu items based on permissions
   const baseMenuItems = [
     {
-      name: 'Dashboard',
+      name: "Dashboard",
       href: `/app/${appId}`,
       icon: LayoutDashboard,
       always: true, // Always show dashboard
     },
     {
-      name: 'Administrators',
+      name: "Administrators",
       href: `/app/${appId}/users`,
       icon: UserCog,
       requiresManageAdmins: true, // Requires can_manage_admins permission
     },
     {
-      name: 'App Users',
+      name: "App Users",
       href: `/app/${appId}/app-users`,
       icon: Users,
       requiresManageUsers: true, // Requires can_manage_users permission
     },
     {
-      name: 'App Users Roles',
+      name: "App Users Roles",
       href: `/app/${appId}/roles`,
       icon: Shield,
       requiresManageUsers: true, // Requires can_manage_users permission
     },
     {
-      name: 'Screens',
+      name: "Screens",
       href: `/app/${appId}/screens`,
       icon: Monitor,
       always: true, // Core functionality
     },
     {
-      name: 'Menus',
+      name: "Menus",
       href: `/app/${appId}/menus`,
       icon: Menu,
-      accessKey: 'menus' as keyof MenuAccess,
+      accessKey: "menus" as keyof MenuAccess,
     },
-  ].filter(item => {
+    {
+      name: "Services",
+      href: `/app/${appId}/services`,
+      icon: UserCog,
+      requiresManageAdmins: true, // Requires can_manage_admins permission
+    },
+  ].filter((item) => {
     if (item.always) return true;
     if (item.requiresManageAdmins) return generalPermissions.can_manage_admins;
     if (item.requiresManageUsers) return generalPermissions.can_manage_users;
@@ -181,48 +221,52 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
 
   // Template-specific menu items
   const templateMenuItems: any[] = [];
-  
+
   // Show Property Listings if app has this feature
   if (hasPropertyListings) {
     if (menuAccess.property_listings) {
       templateMenuItems.push({
-        name: 'Property Listings',
+        name: "Property Listings",
         href: `/app/${appId}/listings`,
         icon: Home,
       });
     }
     if (menuAccess.bookings) {
       templateMenuItems.push({
-        name: 'Bookings',
+        name: "Bookings",
         href: `/app/${appId}/bookings`,
         icon: Calendar,
       });
     }
   }
-  
+
   // Show Contact Submissions if app has a Contact screen (for ALL apps, not just Property Rental)
   if (hasContactScreen && menuAccess.contact_submissions) {
     templateMenuItems.push({
-      name: 'Contact Submissions',
+      name: "Contact Submissions",
       href: `/app/${appId}/contact-submissions`,
       icon: Mail,
     });
   }
-  
+
   // Add Settings at the end (only if user has can_manage_settings permission)
   const menuItems = [
     ...baseMenuItems,
     ...templateMenuItems,
-    ...(generalPermissions.can_manage_settings ? [{
-      name: 'Settings',
-      href: `/app/${appId}/settings`,
-      icon: Settings,
-    }] : []),
+    ...(generalPermissions.can_manage_settings
+      ? [
+          {
+            name: "Settings",
+            href: `/app/${appId}/settings`,
+            icon: Settings,
+          },
+        ]
+      : []),
   ];
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
+    router.push("/login");
   };
 
   const isActive = (href: string) => {
@@ -241,12 +285,16 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
           {/* Only show back button if user is master admin OR has multiple apps */}
           {(user?.role_level === 1 || userAppCount > 1) && (
             <button
-              onClick={() => router.push(user?.role_level === 1 ? '/master' : '/dashboard')}
+              onClick={() =>
+                router.push(user?.role_level === 1 ? "/master" : "/dashboard")
+              }
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="text-sm">
-                {user?.role_level === 1 ? 'Back to Master' : 'Back to Dashboard'}
+                {user?.role_level === 1
+                  ? "Back to Master"
+                  : "Back to Dashboard"}
               </span>
             </button>
           )}
@@ -260,15 +308,15 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
             {menuItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
-              
+
               return (
                 <li key={item.href}>
                   <button
                     onClick={() => router.push(item.href)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                       active
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -283,7 +331,7 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
         {/* User Info */}
         <div className="p-4 border-t">
           <button
-            onClick={() => router.push('/profile')}
+            onClick={() => router.push("/profile")}
             className="w-full flex items-center justify-between p-3 mb-3 rounded-lg hover:bg-gray-100 transition-colors group"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -310,9 +358,7 @@ export default function AppLayout({ children, appId, appName }: AppLayoutProps) 
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
+      <main className="flex-1 overflow-auto">{children}</main>
     </div>
   );
 }

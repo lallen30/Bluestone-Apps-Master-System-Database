@@ -1,0 +1,17 @@
+FROM rust:1.83
+
+WORKDIR /app
+
+# Install common build deps for some crates (openssl, pkg-config etc.)
+RUN apt-get update && \
+    apt-get install -y pkg-config libssl-dev build-essential ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Use the default cargo home; create dirs so we can mount volumes from compose
+RUN mkdir -p /usr/local/cargo/registry /usr/local/cargo/git /app/target
+
+ENV CARGO_HOME=/usr/local/cargo
+
+# Default command: run the app. In dev, compose mounts the project into /app so
+# cargo will use the live source from the host.
+CMD ["bash", "-lc", "cargo run"]
