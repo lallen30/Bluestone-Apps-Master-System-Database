@@ -1,11 +1,16 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { useAuthStore } from '@/lib/store';
-import { appsAPI, permissionsAPI, appScreensAPI } from '@/lib/api';
-import AppLayout from '@/components/layouts/AppLayout';
-import { Users, Monitor, Settings as SettingsIcon, Activity } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useAuthStore } from "@/lib/store";
+import { appsAPI, permissionsAPI, appScreensAPI } from "@/lib/api";
+import AppLayout from "@/components/layouts/AppLayout";
+import {
+  Users,
+  Monitor,
+  Settings as SettingsIcon,
+  Activity,
+} from "lucide-react";
 
 export default function AppDashboard() {
   const router = useRouter();
@@ -22,10 +27,10 @@ export default function AppDashboard() {
 
   useEffect(() => {
     // Check localStorage for token
-    const token = localStorage.getItem('auth_token');
-    
+    const token = localStorage.getItem("auth_token");
+
     if (!token && !isAuthenticated) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
@@ -40,7 +45,7 @@ export default function AppDashboard() {
   const fetchAppData = async () => {
     try {
       const appId = parseInt(params.id as string);
-      
+
       // Fetch app details
       const appResponse = await appsAPI.getById(appId);
       setApp(appResponse.data);
@@ -58,15 +63,19 @@ export default function AppDashboard() {
             can_manage_settings: true,
           });
         } else {
-          const permsResponse = await permissionsAPI.getUserPermissions(user.id);
-          const userPerms = permsResponse.data?.find((p: any) => p.app_id === appId);
-          
+          const permsResponse = await permissionsAPI.getUserPermissions(
+            user.id
+          );
+          const userPerms = permsResponse.data?.find(
+            (p: any) => p.app_id === appId
+          );
+
           if (!userPerms) {
             // User doesn't have access to this app - redirect to dashboard
-            router.push('/dashboard');
+            router.push("/dashboard");
             return;
           }
-          
+
           setPermissions(userPerms);
         }
       }
@@ -74,7 +83,7 @@ export default function AppDashboard() {
       // Fetch stats - some may fail for non-admin users
       let totalUsers = 0;
       let totalScreens = 0;
-      
+
       // Only admins can fetch user count
       if (user?.role_level && user.role_level <= 2) {
         try {
@@ -84,14 +93,16 @@ export default function AppDashboard() {
           // User doesn't have permission to view users
         }
       }
-      
+
       try {
         const screensResponse = await appScreensAPI.getAppScreens(appId);
-        totalScreens = Array.isArray(screensResponse.data) ? screensResponse.data.length : 0;
+        totalScreens = Array.isArray(screensResponse.data)
+          ? screensResponse.data.length
+          : 0;
       } catch (e) {
         // Failed to fetch screens
       }
-      
+
       setStats({
         totalUsers,
         totalScreens,
@@ -100,7 +111,7 @@ export default function AppDashboard() {
 
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching app data:', error);
+      console.error("Error fetching app data:", error);
       setLoading(false);
     }
   };
@@ -122,52 +133,60 @@ export default function AppDashboard() {
 
   const quickActions = [
     {
-      name: 'Manage Users',
-      description: 'Add, edit, or remove users',
+      name: "Manage Users",
+      description: "Add, edit, or remove users",
       icon: Users,
       href: `/app/${params.id}/users`,
-      color: 'bg-blue-500',
+      color: "bg-blue-500",
       visible: permissions?.can_manage_users,
     },
     {
-      name: 'Manage Screens',
-      description: 'Create and edit app screens',
+      name: "Manage Screens",
+      description: "Create and edit app screens",
       icon: Monitor,
       href: `/app/${params.id}/screens`,
-      color: 'bg-green-500',
+      color: "bg-green-500",
       visible: permissions?.can_edit,
     },
     {
-      name: 'Settings',
-      description: 'Configure app settings',
+      name: "Services",
+      description: "Manage in-app services",
+      icon: SettingsIcon,
+      href: `/app/${params.id}/services`,
+      color: "bg-red-500",
+      visible: permissions?.can_edit,
+    },
+    {
+      name: "Settings",
+      description: "Configure app settings",
       icon: SettingsIcon,
       href: `/app/${params.id}/settings`,
-      color: 'bg-purple-500',
+      color: "bg-purple-500",
       visible: permissions?.can_manage_settings,
     },
   ];
 
   const statCards = [
     {
-      name: 'Total Users',
+      name: "Total Users",
       value: stats.totalUsers,
       icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
+      color: "text-blue-600",
+      bgColor: "bg-blue-100",
     },
     {
-      name: 'Total Screens',
+      name: "Total Screens",
       value: stats.totalScreens,
       icon: Monitor,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100',
+      color: "text-green-600",
+      bgColor: "bg-green-100",
     },
     {
-      name: 'Recent Activity',
+      name: "Recent Activity",
       value: stats.recentActivity,
       icon: Activity,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100',
+      color: "text-purple-600",
+      bgColor: "bg-purple-100",
     },
   ];
 
@@ -187,10 +206,7 @@ export default function AppDashboard() {
           {statCards.map((stat) => {
             const Icon = stat.icon;
             return (
-              <div
-                key={stat.name}
-                className="bg-white rounded-lg shadow p-6"
-              >
+              <div key={stat.name} className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">
@@ -211,32 +227,42 @@ export default function AppDashboard() {
 
         {/* Quick Actions */}
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
+            Quick Actions
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {quickActions.filter(action => action.visible).map((action) => {
-              const Icon = action.icon;
-              return (
-                <button
-                  key={action.name}
-                  onClick={() => router.push(action.href)}
-                  className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
-                >
-                  <div className={`${action.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4`}>
-                    <Icon className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {action.name}
-                  </h3>
-                  <p className="text-sm text-gray-600">{action.description}</p>
-                </button>
-              );
-            })}
+            {quickActions
+              .filter((action) => action.visible)
+              .map((action) => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={action.name}
+                    onClick={() => router.push(action.href)}
+                    className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
+                  >
+                    <div
+                      className={`${action.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4`}
+                    >
+                      <Icon className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {action.name}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {action.description}
+                    </p>
+                  </button>
+                );
+              })}
           </div>
         </div>
 
         {/* App Info */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Application Information</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
+            Application Information
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm font-medium text-gray-600">App Name</p>
@@ -249,32 +275,46 @@ export default function AppDashboard() {
             <div>
               <p className="text-sm font-medium text-gray-600">Status</p>
               <p className="text-base text-gray-900 mt-1">
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                  app.is_active
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {app.is_active ? 'Active' : 'Inactive'}
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    app.is_active
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {app.is_active ? "Active" : "Inactive"}
                 </span>
               </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Your Permissions</p>
+              <p className="text-sm font-medium text-gray-600">
+                Your Permissions
+              </p>
               <div className="flex flex-wrap gap-2 mt-1">
                 {permissions?.can_view && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">View</span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                    View
+                  </span>
                 )}
                 {permissions?.can_edit && (
-                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Edit</span>
+                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                    Edit
+                  </span>
                 )}
                 {permissions?.can_delete && (
-                  <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">Delete</span>
+                  <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">
+                    Delete
+                  </span>
                 )}
                 {permissions?.can_manage_users && (
-                  <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">Manage Users</span>
+                  <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">
+                    Manage Users
+                  </span>
                 )}
                 {permissions?.can_manage_settings && (
-                  <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Manage Settings</span>
+                  <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">
+                    Manage Settings
+                  </span>
                 )}
               </div>
             </div>

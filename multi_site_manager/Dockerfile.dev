@@ -9,8 +9,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies)
-RUN npm install
+# Install dependencies during build so node_modules are baked into the image
+# Use --production=false to include dev deps in dev image (nodemon etc.)
+RUN npm ci --no-audit --no-fund --silent || npm install --no-audit --no-fund --silent
 
 # Copy application files
 COPY . .
