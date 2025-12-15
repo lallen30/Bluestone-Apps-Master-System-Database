@@ -490,7 +490,7 @@ export default function AppSettings() {
                     )}
                   </div>
 
-                  {message?.section === service.service_name && (
+                  {message && message.section === service.service_name && (
                     <div
                       className={`mb-4 p-3 rounded-lg text-sm ${
                         message.type === "success"
