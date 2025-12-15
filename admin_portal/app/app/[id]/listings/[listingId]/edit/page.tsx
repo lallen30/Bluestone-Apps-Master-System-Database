@@ -139,8 +139,9 @@ export default function EditListingPage() {
   const getImageUrl = (url: string) => {
     if (!url) return '';
     if (url.startsWith('http')) return url;
-    const path = url.startsWith('/') ? url : `/${url}`;
-    return `${API_BASE_URL}${path}`;
+    // Prefer relative URLs so SSR can't accidentally emit http://localhost/... (which causes ERR_CONNECTION_REFUSED)
+    if (url.startsWith('/')) return url;
+    return `/${url}`;
   };
 
   // Image management handlers
