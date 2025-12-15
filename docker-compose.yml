@@ -152,6 +152,8 @@ services:
       - "3032:3032"
     environment:
       - RUST_LOG=info
+    networks:
+      - app_network
     depends_on:
       - api
 networks:
