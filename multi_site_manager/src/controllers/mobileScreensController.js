@@ -1249,3 +1249,46 @@ exports.getHomeScreen = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get home screen by domain
+ * Compatibility endpoint: /api/v1/mobile/screens/home?domain=example.com
+ */
+exports.getHomeScreenByDomain = async (req, res) => {
+  try {
+    const domain = req.query.domain;
+
+    if (!domain) {
+      return res.status(400).json({
+        success: false,
+        message: 'Domain is required'
+      });
+    }
+
+    const result = await db.query(
+      `SELECT id FROM apps WHERE domain = ? AND is_active = 1 LIMIT 1`,
+      [domain]
+    );
+
+    const apps = Array.isArray(result) && Array.isArray(result[0])
+      ? result[0]
+      : result;
+
+    if (!apps || apps.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'App not found for this domain'
+      });
+    }
+
+    req.params.appId = apps[0].id;
+    return exports.getHomeScreen(req, res);
+  } catch (error) {
+    console.error('[Mobile getHomeScreenByDomain] Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to get home screen',
+      error: error.message
+    });
+  }
+};
