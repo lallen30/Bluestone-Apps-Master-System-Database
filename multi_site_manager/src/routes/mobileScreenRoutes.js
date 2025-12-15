@@ -8,6 +8,15 @@ const { authenticateMobileUser } = require('../middleware/mobileAuth');
 // Without token, all published screens are returned (for preview/demo)
 
 /**
+ * GET /api/v1/mobile/screens/home?domain=example.com
+ * Compatibility endpoint: resolve app by domain then return home screen
+ */
+router.get('/screens/home',
+  authenticateMobileUser({ required: false }),
+  mobileScreensController.getHomeScreenByDomain
+);
+
+/**
  * GET /api/v1/mobile/apps/:appId/screens
  * Get all published screens for an app
  * Optional auth: Filters by user's role if authenticated
