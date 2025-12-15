@@ -2,7 +2,7 @@
   email {$CADDY_EMAIL}
 }
 
-knoxdev.org {
+http://knoxdev.org {
   handle_path /api/* {
     reverse_proxy api:3000
   }
@@ -16,6 +16,6 @@ knoxdev.org {
   }
 }
 
-www.knoxdev.org {
-  redir https://knoxdev.org{uri} permanent
+http://www.knoxdev.org {
+  redir http://knoxdev.org{uri} permanent
 }
