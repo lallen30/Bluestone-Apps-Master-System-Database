@@ -1,6 +1,32 @@
 import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+function normalizeBaseUrl(url: string, suffixToStrip: string) {
+  const trimmed = url.replace(/\/+$/, "");
+  if (trimmed.toLowerCase().endsWith(suffixToStrip.toLowerCase())) {
+    return trimmed.slice(0, -suffixToStrip.length);
+  }
+  return trimmed;
+}
+
+function getApiBaseUrl() {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl) return normalizeBaseUrl(envUrl, "/api");
+
+  if (typeof window !== "undefined") return window.location.origin;
+
+  return "http://api:3000";
+}
+
+function getBodyguardBaseUrl() {
+  const envUrl = process.env.NEXT_PUBLIC_BODYGUARD_URL;
+  if (envUrl) return normalizeBaseUrl(envUrl, "/bodyguard");
+
+  if (typeof window !== "undefined") return `${window.location.origin}/bodyguard`;
+
+  return "http://bodyguard:3032";
+}
+
+const API_URL = getApiBaseUrl();
 
 // Create axios instance
 const api = axios.create({
@@ -1508,7 +1534,8 @@ export const servicesAPI = {
   socket: null as WebSocket | null,
 
   async syncServiceApp() {
-    const res = await fetch("http://localhost:3032/services");
+    const bodyguardUrl = getBodyguardBaseUrl();
+    const res = await fetch(`${bodyguardUrl}/services`);
     const data = await res.json();
 
     console.log("Full service snapshot:", data);
@@ -1517,7 +1544,9 @@ export const servicesAPI = {
   },
 
   connect(onServiceUpdate: (service: any) => void) {
-    const url = "ws://localhost:3032/ws";
+    const bodyguardUrl = getBodyguardBaseUrl();
+    const wsBase = bodyguardUrl.replace(/^http/i, "ws");
+    const url = `${wsBase}/ws`;
 
     this.socket = new WebSocket(url);
 

@@ -6,6 +6,23 @@
 
 import bodyguardClient from "./bodyguard";
 
+function normalizeBaseUrl(url: string, suffixToStrip: string) {
+  const trimmed = url.replace(/\/+$/, "");
+  if (trimmed.toLowerCase().endsWith(suffixToStrip.toLowerCase())) {
+    return trimmed.slice(0, -suffixToStrip.length);
+  }
+  return trimmed;
+}
+
+function getApiBaseUrl() {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl) return normalizeBaseUrl(envUrl, "/api");
+
+  if (typeof window !== "undefined") return window.location.origin;
+
+  return "http://api:3000";
+}
+
 /**
  * Get authentication context from localStorage
  */
@@ -89,8 +106,9 @@ export const serviceManager = {
 
     try {
       // Call API directly to update database
+      const apiBaseUrl = getApiBaseUrl();
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/apps/${appId}/services/${serviceName}/config`,
+        `${apiBaseUrl}/api/v1/apps/${appId}/services/${serviceName}/config`,
         {
           method: "PUT",
           headers: {

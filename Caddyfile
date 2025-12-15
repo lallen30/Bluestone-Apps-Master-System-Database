@@ -1,5 +1,9 @@
 http://knoxdev.org {
-  handle_path /api/* {
+  handle_path /api/health {
+    reverse_proxy api:3000
+  }
+
+  handle /api/* {
     reverse_proxy api:3000
   }
 

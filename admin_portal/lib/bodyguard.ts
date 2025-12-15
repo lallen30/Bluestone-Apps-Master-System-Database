@@ -4,8 +4,24 @@
  * Services define their own capabilities and requirements
  */
 
-const BODYGUARD_URL =
-  process.env.NEXT_PUBLIC_BODYGUARD_URL || "http://localhost:3032";
+function normalizeBaseUrl(url: string, suffixToStrip: string) {
+  const trimmed = url.replace(/\/+$/, "");
+  if (trimmed.toLowerCase().endsWith(suffixToStrip.toLowerCase())) {
+    return trimmed.slice(0, -suffixToStrip.length);
+  }
+  return trimmed;
+}
+
+function getBodyguardBaseUrl() {
+  const envUrl = process.env.NEXT_PUBLIC_BODYGUARD_URL;
+  if (envUrl) return normalizeBaseUrl(envUrl, "/bodyguard");
+
+  if (typeof window !== "undefined") return `${window.location.origin}/bodyguard`;
+
+  return "http://bodyguard:3032";
+}
+
+const BODYGUARD_URL = getBodyguardBaseUrl();
 
 interface GatewayMessage {
   version: number;
@@ -46,7 +62,7 @@ class BodyguardClient {
       url:
         typeof window !== "undefined"
           ? window.location.origin
-          : "http://localhost:3001",
+          : "http://admin_portal:3001",
       instance_id: "admin-portal-1",
     };
   }
