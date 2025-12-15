@@ -275,7 +275,9 @@ export default function MenuDetailPage() {
     if (!menu) return;
 
     try {
-      const currentScreenIds = menu.items.map((item) => item.screen_id);
+      const currentScreenIds = menu.items
+        .map((item) => item.screen_id)
+        .filter((id): id is number => id !== null);
       
       // Find screens to add (selected but not in menu)
       const screensToAdd = selectedScreenIds.filter((id) => !currentScreenIds.includes(id));
