@@ -1,0 +1,21 @@
+{
+  email {$CADDY_EMAIL}
+}
+
+knoxdev.org {
+  handle_path /api/* {
+    reverse_proxy api:3000
+  }
+
+  handle_path /bodyguard/* {
+    reverse_proxy bodyguard:3032
+  }
+
+  handle {
+    reverse_proxy admin_portal:3001
+  }
+}
+
+www.knoxdev.org {
+  redir https://knoxdev.org{uri} permanent
+}
