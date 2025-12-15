@@ -13,7 +13,8 @@ const { width: screenWidth } = Dimensions.get('window');
 const getImageUrl = (url: string | undefined): string | undefined => {
   if (!url) return undefined;
   if (url.startsWith('http')) return url;
-  return `${API_CONFIG.SERVER_URL}${url}`;
+  const path = url.startsWith('/') ? url : `/${url}`;
+  return `${API_CONFIG.SERVER_URL}${path}`;
 };
 
 const ImageGallery: React.FC<ImageGalleryProps> = ({ config, data, onAction }) => {

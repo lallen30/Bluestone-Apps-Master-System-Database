@@ -139,7 +139,8 @@ export default function EditListingPage() {
   const getImageUrl = (url: string) => {
     if (!url) return '';
     if (url.startsWith('http')) return url;
-    return `${API_BASE_URL}${url}`;
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${API_BASE_URL}${path}`;
   };
 
   // Image management handlers

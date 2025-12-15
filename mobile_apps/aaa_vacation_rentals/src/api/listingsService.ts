@@ -6,7 +6,8 @@ import { PropertyListing, PaginatedResponse, ListingsFilter, ApiResponse, Amenit
 const transformImageUrl = (url: string | undefined): string | undefined => {
   if (!url) return undefined;
   if (url.startsWith('http')) return url; // Already absolute
-  return `${API_CONFIG.SERVER_URL}${url}`; // Prepend server URL
+  const path = url.startsWith('/') ? url : `/${url}`;
+  return `${API_CONFIG.SERVER_URL}${path}`; // Prepend server URL
 };
 
 // Helper function to transform listing image URLs
