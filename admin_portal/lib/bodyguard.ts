@@ -128,7 +128,7 @@ class BodyguardClient {
    */
   async getServiceSchema(
     serviceName: string,
-    auth?: AuthContext
+    auth?: { userId: string; appId?: string; roles?: string[] }
   ): Promise<any> {
     // Temporary: Call service directly until Bodyguard has message routing
     const services = await this.getRegisteredServices();
