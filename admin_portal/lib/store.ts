@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface User {
   id: number;
@@ -41,6 +41,35 @@ interface AppState {
   setIsMasterAdmin: (isMaster: boolean) => void;
 }
 
+type Service = any;
+
+interface ServicesState {
+  services: Service[];
+  setSnapshot: (services: Service[]) => void;
+  upsertService: (service: Service) => void;
+}
+
+export const useServicesStore = create<ServicesState>((set) => ({
+  services: [],
+
+  setSnapshot: (services) => set({ services }),
+
+  upsertService: (incoming) =>
+    set((state) => {
+      const exists = state.services.some((s) => s.id === incoming.id);
+
+      if (exists) {
+        return {
+          services: state.services.map((s) =>
+            s.id === incoming.id ? incoming : s
+          ),
+        };
+      }
+
+      return { services: [...state.services, incoming] };
+    }),
+}));
+
 // Auth Store
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -50,19 +79,19 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isHydrated: false,
       login: (token, user) => {
-        localStorage.setItem('auth_token', token);
+        localStorage.setItem("auth_token", token);
         set({ token, user, isAuthenticated: true });
       },
       logout: () => {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth-storage');
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth-storage");
         set({ token: null, user: null, isAuthenticated: false });
       },
       setUser: (user) => set({ user }),
       setHydrated: () => set({ isHydrated: true }),
     }),
     {
-      name: 'auth-storage',
+      name: "auth-storage",
       onRehydrateStorage: () => (state) => {
         // After rehydration, check if we have a token and set isAuthenticated
         if (state?.token && state?.user) {

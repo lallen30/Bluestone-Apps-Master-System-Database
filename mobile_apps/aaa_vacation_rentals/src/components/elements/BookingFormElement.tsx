@@ -8,12 +8,19 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useStripe } from '@stripe/stripe-react-native';
 import { bookingsService } from '../../api/bookingsService';
 import { listingsService } from '../../api/listingsService';
 import { useAuth } from '../../context/AuthContext';
 import { PropertyListing } from '../../types';
+import {
+  createCheckoutSessionWithCheck,
+  isStripeEnabled,
+} from '../../api/stripeServices';
+import { API_CONFIG } from '../../api/config';
 
 interface ScreenElement {
   id: number;
@@ -28,9 +35,14 @@ interface BookingFormElementProps {
   route: any;
 }
 
-const BookingFormElement: React.FC<BookingFormElementProps> = ({ element, navigation, route }) => {
-  const { user } = useAuth();
-  
+const BookingFormElement: React.FC<BookingFormElementProps> = ({
+  element,
+  navigation,
+  route,
+}) => {
+  const { user, token } = useAuth();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+
   // Extract config
   const config = element.config || element.default_config || {};
   const {
@@ -44,9 +56,10 @@ const BookingFormElement: React.FC<BookingFormElementProps> = ({ element, naviga
   } = config;
 
   // Get listing ID from route params or config
-  const listingId = listing_id_source === 'route_param' 
-    ? route.params?.listingId 
-    : config.listing_id;
+  const listingId =
+    listing_id_source === 'route_param'
+      ? route.params?.listingId
+      : config.listing_id;
 
   const [listing, setListing] = useState<PropertyListing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,11 +70,15 @@ const BookingFormElement: React.FC<BookingFormElementProps> = ({ element, naviga
   const checkOutParam = route.params?.checkOut;
   const guestsParam = route.params?.guests;
 
-  const [checkInDate, setCheckInDate] = useState(checkInParam ? new Date(checkInParam) : new Date());
-  const [checkOutDate, setCheckOutDate] = useState(
-    checkOutParam ? new Date(checkOutParam) : new Date(Date.now() + 86400000)
+  const [checkInDate, setCheckInDate] = useState(
+    checkInParam ? new Date(checkInParam) : new Date(),
   );
-  const [guestsCount, setGuestsCount] = useState(guestsParam?.toString() || '1');
+  const [checkOutDate, setCheckOutDate] = useState(
+    checkOutParam ? new Date(checkOutParam) : new Date(Date.now() + 86400000),
+  );
+  const [guestsCount, setGuestsCount] = useState(
+    guestsParam?.toString() || '1',
+  );
   const [firstName, setFirstName] = useState(user?.first_name || '');
   const [lastName, setLastName] = useState(user?.last_name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -102,16 +119,19 @@ const BookingFormElement: React.FC<BookingFormElementProps> = ({ element, naviga
   const calculateTotal = () => {
     if (!listing) return 0;
     const nights = calculateNights();
-    const pricePerNight = typeof listing.price_per_night === 'string' 
-      ? parseFloat(listing.price_per_night) 
-      : listing.price_per_night || 0;
+    const pricePerNight =
+      typeof listing.price_per_night === 'string'
+        ? parseFloat(listing.price_per_night)
+        : listing.price_per_night || 0;
     const subtotal = pricePerNight * nights;
-    const cleaningFee = typeof listing.cleaning_fee === 'string'
-      ? parseFloat(listing.cleaning_fee)
-      : listing.cleaning_fee || 0;
-    const serviceFeePercent = typeof listing.service_fee_percentage === 'string'
-      ? parseFloat(listing.service_fee_percentage)
-      : listing.service_fee_percentage || 0;
+    const cleaningFee =
+      typeof listing.cleaning_fee === 'string'
+        ? parseFloat(listing.cleaning_fee)
+        : listing.cleaning_fee || 0;
+    const serviceFeePercent =
+      typeof listing.service_fee_percentage === 'string'
+        ? parseFloat(listing.service_fee_percentage)
+        : listing.service_fee_percentage || 0;
     const serviceFee = (subtotal * serviceFeePercent) / 100;
     return subtotal + cleaningFee + serviceFee;
   };
@@ -155,7 +175,9 @@ const BookingFormElement: React.FC<BookingFormElementProps> = ({ element, naviga
 
     try {
       setSubmitting(true);
-      const response = await bookingsService.createBooking({
+
+      // Prepare booking payload used both for creating a booking and for the payment proxy.
+      const bookingPayload = {
         listing_id: listingId,
         check_in_date: checkInDate.toISOString().split('T')[0],
         check_out_date: checkOutDate.toISOString().split('T')[0],
@@ -165,31 +187,110 @@ const BookingFormElement: React.FC<BookingFormElementProps> = ({ element, naviga
         guest_email: email,
         guest_phone: phone,
         special_requests: specialRequests,
+        // Price breakdown so server can validate and create the Stripe session
+        price: {
+          nights,
+          price_per_night: pricePerNight,
+          subtotal,
+          cleaning_fee: cleaningFee,
+          service_fee: serviceFee,
+          total,
+          currency: listing?.currency || 'USD',
+        },
+      };
+
+      // Check if Stripe (payments) is enabled for this app
+      const appId = String(API_CONFIG.APP_ID);
+      const stripeEnabled = await isStripeEnabled(appId, token ?? undefined);
+      console.log(
+        '[BookingForm] Stripe enabled check:',
+        stripeEnabled,
+        'for appId:',
+        appId,
+      );
+
+      if (!stripeEnabled) {
+        // Stripe is required - do not allow booking without payment
+        Alert.alert(
+          'Payment Required',
+          'Payment processing is currently unavailable. Please try again later or contact support.',
+        );
+        return;
+      }
+
+      const response = await createCheckoutSessionWithCheck(
+        appId,
+        token ?? '',
+        bookingPayload,
+        true,
+      );
+
+      const sessionData = response.session || response;
+      const clientSecret =
+        sessionData.clientSecret || sessionData.client_secret;
+      const bookingId = response.booking_id;
+
+      if (!clientSecret) {
+        console.error('[BookingForm] No clientSecret in response:', response);
+        Alert.alert(
+          'Payment Error',
+          'Payment service did not return a valid payment session.',
+        );
+        return;
+      }
+
+      const { error: initError } = await initPaymentSheet({
+        merchantDisplayName: 'AAA Vacation Rentals',
+        paymentIntentClientSecret: clientSecret,
+        returnURL: 'aaarentals://payment-complete',
+        defaultBillingDetails: {
+          name: `${firstName} ${lastName}`,
+          email: email,
+        },
       });
 
-      Alert.alert(
-        'Success!',
-        response.message,
-        [
-          {
-            text: 'View Bookings',
-            onPress: () => navigation.navigate('DynamicScreen', {
+      if (initError) {
+        console.error(
+          '[BookingForm] Error initializing payment sheet:',
+          initError,
+        );
+        Alert.alert('Payment Error', initError.message);
+        return;
+      }
+
+      const { error: presentError } = await presentPaymentSheet();
+
+      if (presentError) {
+        console.error(
+          '[BookingForm] Error presenting payment sheet:',
+          presentError,
+        );
+        Alert.alert('Payment Cancelled', presentError.message);
+        return;
+      }
+
+      Alert.alert('Payment Successful!', 'Your booking has been confirmed.', [
+        {
+          text: 'View Bookings',
+          onPress: () =>
+            navigation.navigate('DynamicScreen', {
               screenId: 114,
               screenName: 'My Bookings',
             }),
-          },
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+        },
+        {
+          text: 'OK',
+          onPress: () => navigation.goBack(),
+        },
+      ]);
     } catch (error: any) {
-      console.error('Error creating booking:', error);
-      Alert.alert(
-        'Booking Failed',
-        error.response?.data?.message || 'Unable to create booking. Please try again.'
-      );
+      console.error('Error creating booking/payment:', error);
+      const message =
+        error.response?.data?.message ||
+        error.message ||
+        'Unable to create booking or start payment. Please try again.';
+      console.log('Extracted error message:', message);
+      Alert.alert('Booking Failed', message);
     } finally {
       setSubmitting(false);
     }
@@ -213,16 +314,19 @@ const BookingFormElement: React.FC<BookingFormElementProps> = ({ element, naviga
   }
 
   const nights = calculateNights();
-  const pricePerNight = typeof listing.price_per_night === 'string' 
-    ? parseFloat(listing.price_per_night) 
-    : listing.price_per_night || 0;
+  const pricePerNight =
+    typeof listing.price_per_night === 'string'
+      ? parseFloat(listing.price_per_night)
+      : listing.price_per_night || 0;
   const subtotal = pricePerNight * nights;
-  const cleaningFee = typeof listing.cleaning_fee === 'string'
-    ? parseFloat(listing.cleaning_fee)
-    : listing.cleaning_fee || 0;
-  const serviceFeePercent = typeof listing.service_fee_percentage === 'string'
-    ? parseFloat(listing.service_fee_percentage)
-    : listing.service_fee_percentage || 0;
+  const cleaningFee =
+    typeof listing.cleaning_fee === 'string'
+      ? parseFloat(listing.cleaning_fee)
+      : listing.cleaning_fee || 0;
+  const serviceFeePercent =
+    typeof listing.service_fee_percentage === 'string'
+      ? parseFloat(listing.service_fee_percentage)
+      : listing.service_fee_percentage || 0;
   const serviceFee = (subtotal * serviceFeePercent) / 100;
   const total = calculateTotal();
 
@@ -246,7 +350,9 @@ const BookingFormElement: React.FC<BookingFormElementProps> = ({ element, naviga
             style={styles.dateButton}
             onPress={() => setShowCheckInPicker(true)}
           >
-            <Text style={styles.dateText}>{checkInDate.toLocaleDateString()}</Text>
+            <Text style={styles.dateText}>
+              {checkInDate.toLocaleDateString()}
+            </Text>
           </TouchableOpacity>
           {showCheckInPicker && (
             <DateTimePicker
@@ -267,7 +373,9 @@ const BookingFormElement: React.FC<BookingFormElementProps> = ({ element, naviga
             style={styles.dateButton}
             onPress={() => setShowCheckOutPicker(true)}
           >
-            <Text style={styles.dateText}>{checkOutDate.toLocaleDateString()}</Text>
+            <Text style={styles.dateText}>
+              {checkOutDate.toLocaleDateString()}
+            </Text>
           </TouchableOpacity>
           {showCheckOutPicker && (
             <DateTimePicker

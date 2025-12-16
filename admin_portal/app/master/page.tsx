@@ -1,20 +1,43 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/lib/store';
-import { appsAPI, usersAPI, appScreensAPI, screenElementsAPI, modulesAPI, formsAPI, appTemplatesAPI } from '@/lib/api';
-import { Users, Globe, Activity, LogOut, Monitor, Layers, Sparkles, Package, FileText, User } from 'lucide-react';
-import Icon from '@mdi/react';
-import * as mdiIcons from '@mdi/js';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore, useServicesStore } from "@/lib/store";
+import {
+  appsAPI,
+  usersAPI,
+  appScreensAPI,
+  screenElementsAPI,
+  modulesAPI,
+  formsAPI,
+  appTemplatesAPI,
+  servicesAPI,
+} from "@/lib/api";
+import {
+  Users,
+  Globe,
+  Activity,
+  LogOut,
+  Monitor,
+  Layers,
+  Sparkles,
+  Package,
+  FileText,
+  User,
+} from "lucide-react";
+import Icon from "@mdi/react";
+import * as mdiIcons from "@mdi/js";
 
 // Convert icon name to mdi path key (e.g., 'home' -> 'mdiHome')
 const toMdiKey = (iconName: string): string => {
-  if (!iconName) return '';
-  return 'mdi' + iconName
-    .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join('');
+  if (!iconName) return "";
+  return (
+    "mdi" +
+    iconName
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join("")
+  );
 };
 
 // Get MDI path by icon name
@@ -27,23 +50,23 @@ const getMdiPath = (iconName: string): string | null => {
 // Get icon for element category
 const getCategoryIcon = (category: string): string => {
   const categoryIcons: { [key: string]: string } = {
-    'Input': 'form-textbox',
-    'Selection': 'format-list-checks',
-    'DateTime': 'calendar-clock',
-    'Media': 'image-multiple',
-    'Display': 'monitor',
-    'Content': 'file-document',
-    'Navigation': 'navigation',
-    'Interactive': 'gesture-tap',
-    'Advanced': 'cog',
-    'action': 'gesture-tap-button',
-    'detail': 'information',
-    'forms': 'form-select',
-    'lists': 'format-list-bulleted',
-    'messaging': 'message',
-    'search': 'magnify',
+    Input: "form-textbox",
+    Selection: "format-list-checks",
+    DateTime: "calendar-clock",
+    Media: "image-multiple",
+    Display: "monitor",
+    Content: "file-document",
+    Navigation: "navigation",
+    Interactive: "gesture-tap",
+    Advanced: "cog",
+    action: "gesture-tap-button",
+    detail: "information",
+    forms: "form-select",
+    lists: "format-list-bulleted",
+    messaging: "message",
+    search: "magnify",
   };
-  return categoryIcons[category] || 'layers';
+  return categoryIcons[category] || "layers";
 };
 
 export default function MasterDashboard() {
@@ -52,6 +75,7 @@ export default function MasterDashboard() {
   const [apps, setApps] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [screens, setScreens] = useState<any[]>([]);
+  const services = useServicesStore((s) => s.services);
   const [screenElements, setScreenElements] = useState<any[]>([]);
   const [modules, setModules] = useState<any[]>([]);
   const [forms, setForms] = useState<any[]>([]);
@@ -60,10 +84,10 @@ export default function MasterDashboard() {
 
   useEffect(() => {
     // Check if we have a token in localStorage
-    const token = localStorage.getItem('auth_token');
-    
+    const token = localStorage.getItem("auth_token");
+
     if (!token && !isAuthenticated) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
@@ -73,7 +97,7 @@ export default function MasterDashboard() {
     }
 
     if (user?.role_level !== 1) {
-      router.push('/dashboard');
+      router.push("/dashboard");
       return;
     }
 
@@ -87,43 +111,67 @@ export default function MasterDashboard() {
       formsAPI.getAll(),
       appTemplatesAPI.getAll(),
     ])
-      .then(([appsResponse, usersResponse, screensResponse, elementsResponse, modulesResponse, formsResponse, templatesResponse]) => {
-        const appsData = Array.isArray(appsResponse.data) ? appsResponse.data : [];
-        const usersData = Array.isArray(usersResponse.data) ? usersResponse.data : [];
-        const screensData = Array.isArray(screensResponse.data) ? screensResponse.data : [];
-        const elementsData = Array.isArray(elementsResponse.data) ? elementsResponse.data : [];
-        const modulesData = Array.isArray(modulesResponse.data) ? modulesResponse.data : [];
-        const formsData = formsResponse.success ? (formsResponse.data || []) : [];
-        const templatesData = Array.isArray(templatesResponse.data) ? templatesResponse.data : [];
-        
-        console.log('Dashboard data loaded:', {
-          apps: appsData.length,
-          users: usersData.length,
-          screens: screensData.length,
-          elements: elementsData.length,
-          modules: modulesData.length,
-          forms: formsData.length,
-          templates: templatesData.length
-        });
-        
-        setApps(appsData);
-        setUsers(usersData);
-        setScreens(screensData);
-        setScreenElements(elementsData);
-        setModules(modulesData);
-        setForms(formsData);
-        setAppTemplates(templatesData);
-        setLoading(false);
-      })
+      .then(
+        ([
+          appsResponse,
+          usersResponse,
+          screensResponse,
+          elementsResponse,
+          modulesResponse,
+          formsResponse,
+          templatesResponse,
+        ]) => {
+          const appsData = Array.isArray(appsResponse.data)
+            ? appsResponse.data
+            : [];
+          const usersData = Array.isArray(usersResponse.data)
+            ? usersResponse.data
+            : [];
+          const screensData = Array.isArray(screensResponse.data)
+            ? screensResponse.data
+            : [];
+          const elementsData = Array.isArray(elementsResponse.data)
+            ? elementsResponse.data
+            : [];
+          const modulesData = Array.isArray(modulesResponse.data)
+            ? modulesResponse.data
+            : [];
+          const formsData = formsResponse.success
+            ? formsResponse.data || []
+            : [];
+          const templatesData = Array.isArray(templatesResponse.data)
+            ? templatesResponse.data
+            : [];
+
+          console.log("Dashboard data loaded:", {
+            apps: appsData.length,
+            users: usersData.length,
+            screens: screensData.length,
+            elements: elementsData.length,
+            modules: modulesData.length,
+            forms: formsData.length,
+            templates: templatesData.length,
+          });
+
+          setApps(appsData);
+          setUsers(usersData);
+          setScreens(screensData);
+          setScreenElements(elementsData);
+          setModules(modulesData);
+          setForms(formsData);
+          setAppTemplates(templatesData);
+          setLoading(false);
+        }
+      )
       .catch((error) => {
-        console.error('Error fetching data:', error);
+        console.error("Error fetching data:", error);
         setLoading(false);
       });
   }, [isAuthenticated, user, router]);
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
+    router.push("/login");
   };
 
   if (loading) {
@@ -139,34 +187,40 @@ export default function MasterDashboard() {
 
   const stats = [
     {
-      title: 'Total Apps',
+      title: "Total Apps",
       value: apps.length,
       icon: Globe,
-      color: 'bg-blue-500',
+      color: "bg-blue-500",
     },
     {
-      title: 'Administrators',
+      title: "Administrators",
       value: users.length,
       icon: Users,
-      color: 'bg-green-500',
+      color: "bg-green-500",
     },
     {
-      title: 'App Screens',
+      title: "App Screens",
       value: screens.length,
       icon: Monitor,
-      color: 'bg-indigo-500',
+      color: "bg-indigo-500",
     },
     {
-      title: 'Elements',
+      title: "Elements",
       value: screenElements.length,
       icon: Layers,
-      color: 'bg-pink-500',
+      color: "bg-pink-500",
     },
     {
-      title: 'Active Apps',
+      title: "Active Apps",
       value: apps.filter((app) => app.is_active).length,
       icon: Activity,
-      color: 'bg-orange-500',
+      color: "bg-orange-500",
+    },
+    {
+      title: "Synced Services",
+      value: services.length,
+      icon: Globe,
+      color: "bg-blue-500",
     },
   ];
 
@@ -178,20 +232,24 @@ export default function MasterDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
-                <img 
-                  src="/logo.png" 
-                  alt="Logo" 
+                <img
+                  src="/logo.png"
+                  alt="Logo"
                   className="w-full h-full object-contain"
                 />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Master Admin Portal</h1>
-                <p className="text-sm text-gray-500">Welcome back, {user?.first_name}</p>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Master Admin Portal
+                </h1>
+                <p className="text-sm text-gray-500">
+                  Welcome back, {user?.first_name}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => router.push('/profile')}
+                onClick={() => router.push("/profile")}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 <User className="w-4 h-4" />
@@ -214,7 +272,7 @@ export default function MasterDashboard() {
         {/* Quick Links */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <button
-            onClick={() => router.push('/master/apps')}
+            onClick={() => router.push("/master/apps")}
             className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
           >
             <div className="flex items-center gap-3">
@@ -227,9 +285,9 @@ export default function MasterDashboard() {
               </div>
             </div>
           </button>
-          
+
           <button
-            onClick={() => router.push('/master/screens')}
+            onClick={() => router.push("/master/screens")}
             className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
           >
             <div className="flex items-center gap-3">
@@ -242,9 +300,9 @@ export default function MasterDashboard() {
               </div>
             </div>
           </button>
-          
+
           <button
-            onClick={() => router.push('/master/screen-elements')}
+            onClick={() => router.push("/master/screen-elements")}
             className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
           >
             <div className="flex items-center gap-3">
@@ -257,9 +315,9 @@ export default function MasterDashboard() {
               </div>
             </div>
           </button>
-          
+
           <button
-            onClick={() => router.push('/master/app-templates')}
+            onClick={() => router.push("/master/app-templates")}
             className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
           >
             <div className="flex items-center gap-3">
@@ -274,7 +332,7 @@ export default function MasterDashboard() {
           </button>
 
           <button
-            onClick={() => router.push('/master/modules')}
+            onClick={() => router.push("/master/modules")}
             className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
           >
             <div className="flex items-center gap-3">
@@ -289,7 +347,7 @@ export default function MasterDashboard() {
           </button>
 
           <button
-            onClick={() => router.push('/master/forms')}
+            onClick={() => router.push("/master/forms")}
             className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
           >
             <div className="flex items-center gap-3">
@@ -304,7 +362,7 @@ export default function MasterDashboard() {
           </button>
 
           <button
-            onClick={() => router.push('/master/users')}
+            onClick={() => router.push("/master/users")}
             className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow text-left"
           >
             <div className="flex items-center gap-3">
@@ -325,10 +383,16 @@ export default function MasterDashboard() {
             <div key={stat.title} className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    {stat.title}
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900 mt-2">
+                    {stat.value}
+                  </p>
                 </div>
-                <div className={`${stat.color} w-12 h-12 rounded-lg flex items-center justify-center`}>
+                <div
+                  className={`${stat.color} w-12 h-12 rounded-lg flex items-center justify-center`}
+                >
                   <stat.icon className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -339,9 +403,11 @@ export default function MasterDashboard() {
         {/* Apps List */}
         <div className="bg-white rounded-lg shadow mb-8">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Applications</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Applications
+            </h2>
             <button
-              onClick={() => router.push('/master/apps')}
+              onClick={() => router.push("/master/apps")}
               className="text-sm text-primary hover:text-primary/80 font-medium"
             >
               Manage Apps →
@@ -368,33 +434,43 @@ export default function MasterDashboard() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {apps.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                      No applications found. Create your first app to get started.
+                    <td
+                      colSpan={4}
+                      className="px-6 py-8 text-center text-gray-500"
+                    >
+                      No applications found. Create your first app to get
+                      started.
                     </td>
                   </tr>
                 ) : (
                   apps.slice(0, 5).map((app) => (
-                    <tr 
-                      key={app.id} 
+                    <tr
+                      key={app.id}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() => router.push(`/app/${app.id}`)}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{app.name}</div>
-                        <div className="text-sm text-gray-500">{app.description}</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {app.name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {app.description}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{app.domain}</div>
+                        <div className="text-sm text-gray-900">
+                          {app.domain}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                             app.is_active
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {app.is_active ? 'Active' : 'Inactive'}
+                          {app.is_active ? "Active" : "Inactive"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -409,7 +485,7 @@ export default function MasterDashboard() {
           {apps.length > 5 && (
             <div className="px-6 py-4 border-t border-gray-200 text-center">
               <button
-                onClick={() => router.push('/master/apps')}
+                onClick={() => router.push("/master/apps")}
                 className="text-sm text-primary hover:text-primary/80 font-medium"
               >
                 View All ({apps.length} total)
@@ -421,9 +497,11 @@ export default function MasterDashboard() {
         {/* Users List */}
         <div className="bg-white rounded-lg shadow mb-8">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">App Administrators</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              App Administrators
+            </h2>
             <button
-              onClick={() => router.push('/master/users')}
+              onClick={() => router.push("/master/users")}
               className="text-sm text-primary hover:text-primary/80 font-medium"
             >
               Manage Administrators →
@@ -462,10 +540,10 @@ export default function MasterDashboard() {
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           u.role_level === 1
-                            ? 'bg-purple-100 text-purple-800'
+                            ? "bg-purple-100 text-purple-800"
                             : u.role_level === 2
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         {u.role_name}
@@ -475,11 +553,11 @@ export default function MasterDashboard() {
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           u.is_active
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
                         }`}
                       >
-                        {u.is_active ? 'Active' : 'Inactive'}
+                        {u.is_active ? "Active" : "Inactive"}
                       </span>
                     </td>
                   </tr>
@@ -490,7 +568,7 @@ export default function MasterDashboard() {
           {users.length > 5 && (
             <div className="px-6 py-4 border-t border-gray-200 text-center">
               <button
-                onClick={() => router.push('/master/users')}
+                onClick={() => router.push("/master/users")}
                 className="text-sm text-primary hover:text-primary/80 font-medium"
               >
                 View All ({users.length} total)
@@ -504,7 +582,7 @@ export default function MasterDashboard() {
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">App Screens</h2>
             <button
-              onClick={() => router.push('/master/screens')}
+              onClick={() => router.push("/master/screens")}
               className="text-sm text-primary hover:text-primary/80 font-medium"
             >
               Manage Screens →
@@ -530,26 +608,38 @@ export default function MasterDashboard() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {screens.slice(0, 5).map((screen) => (
-                  <tr key={screen.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/master/screens/${screen.id}`)}>
+                  <tr
+                    key={screen.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => router.push(`/master/screens/${screen.id}`)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
                           {screen.icon && getMdiPath(screen.icon) ? (
-                            <Icon path={getMdiPath(screen.icon)!} size={0.7} className="text-indigo-600" />
+                            <Icon
+                              path={getMdiPath(screen.icon)!}
+                              size={0.7}
+                              className="text-indigo-600"
+                            />
                           ) : (
                             <Monitor className="w-4 h-4 text-indigo-600" />
                           )}
                         </div>
-                        <span className="text-sm font-medium text-gray-900">{screen.name}</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {screen.name}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                        {screen.category || 'General'}
+                        {screen.category || "General"}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{screen.app_count || 0} apps</div>
+                      <div className="text-sm text-gray-900">
+                        {screen.app_count || 0} apps
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(screen.created_at).toLocaleDateString()}
@@ -558,7 +648,10 @@ export default function MasterDashboard() {
                 ))}
                 {screens.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                    <td
+                      colSpan={4}
+                      className="px-6 py-8 text-center text-sm text-gray-500"
+                    >
                       No screens created yet
                     </td>
                   </tr>
@@ -569,7 +662,7 @@ export default function MasterDashboard() {
           {screens.length > 5 && (
             <div className="px-6 py-4 border-t border-gray-200 text-center">
               <button
-                onClick={() => router.push('/master/screens')}
+                onClick={() => router.push("/master/screens")}
                 className="text-sm text-primary hover:text-primary/80 font-medium"
               >
                 View All ({screens.length} total)
@@ -583,7 +676,7 @@ export default function MasterDashboard() {
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Elements</h2>
             <button
-              onClick={() => router.push('/master/screen-elements')}
+              onClick={() => router.push("/master/screen-elements")}
               className="text-sm text-primary hover:text-primary/80 font-medium"
             >
               View Library →
@@ -609,23 +702,33 @@ export default function MasterDashboard() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {screenElements.slice(0, 5).map((element) => {
-                  const categoryIconPath = getMdiPath(getCategoryIcon(element.category));
+                  const categoryIconPath = getMdiPath(
+                    getCategoryIcon(element.category)
+                  );
                   return (
                     <tr key={element.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                             {categoryIconPath ? (
-                              <Icon path={categoryIconPath} size={0.6} className="text-green-600" />
+                              <Icon
+                                path={categoryIconPath}
+                                size={0.6}
+                                className="text-green-600"
+                              />
                             ) : (
                               <Layers className="w-4 h-4 text-green-600" />
                             )}
                           </div>
-                          <span className="text-sm font-medium text-gray-900">{element.name}</span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {element.name}
+                          </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">{element.element_type}</span>
+                        <span className="text-sm text-gray-900">
+                          {element.element_type}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -633,10 +736,14 @@ export default function MasterDashboard() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          element.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {element.is_active ? 'Active' : 'Inactive'}
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            element.is_active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {element.is_active ? "Active" : "Inactive"}
                         </span>
                       </td>
                     </tr>
@@ -644,7 +751,10 @@ export default function MasterDashboard() {
                 })}
                 {screenElements.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                    <td
+                      colSpan={4}
+                      className="px-6 py-8 text-center text-sm text-gray-500"
+                    >
                       No screen elements available
                     </td>
                   </tr>
@@ -655,7 +765,7 @@ export default function MasterDashboard() {
           {screenElements.length > 5 && (
             <div className="px-6 py-4 border-t border-gray-200 text-center">
               <button
-                onClick={() => router.push('/master/screen-elements')}
+                onClick={() => router.push("/master/screen-elements")}
                 className="text-sm text-primary hover:text-primary/80 font-medium"
               >
                 View All ({screenElements.length} total)
@@ -669,7 +779,7 @@ export default function MasterDashboard() {
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Modules</h2>
             <button
-              onClick={() => router.push('/master/modules')}
+              onClick={() => router.push("/master/modules")}
               className="text-sm text-primary hover:text-primary/80 font-medium"
             >
               View Library →
@@ -695,10 +805,14 @@ export default function MasterDashboard() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {modules.slice(0, 5).map((module) => {
-                  const typeLabel = module.module_type === 'header_bar' ? 'Header Bar' : 
-                                   module.module_type === 'footer_bar' ? 'Footer Bar' : 
-                                   module.module_type === 'floating_action_button' ? 'FAB' : 
-                                   module.module_type;
+                  const typeLabel =
+                    module.module_type === "header_bar"
+                      ? "Header Bar"
+                      : module.module_type === "footer_bar"
+                      ? "Footer Bar"
+                      : module.module_type === "floating_action_button"
+                      ? "FAB"
+                      : module.module_type;
                   return (
                     <tr key={module.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -706,7 +820,9 @@ export default function MasterDashboard() {
                           <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                             <Package className="w-4 h-4 text-purple-600" />
                           </div>
-                          <span className="text-sm font-medium text-gray-900">{module.name}</span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {module.name}
+                          </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -715,13 +831,20 @@ export default function MasterDashboard() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm text-gray-500">{module.description?.substring(0, 50)}{module.description?.length > 50 ? '...' : ''}</span>
+                        <span className="text-sm text-gray-500">
+                          {module.description?.substring(0, 50)}
+                          {module.description?.length > 50 ? "..." : ""}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          module.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {module.is_active ? 'Active' : 'Inactive'}
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            module.is_active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {module.is_active ? "Active" : "Inactive"}
                         </span>
                       </td>
                     </tr>
@@ -729,7 +852,10 @@ export default function MasterDashboard() {
                 })}
                 {modules.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                    <td
+                      colSpan={4}
+                      className="px-6 py-8 text-center text-sm text-gray-500"
+                    >
                       No modules available
                     </td>
                   </tr>
@@ -740,7 +866,7 @@ export default function MasterDashboard() {
           {modules.length > 5 && (
             <div className="px-6 py-4 border-t border-gray-200 text-center">
               <button
-                onClick={() => router.push('/master/modules')}
+                onClick={() => router.push("/master/modules")}
                 className="text-sm text-primary hover:text-primary/80 font-medium"
               >
                 View All ({modules.length} total)
@@ -754,7 +880,7 @@ export default function MasterDashboard() {
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Forms</h2>
             <button
-              onClick={() => router.push('/master/forms')}
+              onClick={() => router.push("/master/forms")}
               className="text-sm text-primary hover:text-primary/80 font-medium"
             >
               Manage Forms →
@@ -780,15 +906,23 @@ export default function MasterDashboard() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {forms.slice(0, 5).map((form) => (
-                  <tr key={form.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/master/forms/${form.id}`)}>
+                  <tr
+                    key={form.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => router.push(`/master/forms/${form.id}`)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
                           <FileText className="w-4 h-4 text-cyan-600" />
                         </div>
                         <div>
-                          <span className="text-sm font-medium text-gray-900">{form.name}</span>
-                          <div className="text-xs text-gray-500">{form.form_key}</div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {form.name}
+                          </span>
+                          <div className="text-xs text-gray-500">
+                            {form.form_key}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -801,17 +935,24 @@ export default function MasterDashboard() {
                       {form.element_count || 0} fields
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        form.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {form.is_active ? 'Active' : 'Inactive'}
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          form.is_active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {form.is_active ? "Active" : "Inactive"}
                       </span>
                     </td>
                   </tr>
                 ))}
                 {forms.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                    <td
+                      colSpan={4}
+                      className="px-6 py-8 text-center text-sm text-gray-500"
+                    >
                       No forms created yet
                     </td>
                   </tr>
@@ -822,7 +963,7 @@ export default function MasterDashboard() {
           {forms.length > 5 && (
             <div className="px-6 py-4 border-t border-gray-200 text-center">
               <button
-                onClick={() => router.push('/master/forms')}
+                onClick={() => router.push("/master/forms")}
                 className="text-sm text-primary hover:text-primary/80 font-medium"
               >
                 View All ({forms.length} total)
@@ -834,9 +975,11 @@ export default function MasterDashboard() {
         {/* App Templates Summary */}
         <div className="bg-white rounded-lg shadow mt-8">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">App Templates</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              App Templates
+            </h2>
             <button
-              onClick={() => router.push('/master/app-templates')}
+              onClick={() => router.push("/master/app-templates")}
               className="text-sm text-primary hover:text-primary/80 font-medium"
             >
               Manage Templates →
@@ -862,38 +1005,56 @@ export default function MasterDashboard() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {appTemplates.slice(0, 5).map((template) => (
-                  <tr key={template.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/master/app-templates/${template.id}`)}>
+                  <tr
+                    key={template.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() =>
+                      router.push(`/master/app-templates/${template.id}`)
+                    }
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
                           <Sparkles className="w-4 h-4 text-amber-600" />
                         </div>
                         <div>
-                          <span className="text-sm font-medium text-gray-900">{template.name}</span>
-                          <div className="text-xs text-gray-500">{template.description?.substring(0, 40)}{template.description?.length > 40 ? '...' : ''}</div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {template.name}
+                          </span>
+                          <div className="text-xs text-gray-500">
+                            {template.description?.substring(0, 40)}
+                            {template.description?.length > 40 ? "..." : ""}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
-                        {template.category || 'General'}
+                        {template.category || "General"}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {template.screen_count || 0} screens
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        template.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {template.is_active ? 'Active' : 'Inactive'}
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          template.is_active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {template.is_active ? "Active" : "Inactive"}
                       </span>
                     </td>
                   </tr>
                 ))}
                 {appTemplates.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                    <td
+                      colSpan={4}
+                      className="px-6 py-8 text-center text-sm text-gray-500"
+                    >
                       No templates created yet
                     </td>
                   </tr>
@@ -904,7 +1065,7 @@ export default function MasterDashboard() {
           {appTemplates.length > 5 && (
             <div className="px-6 py-4 border-t border-gray-200 text-center">
               <button
-                onClick={() => router.push('/master/app-templates')}
+                onClick={() => router.push("/master/app-templates")}
                 className="text-sm text-primary hover:text-primary/80 font-medium"
               >
                 View All ({appTemplates.length} total)

@@ -1,12 +1,22 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/lib/store';
-import { appsAPI, appTemplatesAPI, appScreensAPI } from '@/lib/api';
-import { Plus, Edit, Trash2, Globe, ArrowLeft, Search, Monitor, Sparkles, Copy } from 'lucide-react';
-import Modal from '@/components/ui/Modal';
-import Button from '@/components/ui/Button';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore, useServicesStore } from "@/lib/store";
+import { appsAPI, appTemplatesAPI, appScreensAPI } from "@/lib/api";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Globe,
+  ArrowLeft,
+  Search,
+  Monitor,
+  Sparkles,
+  Copy,
+} from "lucide-react";
+import Modal from "@/components/ui/Modal";
+import Button from "@/components/ui/Button";
 
 interface App {
   id: number;
@@ -21,9 +31,10 @@ export default function AppsManagement() {
   const router = useRouter();
   const { user, isAuthenticated, isHydrated } = useAuthStore();
   const [apps, setApps] = useState<App[]>([]);
+  const services = useServicesStore((s) => s.services);
   const [filteredApps, setFilteredApps] = useState<App[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -33,26 +44,28 @@ export default function AppsManagement() {
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-  const [templateAppName, setTemplateAppName] = useState('');
+  const [templateAppName, setTemplateAppName] = useState("");
   const [formData, setFormData] = useState({
-    name: '',
-    domain: '',
-    description: '',
+    name: "",
+    domain: "",
+    description: "",
     is_active: true,
   });
   const [formErrors, setFormErrors] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
-  const [sortField, setSortField] = useState<'name' | 'domain' | 'status'>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<"name" | "domain" | "status">(
+    "name"
+  );
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   const ITEMS_PER_PAGE = 50;
 
   useEffect(() => {
     // Check localStorage for token
-    const token = localStorage.getItem('auth_token');
-    
+    const token = localStorage.getItem("auth_token");
+
     if (!token && !isAuthenticated) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
@@ -63,7 +76,7 @@ export default function AppsManagement() {
 
     // After hydration, check if user is master admin
     if (isHydrated && user?.role_level !== 1) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
@@ -90,22 +103,22 @@ export default function AppsManagement() {
       let bValue: any;
 
       switch (sortField) {
-        case 'name':
+        case "name":
           aValue = a.name.toLowerCase();
           bValue = b.name.toLowerCase();
           break;
-        case 'domain':
+        case "domain":
           aValue = a.domain.toLowerCase();
           bValue = b.domain.toLowerCase();
           break;
-        case 'status':
+        case "status":
           aValue = a.is_active ? 1 : 0;
           bValue = b.is_active ? 1 : 0;
           break;
       }
 
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
       return 0;
     });
 
@@ -119,7 +132,7 @@ export default function AppsManagement() {
       setApps(response.data || []);
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching apps:', error);
+      console.error("Error fetching apps:", error);
       setLoading(false);
     }
   };
@@ -129,7 +142,7 @@ export default function AppsManagement() {
       const response = await appTemplatesAPI.getAll();
       setTemplates(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      console.error("Error fetching templates:", error);
     }
   };
 
@@ -141,20 +154,20 @@ export default function AppsManagement() {
       const response = await appTemplatesAPI.createFromTemplate({
         template_id: selectedTemplate.id,
         app_name: templateAppName,
-        created_by: user.id
+        created_by: user.id,
       });
 
       if (response.success) {
         setIsTemplateModalOpen(false);
         setSelectedTemplate(null);
-        setTemplateAppName('');
+        setTemplateAppName("");
         fetchApps();
         // Navigate to the new app
         router.push(`/app/${response.data.app_id}`);
       }
     } catch (error) {
-      console.error('Error creating app from template:', error);
-      alert('Failed to create app from template. Please try again.');
+      console.error("Error creating app from template:", error);
+      alert("Failed to create app from template. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -171,21 +184,21 @@ export default function AppsManagement() {
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const currentApps = filteredApps.slice(startIndex, endIndex);
 
-  const handleSort = (field: 'name' | 'domain' | 'status') => {
+  const handleSort = (field: "name" | "domain" | "status") => {
     if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
   };
 
   const validateForm = () => {
     const errors: any = {};
-    if (!formData.name.trim()) errors.name = 'Name is required';
-    if (!formData.domain.trim()) errors.domain = 'Domain is required';
+    if (!formData.name.trim()) errors.name = "Name is required";
+    if (!formData.domain.trim()) errors.domain = "Domain is required";
     if (formData.domain && !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(formData.domain)) {
-      errors.domain = 'Invalid domain format (e.g., example.com)';
+      errors.domain = "Invalid domain format (e.g., example.com)";
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -202,7 +215,9 @@ export default function AppsManagement() {
       resetForm();
       fetchApps();
     } catch (error: any) {
-      setFormErrors({ submit: error.response?.data?.message || 'Failed to create app' });
+      setFormErrors({
+        submit: error.response?.data?.message || "Failed to create app",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -219,7 +234,9 @@ export default function AppsManagement() {
       resetForm();
       fetchApps();
     } catch (error: any) {
-      setFormErrors({ submit: error.response?.data?.message || 'Failed to update app' });
+      setFormErrors({
+        submit: error.response?.data?.message || "Failed to update app",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -235,7 +252,7 @@ export default function AppsManagement() {
       setSelectedApp(null);
       fetchApps();
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to delete app');
+      alert(error.response?.data?.message || "Failed to delete app");
     } finally {
       setSubmitting(false);
     }
@@ -251,7 +268,7 @@ export default function AppsManagement() {
     setFormData({
       name: app.name,
       domain: app.domain,
-      description: app.description || '',
+      description: app.description || "",
       is_active: app.is_active,
     });
     setIsEditModalOpen(true);
@@ -266,8 +283,8 @@ export default function AppsManagement() {
     setSelectedApp(app);
     setFormData({
       name: `${app.name} (Copy)`,
-      domain: '',
-      description: app.description || '',
+      domain: "",
+      description: app.description || "",
       is_active: app.is_active,
     });
     setIsCopyModalOpen(true);
@@ -281,15 +298,17 @@ export default function AppsManagement() {
     try {
       // Create the new app
       const createResponse = await appsAPI.create(formData);
-      
+
       if (createResponse.success && createResponse.data?.id) {
         const newAppId = createResponse.data.id;
-        
+
         // Get screens from the original app
-        const screensResponse = await appScreensAPI.getAppScreens(selectedApp.id);
-        
-        console.log('Screens to copy:', screensResponse.data);
-        
+        const screensResponse = await appScreensAPI.getAppScreens(
+          selectedApp.id
+        );
+
+        console.log("Screens to copy:", screensResponse.data);
+
         if (screensResponse.success && Array.isArray(screensResponse.data)) {
           // Copy each screen to the new app
           for (const screen of screensResponse.data) {
@@ -297,25 +316,30 @@ export default function AppsManagement() {
               await appScreensAPI.assignToApp({
                 app_id: newAppId,
                 screen_id: screen.id, // Use 'id' not 'screen_id'
-                display_order: screen.assigned_order || screen.display_order || 0
+                display_order:
+                  screen.assigned_order || screen.display_order || 0,
               });
-              console.log(`Copied screen ${screen.id} (${screen.name}) to app ${newAppId}`);
+              console.log(
+                `Copied screen ${screen.id} (${screen.name}) to app ${newAppId}`
+              );
             } catch (error) {
               console.error(`Error copying screen ${screen.id}:`, error);
             }
           }
         }
-        
+
         setIsCopyModalOpen(false);
         resetForm();
         fetchApps();
-        
+
         // Navigate to the new app
         router.push(`/app/${newAppId}`);
       }
     } catch (error: any) {
-      console.error('Copy app error:', error);
-      setFormErrors({ submit: error.response?.data?.message || 'Failed to copy app' });
+      console.error("Copy app error:", error);
+      setFormErrors({
+        submit: error.response?.data?.message || "Failed to copy app",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -323,9 +347,9 @@ export default function AppsManagement() {
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      domain: '',
-      description: '',
+      name: "",
+      domain: "",
+      description: "",
       is_active: true,
     });
     setFormErrors({});
@@ -351,7 +375,7 @@ export default function AppsManagement() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push('/master')}
+                onClick={() => router.push("/master")}
                 className="text-gray-600 hover:text-gray-900"
               >
                 <ArrowLeft className="w-6 h-6" />
@@ -361,8 +385,12 @@ export default function AppsManagement() {
                   <Globe className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">App Management</h1>
-                  <p className="text-sm text-gray-500">Manage all applications</p>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    App Management
+                  </h1>
+                  <p className="text-sm text-gray-500">
+                    Manage all applications
+                  </p>
                 </div>
               </div>
             </div>
@@ -400,7 +428,8 @@ export default function AppsManagement() {
             />
           </div>
           <p className="mt-2 text-sm text-gray-500">
-            Showing {startIndex + 1}-{Math.min(endIndex, filteredApps.length)} of {filteredApps.length} apps
+            Showing {startIndex + 1}-{Math.min(endIndex, filteredApps.length)}{" "}
+            of {filteredApps.length} apps
           </p>
         </div>
 
@@ -409,25 +438,25 @@ export default function AppsManagement() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('name')}
+                    onClick={() => handleSort("name")}
                   >
                     <div className="flex items-center gap-1">
                       Name
-                      {sortField === 'name' && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      {sortField === "name" && (
+                        <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('status')}
+                    onClick={() => handleSort("status")}
                   >
                     <div className="flex items-center gap-1">
                       Status
-                      {sortField === 'status' && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      {sortField === "status" && (
+                        <span>{sortDirection === "asc" ? "↑" : "↓"}</span>
                       )}
                     </div>
                   </th>
@@ -441,24 +470,28 @@ export default function AppsManagement() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {currentApps.map((app) => (
-                  <tr 
-                    key={app.id} 
+                  <tr
+                    key={app.id}
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => router.push(`/app/${app.id}`)}
                   >
-                    <td className="px-6 py-4 max-w-xs">
-                      <div className="text-sm font-medium text-gray-900 truncate" title={app.name}>{app.name}</div>
-                      <div className="text-sm text-gray-500 truncate" title={app.description}>{app.description}</div>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {app.name}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {app.description}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           app.is_active
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
                         }`}
                       >
-                        {app.is_active ? 'Active' : 'Inactive'}
+                        {app.is_active ? "Active" : "Inactive"}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -509,7 +542,7 @@ export default function AppsManagement() {
               </tbody>
             </table>
           </div>
-          
+
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
@@ -526,7 +559,9 @@ export default function AppsManagement() {
                 </span>
               </div>
               <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                onClick={() =>
+                  setCurrentPage(Math.min(totalPages, currentPage + 1))
+                }
                 disabled={currentPage === totalPages}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -551,7 +586,9 @@ export default function AppsManagement() {
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="My Application"
             />
@@ -567,7 +604,9 @@ export default function AppsManagement() {
             <input
               type="text"
               value={formData.domain}
-              onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, domain: e.target.value })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="myapp.example.com"
             />
@@ -582,7 +621,9 @@ export default function AppsManagement() {
             </label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               rows={3}
               placeholder="Brief description of the application"
@@ -594,7 +635,9 @@ export default function AppsManagement() {
               type="checkbox"
               id="is_active"
               checked={formData.is_active}
-              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, is_active: e.target.checked })
+              }
               className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
             />
             <label htmlFor="is_active" className="ml-2 text-sm text-gray-700">
@@ -615,7 +658,7 @@ export default function AppsManagement() {
               Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? 'Creating...' : 'Create App'}
+              {submitting ? "Creating..." : "Create App"}
             </Button>
           </div>
         </form>
@@ -635,7 +678,9 @@ export default function AppsManagement() {
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {formErrors.name && (
@@ -650,7 +695,9 @@ export default function AppsManagement() {
             <input
               type="text"
               value={formData.domain}
-              onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, domain: e.target.value })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {formErrors.domain && (
@@ -664,7 +711,9 @@ export default function AppsManagement() {
             </label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               rows={3}
             />
@@ -675,10 +724,15 @@ export default function AppsManagement() {
               type="checkbox"
               id="edit_is_active"
               checked={formData.is_active}
-              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, is_active: e.target.checked })
+              }
               className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
             />
-            <label htmlFor="edit_is_active" className="ml-2 text-sm text-gray-700">
+            <label
+              htmlFor="edit_is_active"
+              className="ml-2 text-sm text-gray-700"
+            >
               Active
             </label>
           </div>
@@ -696,7 +750,7 @@ export default function AppsManagement() {
               Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? 'Saving...' : 'Save Changes'}
+              {submitting ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </form>
@@ -714,7 +768,8 @@ export default function AppsManagement() {
               <strong>Copying:</strong> {selectedApp?.name}
             </p>
             <p className="text-xs text-blue-600 mt-1">
-              All screens and their configurations will be copied to the new app.
+              All screens and their configurations will be copied to the new
+              app.
             </p>
           </div>
 
@@ -725,7 +780,9 @@ export default function AppsManagement() {
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="My Application (Copy)"
             />
@@ -741,7 +798,9 @@ export default function AppsManagement() {
             <input
               type="text"
               value={formData.domain}
-              onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, domain: e.target.value })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="newapp.example.com"
             />
@@ -756,7 +815,9 @@ export default function AppsManagement() {
             </label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               rows={3}
               placeholder="Brief description of the application"
@@ -768,10 +829,15 @@ export default function AppsManagement() {
               type="checkbox"
               id="copy_is_active"
               checked={formData.is_active}
-              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, is_active: e.target.checked })
+              }
               className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
             />
-            <label htmlFor="copy_is_active" className="ml-2 text-sm text-gray-700">
+            <label
+              htmlFor="copy_is_active"
+              className="ml-2 text-sm text-gray-700"
+            >
               Active
             </label>
           </div>
@@ -789,7 +855,7 @@ export default function AppsManagement() {
               Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? 'Copying...' : 'Copy App'}
+              {submitting ? "Copying..." : "Copy App"}
             </Button>
           </div>
         </form>
@@ -804,8 +870,8 @@ export default function AppsManagement() {
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            Are you sure you want to delete <strong>{selectedApp?.name}</strong>? This action
-            cannot be undone and will remove all associated data.
+            Are you sure you want to delete <strong>{selectedApp?.name}</strong>
+            ? This action cannot be undone and will remove all associated data.
           </p>
 
           <div className="flex justify-end gap-3 pt-4">
@@ -822,7 +888,7 @@ export default function AppsManagement() {
               onClick={handleDelete}
               disabled={submitting}
             >
-              {submitting ? 'Deleting...' : 'Delete App'}
+              {submitting ? "Deleting..." : "Delete App"}
             </Button>
           </div>
         </div>
@@ -833,9 +899,12 @@ export default function AppsManagement() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">Create App from Template</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Create App from Template
+              </h2>
               <p className="text-gray-600 mt-1">
-                Choose a template to get started quickly with pre-configured screens and modules
+                Choose a template to get started quickly with pre-configured
+                screens and modules
               </p>
             </div>
 
@@ -881,26 +950,34 @@ export default function AppsManagement() {
                           onClick={() => setSelectedTemplate(template)}
                           className={`cursor-pointer transition-colors ${
                             selectedTemplate?.id === template.id
-                              ? 'bg-purple-50'
-                              : 'hover:bg-gray-50'
+                              ? "bg-purple-50"
+                              : "hover:bg-gray-50"
                           }`}
                         >
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                                selectedTemplate?.id === template.id
-                                  ? 'bg-purple-600'
-                                  : 'bg-purple-100'
-                              }`}>
-                                <Sparkles className={`w-4 h-4 ${
+                              <div
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                                   selectedTemplate?.id === template.id
-                                    ? 'text-white'
-                                    : 'text-purple-600'
-                                }`} />
+                                    ? "bg-purple-600"
+                                    : "bg-purple-100"
+                                }`}
+                              >
+                                <Sparkles
+                                  className={`w-4 h-4 ${
+                                    selectedTemplate?.id === template.id
+                                      ? "text-white"
+                                      : "text-purple-600"
+                                  }`}
+                                />
                               </div>
                               <div>
-                                <div className="font-medium text-gray-900">{template.name}</div>
-                                <div className="text-sm text-gray-600">{template.description}</div>
+                                <div className="font-medium text-gray-900">
+                                  {template.name}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  {template.description}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -922,10 +999,15 @@ export default function AppsManagement() {
               {/* Selected Template Info */}
               {selectedTemplate && (
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-purple-900 mb-2">Selected: {selectedTemplate.name}</h3>
-                  <p className="text-sm text-purple-700 mb-2">{selectedTemplate.description}</p>
+                  <h3 className="font-semibold text-purple-900 mb-2">
+                    Selected: {selectedTemplate.name}
+                  </h3>
+                  <p className="text-sm text-purple-700 mb-2">
+                    {selectedTemplate.description}
+                  </p>
                   <p className="text-xs text-purple-600">
-                    This template includes {selectedTemplate.screen_count} pre-configured screens with modules
+                    This template includes {selectedTemplate.screen_count}{" "}
+                    pre-configured screens with modules
                   </p>
                 </div>
               )}
@@ -936,7 +1018,7 @@ export default function AppsManagement() {
                 onClick={() => {
                   setIsTemplateModalOpen(false);
                   setSelectedTemplate(null);
-                  setTemplateAppName('');
+                  setTemplateAppName("");
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
@@ -947,7 +1029,7 @@ export default function AppsManagement() {
                 disabled={!selectedTemplate || !templateAppName || submitting}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? 'Creating...' : 'Create App'}
+                {submitting ? "Creating..." : "Create App"}
               </button>
             </div>
           </div>

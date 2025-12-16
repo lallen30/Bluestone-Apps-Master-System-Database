@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>Your Cart – Checkout</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Keeping your exact script URL as requested -->
+    <script src="https://js.stripe.com/clover/stripe.js"></script>
+  </head>
+  <body>
+    <main class="checkout-page">
+      <section class="checkout-container">
+        <header class="checkout-header">
+          <h1>Your cart</h1>
+          <p>Review your items and proceed to secure payment.</p>
+        </header>
+
+        <!-- One form for the whole cart -->
+        <form
+          action="/create-checkout-session"
+          method="POST"
+          class="checkout-form"
+        >
+          <div class="checkout-content">
+            <!-- Cart items -->
+            <div class="cart-items">
+              <!-- Product 1 -->
+              <div class="cart-item">
+                <img
+                  src="chair.png"
+                  alt="The cover of Stubborn Attachments"
+                  class="cart-item-image"
+                />
+                <div class="cart-item-info">
+                  <div class="cart-item-header">
+                    <h3 class="cart-item-name">Larry's Chair</h3>
+                    <span class="cart-item-price">$20.00</span>
+                  </div>
+                  <p class="cart-item-meta">Old · Smelly</p>
+                  <label class="cart-item-quantity">
+                    Qty:
+                    <input
+                      type="number"
+                      name="qty_stubborn"
+                      min="0"
+                      value="1"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <!-- Product 2 -->
+              <div class="cart-item">
+                <img
+                  src="https://picsum.photos/80?random=2"
+                  alt="Thinking in Systems"
+                  class="cart-item-image"
+                />
+                <div class="cart-item-info">
+                  <div class="cart-item-header">
+                    <h3 class="cart-item-name">Larry's Laptop</h3>
+                    <span class="cart-item-price">$24.00</span>
+                  </div>
+                  <p class="cart-item-meta">Likely Crusty · Dirty but works</p>
+                  <label class="cart-item-quantity">
+                    Qty:
+                    <input type="number" name="qty_systems" min="0" value="0" />
+                  </label>
+                </div>
+              </div>
+
+              <!-- Product 3 -->
+              <div class="cart-item">
+                <img src="vr.png" alt="Deep Work" class="cart-item-image" />
+                <div class="cart-item-info">
+                  <div class="cart-item-header">
+                    <h3 class="cart-item-name">Larry's VR</h3>
+                    <span class="cart-item-price">$18.00</span>
+                  </div>
+                  <p class="cart-item-meta">
+                    Malware Preinstalled · Productivity
+                  </p>
+                  <label class="cart-item-quantity">
+                    Qty:
+                    <input
+                      type="number"
+                      name="qty_deepwork"
+                      min="0"
+                      value="0"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Order summary + Checkout button -->
+            <aside class="order-summary">
+              <h2>Order summary</h2>
+
+              <p class="summary-hint">
+                Quantities above are what will be sent to Stripe Checkout.
+              </p>
+
+              <div class="summary-divider"></div>
+
+              <div class="summary-row summary-total">
+                <span>Total</span>
+                <span class="summary-total-note"> Calculated on Stripe </span>
+              </div>
+
+              <button
+                type="submit"
+                id="checkout-button"
+                class="checkout-button"
+              >
+                Pay securely
+              </button>
+              <p class="checkout-note">
+                You’ll be redirected to a secure Stripe Checkout page to
+                complete your purchase.
+              </p>
+
+              <p class="payment-badge">Powered by Stripe</p>
+            </aside>
+          </div>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

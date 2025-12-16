@@ -26,7 +26,15 @@ export const ENDPOINTS = {
     UPDATE: (id: number) => `/apps/${API_CONFIG.APP_ID}/listings/${id}`,
     DELETE: (id: number) => `/apps/${API_CONFIG.APP_ID}/listings/${id}`,
     STATUS: (id: number) => `/apps/${API_CONFIG.APP_ID}/listings/${id}/status`,
-    PUBLISH: (id: number) => `/apps/${API_CONFIG.APP_ID}/listings/${id}/publish`,
+    PUBLISH: (id: number) =>
+      `/apps/${API_CONFIG.APP_ID}/listings/${id}/publish`,
+  },
+  SERVICES: {
+    ENABLED: `/apps/${API_CONFIG.APP_ID}/services/enabled`,
+  },
+  PAYMENTS: {
+    // Use the create route that creates a provisional booking and returns a Checkout session
+    CHECKOUT: `/apps/${API_CONFIG.APP_ID}/checkout/create`,
   },
   // Amenities
   AMENITIES: {
