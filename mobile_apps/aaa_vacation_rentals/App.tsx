@@ -10,7 +10,7 @@ import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
-import { StripeProvider } from './src/context/StripeProvider';
+// import { StripeProvider } from './src/context/StripeProvider'; // Commented out for testing
 import AppNavigator from './src/navigation/AppNavigator';
 
 function App() {
@@ -18,10 +18,11 @@ function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
-          <StripeProvider>
+          {/* StripeProvider commented out for testing */}
+          {/* <StripeProvider> */}
             <StatusBar barStyle="dark-content" backgroundColor="#fff" />
             <AppNavigator />
-          </StripeProvider>
+          {/* </StripeProvider> */}
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

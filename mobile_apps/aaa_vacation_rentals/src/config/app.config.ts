@@ -12,6 +12,8 @@
  * 5. Update iOS/Android bundle identifiers
  */
 
+import { Platform } from 'react-native';
+
 // Import Config from react-native-config if available, otherwise use defaults
 let Config: Record<string, string | undefined> = {};
 try {
@@ -26,14 +28,22 @@ try {
  * App Configuration Object
  * Values are loaded from environment variables with fallbacks to defaults
  */
+// For iOS simulator, localhost works. For Android emulator, use 10.0.2.2
+// For physical devices, use your Mac's local IP or the production server
+const getLocalhost = () => {
+  // iOS simulator can use localhost directly
+  // Android emulator needs 10.0.2.2 to reach host machine
+  return Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+};
+
 export const AppConfig = {
-  // API Configuration
-  API_BASE_URL: Config.API_BASE_URL || 'http://localhost:3000/api/v1',
-  API_SERVER_URL: Config.API_SERVER_URL || 'http://localhost:3000',
+  // API Configuration - pointing to production server
+  API_BASE_URL: Config.API_BASE_URL || 'http://knoxdev.org/api/v1',
+  API_SERVER_URL: Config.API_SERVER_URL || 'http://knoxdev.org',
   API_TIMEOUT: parseInt(Config.API_TIMEOUT || '30000', 10),
   
   // App Identification
-  APP_ID: parseInt(Config.APP_ID || '63', 10),
+  APP_ID: parseInt(Config.APP_ID || '56', 10),
   APP_NAME: Config.APP_NAME || 'AAAVacationRentals',
   APP_DISPLAY_NAME: Config.APP_DISPLAY_NAME || 'AAA Vacation Rentals',
   
