@@ -146,6 +146,7 @@ export default function DashboardReportsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [appName, setAppName] = useState('');
+  const [templateId, setTemplateId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -154,6 +155,9 @@ export default function DashboardReportsPage() {
   const [inquiries, setInquiries] = useState<InquiriesOverview | null>(null);
   const [popularListings, setPopularListings] = useState<PopularListing[]>([]);
   const [realEstateData, setRealEstateData] = useState<RealEstateOverview | null>(null);
+  
+  // Template 5 = Real Estate, Template 9 = Property Rental (vacation rentals)
+  const isRealEstateTemplate = templateId === 5;
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -172,6 +176,7 @@ export default function DashboardReportsPage() {
       // Fetch app details
       const appResponse = await appsAPI.getById(appId);
       setAppName(appResponse.data?.name || 'App');
+      setTemplateId(appResponse.data?.template_id || null);
 
       // Fetch all reports in parallel
       const [summaryRes, listingsRes, usersRes, inquiriesRes, popularRes, realEstateRes] = await Promise.all([
@@ -236,8 +241,8 @@ export default function DashboardReportsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard Reports</h1>
-            <p className="text-gray-600 mt-1">Analytics and insights for your real estate app</p>
+            <h1 className="text-2xl font-bold text-gray-900">Analytics and Reports</h1>
+            <p className="text-gray-600 mt-1">Analytics and insights for {appName}</p>
           </div>
           <button
             onClick={handleRefresh}
@@ -459,11 +464,11 @@ export default function DashboardReportsPage() {
 
         {/* Inquiries and Popular Listings */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Inquiries Overview */}
+          {/* Bookings Overview */}
           {inquiries && (
             <div className="bg-white rounded-lg shadow">
               <div className="p-6 border-b">
-                <h2 className="text-lg font-semibold text-gray-900">Inquiries Overview</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Bookings Overview</h2>
               </div>
               <div className="p-6">
                 {/* Status Breakdown */}
@@ -486,9 +491,9 @@ export default function DashboardReportsPage() {
                   </div>
                 </div>
 
-                {/* Recent Inquiries */}
+                {/* Recent Bookings */}
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Recent Inquiries</h3>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Recent Bookings</h3>
                   <div className="space-y-3">
                     {inquiries.recentInquiries.slice(0, 5).map((inquiry, index) => (
                       <div key={index} className="flex items-center justify-between">
@@ -561,8 +566,8 @@ export default function DashboardReportsPage() {
           </div>
         </div>
 
-        {/* Real Estate Specific: Inquiries & Showings */}
-        {realEstateData && (
+        {/* Real Estate Specific: Inquiries & Showings - Only show for Template 5 (Real Estate) */}
+        {realEstateData && isRealEstateTemplate && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Property Inquiries */}
             <div className="bg-white rounded-lg shadow">

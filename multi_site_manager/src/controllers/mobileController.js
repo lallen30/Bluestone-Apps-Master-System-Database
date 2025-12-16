@@ -62,19 +62,19 @@ exports.getScreenContent = async (req, res) => {
       });
     }
     
-    // Get elements with content
+    // Get elements with content and app-specific overrides
     const elementsResult = await db.query(
       `SELECT 
         sei.id as instance_id,
         sei.element_id,
         sei.field_key,
-        sei.label,
-        sei.placeholder,
-        sei.default_value,
-        sei.is_required,
+        COALESCE(ovr.custom_label, sei.label) as label,
+        COALESCE(ovr.custom_placeholder, sei.placeholder) as placeholder,
+        COALESCE(ovr.custom_default_value, sei.default_value) as default_value,
+        COALESCE(ovr.is_required_override, sei.is_required) as is_required,
         sei.is_readonly,
-        sei.display_order,
-        CAST(sei.config AS CHAR) as config,
+        COALESCE(ovr.custom_display_order, sei.display_order) as display_order,
+        CAST(COALESCE(ovr.custom_config, sei.config) AS CHAR) as config,
         se.name as element_name,
         se.element_type,
         se.category,
@@ -84,14 +84,18 @@ exports.getScreenContent = async (req, res) => {
         se.is_input_field,
         se.is_editable_by_app_admin,
         content.content_value,
-        content.options as content_options
+        content.options as content_options,
+        COALESCE(ovr.is_hidden, 0) as is_hidden
        FROM screen_element_instances sei
        JOIN screen_elements se ON sei.element_id = se.id
        LEFT JOIN app_screen_content content ON content.element_instance_id = sei.id 
               AND content.app_id = ? AND content.screen_id = ?
+       LEFT JOIN app_screen_element_overrides ovr ON ovr.element_instance_id = sei.id 
+              AND ovr.app_id = ? AND ovr.screen_id = ?
        WHERE sei.screen_id = ? AND se.is_active = 1
-       ORDER BY sei.display_order`,
-      [app_id, screen_id, screen_id]
+         AND COALESCE(ovr.is_hidden, 0) = 0
+       ORDER BY COALESCE(ovr.custom_display_order, sei.display_order)`,
+      [app_id, screen_id, app_id, screen_id, screen_id]
     );
     
     const elements = Array.isArray(elementsResult) && Array.isArray(elementsResult[0]) 

@@ -97,7 +97,7 @@ export default function ReportsPage() {
                 <LayoutDashboard className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-white">Dashboard Reports</h2>
+                <h2 className="text-xl font-semibold text-white">Analytics and Reports</h2>
                 <p className="text-blue-100">View analytics, listings, users, and inquiry reports</p>
               </div>
             </div>
@@ -127,9 +127,11 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {/* Reports Grid */}
+        {/* Custom Reports Section */}
         {reportScreens.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Custom Reports</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {reportScreens.map((screen) => (
               <div
                 key={screen.id}
@@ -192,7 +194,8 @@ export default function ReportsPage() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          </>
         )}
       </div>
     </AppLayout>
