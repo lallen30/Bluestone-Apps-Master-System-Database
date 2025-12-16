@@ -28,8 +28,8 @@ try {
  */
 export const AppConfig = {
   // API Configuration
-  API_BASE_URL: Config.API_BASE_URL || 'http://localhost:3000/api/v1',
-  API_SERVER_URL: Config.API_SERVER_URL || 'http://localhost:3000',
+  API_BASE_URL: Config.API_BASE_URL || 'http://knoxdev.org/api/v1',
+  API_SERVER_URL: Config.API_SERVER_URL || 'http://knoxdev.org',
   API_TIMEOUT: parseInt(Config.API_TIMEOUT || '30000', 10),
   
   // App Identification
