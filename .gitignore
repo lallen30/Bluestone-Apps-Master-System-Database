@@ -58,6 +58,3 @@ logs/
 *.mov
 *.avi
 *.mkv
-
-# Mobile apps (not deployed to server)
-mobile_apps/
