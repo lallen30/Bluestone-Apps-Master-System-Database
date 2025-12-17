@@ -36,10 +36,31 @@ const getLocalhost = () => {
   return Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
 };
 
+// Environment toggle: set to 'local' for development, 'production' for server
+// Can also be set via .env file with USE_LOCAL_API=true
+const USE_LOCAL_API = Config.USE_LOCAL_API === 'true' || false;
+
+// Get the appropriate API URLs based on environment
+const getApiUrls = () => {
+  if (USE_LOCAL_API) {
+    const localhost = getLocalhost();
+    return {
+      baseUrl: `http://${localhost}:3000/api/v1`,
+      serverUrl: `http://${localhost}:3000`,
+    };
+  }
+  return {
+    baseUrl: 'http://knoxdev.org/api/v1',
+    serverUrl: 'http://knoxdev.org',
+  };
+};
+
+const apiUrls = getApiUrls();
+
 export const AppConfig = {
-  // API Configuration - pointing to production server
-  API_BASE_URL: Config.API_BASE_URL || 'http://knoxdev.org/api/v1',
-  API_SERVER_URL: Config.API_SERVER_URL || 'http://knoxdev.org',
+  // API Configuration - switches between local and production based on USE_LOCAL_API
+  API_BASE_URL: Config.API_BASE_URL || apiUrls.baseUrl,
+  API_SERVER_URL: Config.API_SERVER_URL || apiUrls.serverUrl,
   API_TIMEOUT: parseInt(Config.API_TIMEOUT || '30000', 10),
   
   // App Identification
