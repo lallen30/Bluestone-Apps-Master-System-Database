@@ -129,7 +129,7 @@ services:
       SERVICE_PORT: 4001
       SERVICE_URL: http://stripe_service:4001
       API_URL: http://api:3000
-      BODYGUARD_URL: http://host.docker.internal:3032
+      BODYGUARD_URL: http://bodyguard:3032
       JWT_SECRET: dev-secret-key-change-in-production
       CORS_ORIGIN: "*"
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_default}
